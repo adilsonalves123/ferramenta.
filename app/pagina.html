@@ -3,166 +3,323 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ferramenta</title>
+  <title>Publicações</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
   <style>
-    :root { color-scheme: dark; }
+    :root {
+      color-scheme: light;
+      --fundo: #f3f4f6;
+      --papel: #ffffff;
+      --tinta: #1a1d23;
+      --mudo: #6b7280;
+      --linha: #e6e8ee;
+      --azul: #1d4ed8;
+      --azul-suave: #eef2ff;
+      --sombra: 0 1px 2px rgba(16, 24, 40, 0.04), 0 12px 32px rgba(16, 24, 40, 0.06);
+    }
+    * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: Segoe UI, sans-serif;
-      background: #10110f;
-      color: #f5f5f5;
+      font-family: Inter, Segoe UI, sans-serif;
+      background: var(--fundo);
+      color: var(--tinta);
+      font-size: 14px;
     }
+    button, input, textarea { font-family: inherit; }
     main { margin: 0; padding: 0; }
-    #tarefa { max-width: 720px; margin: 0 auto; padding: 32px 20px 64px; }
+    #tarefa {
+      max-width: 680px;
+      margin: 28px auto 48px;
+      padding: 28px;
+      background: var(--papel);
+      border: 1px solid var(--linha);
+      border-radius: 16px;
+      box-shadow: var(--sombra);
+    }
     .estudio {
+      width: min(1360px, calc(100% - 32px));
+      height: calc(100vh - 32px);
+      margin: 16px auto;
       display: grid;
-      grid-template-columns: 250px minmax(0, 1fr) 330px;
-      gap: 16px;
-      max-width: 1180px;
-      margin: 0 auto;
-      padding: 20px;
-      min-height: 100vh;
-      box-sizing: border-box;
-    }
-    @media (max-width: 980px) { .estudio { grid-template-columns: 1fr; } }
-    .painel, .conversa, .lado {
-      background: #181a16;
-      border-radius: 18px;
-      padding: 16px;
-    }
-    .conversa { display: flex; flex-direction: column; min-height: 70vh; }
-    .marca-nome { font-size: 22px; margin: 0; }
-    .marca-linha { color: #a3a3a3; font-size: 13px; margin: 8px 0 0; }
-    .atalhos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-    button.atalho, button.chip {
-      border: 1px solid #2a2c28;
-      background: #10110f;
-      color: #f5f5f5;
-      border-radius: 999px;
-      padding: 8px 12px;
-      font: inherit;
-      font-size: 13px;
-      cursor: pointer;
-    }
-    button.atalho.ativo, button.chip.ativo, button.atalho:hover, button.chip:hover {
-      border-color: #c6ff3d;
-      color: #c6ff3d;
-    }
-    .fio { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
-    .balao { max-width: 85%; border-radius: 16px; padding: 12px 14px; line-height: 1.4; white-space: pre-wrap; }
-    .balao.assistente { background: #10110f; }
-    .balao.pessoa { align-self: flex-end; background: #24300f; }
-    form.composer { display: flex; gap: 8px; margin-top: 12px; }
-    form.composer textarea { min-height: 64px; resize: vertical; }
-    form.composer button { width: auto; margin-top: 0; padding: 0 18px; }
-    .post {
-      background: #10110f;
+      grid-template-columns: 232px minmax(0, 1fr) minmax(300px, 340px);
+      grid-template-rows: 56px minmax(0, 1fr);
+      background: var(--papel);
+      border: 1px solid var(--linha);
       border-radius: 16px;
       overflow: hidden;
+      box-shadow: var(--sombra);
     }
-    .post-topo { display: flex; gap: 10px; align-items: center; padding: 12px; }
-    .avatar {
-      width: 36px; height: 36px; border-radius: 50%;
-      background: #c6ff3d; color: #111; font-weight: 700;
-      display: grid; place-items: center;
+    .topo {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--linha);
+      background: var(--papel);
     }
-    .post p { margin: 0; padding: 0 12px 12px; white-space: pre-wrap; }
-    .post img, .post .vazio-foto { width: 100%; height: 220px; object-fit: cover; background: #24261f; display: block; }
-    .vazio-foto { color: #a3a3a3; display: grid; place-items: center; }
-    .semana { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 12px; }
-    button.dia {
-      border: 1px solid #2a2c28;
-      background: #10110f;
-      color: white;
-      border-radius: 10px;
-      padding: 8px 0;
-      font: inherit;
-      font-size: 12px;
-      cursor: pointer;
-      white-space: pre-line;
+    .topo-nome { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+    .topo-marca {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 32px;
+      padding: 0 10px 0 6px;
+      border: 1px solid var(--linha);
+      border-radius: 8px;
+      background: var(--fundo);
+      font-size: 13px;
     }
-    button.dia.marcado { border-color: #c6ff3d; color: #c6ff3d; }
-    .nota { color: #a3a3a3; font-size: 12px; margin: 8px 0 0; }
-    h1 { font-size: 28px; margin: 0 0 8px; }
-    p.ajuda { color: #a3a3a3; margin: 0 0 24px; }
-    .opcoes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    @media (max-width: 640px) { .opcoes { grid-template-columns: 1fr; } }
-    button.opcao {
-      text-align: left;
+    .topo-marca span { color: var(--mudo); }
+    .painel, .lado { min-height: 0; overflow: auto; background: #fafbfc; }
+    .painel { padding: 16px 12px 24px; border-right: 1px solid var(--linha); }
+    .lado { padding: 16px 16px 28px; border-left: 1px solid var(--linha); }
+    .conversa {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--fundo);
+    }
+    .coluna-topo {
+      padding: 16px 28px 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--mudo);
+    }
+    .marca {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 8px 12px;
+    }
+    .marca-nome { font-size: 14px; font-weight: 600; margin: 0; }
+    .marca-linha { color: var(--mudo); font-size: 12px; margin: 2px 0 0; }
+    .atalhos { display: flex; flex-direction: column; gap: 2px; }
+    button.atalho, button.chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
       border: 0;
-      border-radius: 18px;
-      background: #1c1e1a;
-      color: white;
-      padding: 0 0 14px;
+      background: transparent;
+      color: var(--tinta);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13.5px;
+      text-align: left;
       cursor: pointer;
-      font: inherit;
-      overflow: hidden;
     }
-    button.opcao img { width: 100%; height: 168px; object-fit: cover; display: block; }
-    button.opcao strong { display: block; font-size: 17px; padding: 12px 14px 0; }
-    button.opcao span { display: block; margin-top: 4px; padding: 0 14px; color: #a3a3a3; font-size: 14px; }
-    button.opcao:hover { outline: 1px solid #c6ff3d; }
-    label { display: block; font-size: 14px; font-weight: 600; margin: 16px 0 6px; }
+    button.atalho i, button.chip i { width: 16px; color: var(--mudo); text-align: center; }
+    button.atalho:hover, button.chip:hover { background: #eef0f3; }
+    button.atalho.ativo, button.chip.ativo {
+      background: var(--azul-suave);
+      color: var(--azul);
+      font-weight: 600;
+    }
+    button.atalho.ativo i, button.chip.ativo i { color: var(--azul); }
+    .fio {
+      flex: 1;
+      min-width: 0;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 14px;
+      padding: 8px 32px 8px;
+    }
+    .vazio-conversa { margin: auto; max-width: 460px; text-align: center; }
+    .vazio-conversa h2 { margin: 0 0 6px; font-size: 22px; letter-spacing: -0.03em; font-weight: 600; }
+    .vazio-conversa p { margin: 0; color: var(--mudo); line-height: 1.5; }
+    .balao { max-width: 78%; line-height: 1.5; white-space: pre-wrap; font-size: 14.5px; }
+    .balao.assistente { color: var(--tinta); padding: 2px 0; }
+    .balao.pessoa {
+      align-self: flex-end;
+      background: var(--papel);
+      border: 1px solid var(--linha);
+      border-radius: 12px;
+      padding: 10px 14px;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    }
+    form.composer {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      margin: 12px 20px 20px;
+      padding: 10px 10px 10px 16px;
+      background: var(--papel);
+      border: 1px solid var(--linha);
+      border-radius: 14px;
+      box-shadow: var(--sombra);
+    }
+    form.composer textarea {
+      min-width: 0;
+      min-height: 72px;
+      max-height: 160px;
+      border: 0;
+      padding: 8px 0;
+      background: transparent;
+      resize: none;
+      font-size: 15px;
+    }
+    form.composer textarea:focus { outline: none; box-shadow: none; }
+    form.composer button { width: auto; margin: 0; height: 36px; padding: 0 14px; flex: none; }
+    .cartao-previa, .cartao-agenda {
+      background: var(--papel);
+      border: 1px solid var(--linha);
+      border-radius: 12px;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    }
+    .cartao-agenda { margin-top: 14px; padding: 14px; }
+    .post { overflow: hidden; }
+    .post-topo { display: flex; gap: 10px; align-items: center; padding: 12px 14px; }
+    .post-conta { display: flex; flex-direction: column; }
+    .post-conta strong { font-size: 13px; }
+    .post-conta span, .canal-nome { color: var(--mudo); font-size: 12px; font-weight: 400; }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: #e8eaef; color: #3f4652; font-weight: 600; font-size: 13px;
+      display: grid; place-items: center; flex: none;
+    }
+    .post p { margin: 0; padding: 0 14px 14px; white-space: pre-wrap; font-size: 13px; line-height: 1.45; }
+    .post img, .post .vazio-foto {
+      width: 100%; height: 210px; object-fit: cover;
+      background: #eef0f3; display: block;
+    }
+    .vazio-foto {
+      color: var(--mudo);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .vazio-foto i { font-size: 22px; }
+    .post-acoes {
+      display: flex;
+      gap: 16px;
+      padding: 10px 14px 4px;
+      color: var(--tinta);
+      font-size: 18px;
+    }
+    .semana { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 8px; }
+    button.dia {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      border: 0;
+      background: transparent;
+      color: var(--tinta);
+      border-radius: 10px;
+      padding: 8px 0 6px;
+      cursor: pointer;
+    }
+    button.dia:hover { background: #eef0f3; }
+    .dia-nome { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--mudo); }
+    .dia-num { font-size: 14px; font-weight: 600; }
+    button.dia.escolhido { background: var(--azul); color: white; }
+    button.dia.escolhido .dia-nome { color: rgba(255, 255, 255, 0.8); }
+    button.dia.tem .dia-num { box-shadow: inset 0 -2px 0 var(--azul); }
+    button.dia.escolhido.tem .dia-num { box-shadow: inset 0 -2px 0 white; }
+    .nota { color: var(--mudo); font-size: 12px; line-height: 1.4; margin: 10px 2px 0; }
+    .agenda-hora { margin: 0 0 8px; font-size: 12px; color: var(--mudo); }
+    h1 { font-size: 22px; letter-spacing: -0.02em; margin: 8px 0 6px; }
+    p.ajuda { color: var(--mudo); margin: 0 0 8px; line-height: 1.45; }
+    @media (max-width: 980px) {
+      .estudio {
+        width: 100%;
+        height: auto;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        overflow: visible;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+      }
+      .topo { grid-column: auto; }
+      .conversa { min-height: 70vh; }
+      .painel, .lado { border: 0; }
+    }
+    label { display: block; font-size: 13px; font-weight: 600; margin: 16px 0 6px; }
     input, textarea {
       width: 100%;
-      box-sizing: border-box;
-      border: 0;
-      border-radius: 12px;
-      background: #1c1e1a;
-      color: white;
-      padding: 14px 16px;
+      border: 1px solid var(--linha);
+      border-radius: 8px;
+      background: var(--papel);
+      color: var(--tinta);
+      padding: 10px 12px;
       font: inherit;
+      font-size: 14px;
+    }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--azul);
+      box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
     }
     button.principal {
-      margin-top: 20px;
-      height: 48px;
+      margin-top: 18px;
+      height: 40px;
       width: 100%;
       border: 0;
-      border-radius: 999px;
-      background: #c6ff3d;
-      color: #111;
+      border-radius: 8px;
+      background: var(--azul);
+      color: white;
       font: inherit;
-      font-weight: 700;
+      font-weight: 600;
+      font-size: 14px;
       cursor: pointer;
     }
-    button.principal:disabled { opacity: 0.7; cursor: wait; }
-    button.principal { display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+    button.principal:hover { background: #1e40af; }
+    button.principal:disabled { opacity: 0.65; cursor: wait; }
+    button.principal { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
     .spinner {
-      width: 18px;
-      height: 18px;
-      border: 2px solid rgba(17, 17, 17, 0.25);
-      border-top-color: #111;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      border-top-color: white;
       border-radius: 50%;
       animation: girar 0.7s linear infinite;
     }
     @keyframes girar { to { transform: rotate(360deg); } }
-    input[type="file"] { padding: 10px 14px; }
-    p.secao { margin: 22px 0 10px; font-size: 14px; font-weight: 700; }
-    .redes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    input[type="file"] { padding: 8px 12px; }
+    p.secao {
+      margin: 18px 8px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #8b919a;
+    }
+    .redes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     button.rede {
       display: flex;
       align-items: center;
       gap: 10px;
       width: 100%;
-      border: 1px solid #2a2c28;
-      border-radius: 14px;
-      background: #1c1e1a;
-      color: #f5f5f5;
-      padding: 14px;
+      border: 1px solid var(--linha);
+      border-radius: 10px;
+      background: var(--papel);
+      color: var(--tinta);
+      padding: 12px;
       font: inherit;
-      font-weight: 700;
+      font-weight: 600;
+      font-size: 13px;
       cursor: pointer;
     }
-    button.rede i { width: 22px; font-size: 20px; color: #a3a3a3; text-align: center; }
-    button.rede:hover,
-    button.rede:hover i { color: #c6ff3d; border-color: #6b8f22; }
+    button.rede i { width: 18px; font-size: 16px; color: var(--mudo); text-align: center; }
+    button.rede:hover { border-color: #c5c9d2; }
     button.rede.selecionada {
-      color: #c6ff3d;
-      border-color: #c6ff3d;
-      box-shadow: inset 0 0 0 1px #c6ff3d;
+      color: var(--azul);
+      border-color: var(--azul);
+      background: var(--azul-suave);
     }
-    button.rede.selecionada i { color: #c6ff3d; }
+    button.rede.selecionada i { color: var(--azul); }
     .tipos { display: grid; gap: 8px; }
     label.tipo {
       display: flex;
@@ -170,94 +327,124 @@
       gap: 10px;
       margin: 0;
       padding: 12px 14px;
-      border: 1px solid #2a2c28;
-      border-radius: 14px;
-      background: #1c1e1a;
+      border: 1px solid var(--linha);
+      border-radius: 10px;
+      background: var(--papel);
       cursor: pointer;
+      font-weight: 600;
     }
-    label.tipo input { width: auto; margin-top: 3px; accent-color: #c6ff3d; }
-    label.tipo small { display: block; margin-top: 3px; color: #a3a3a3; font-weight: 400; }
+    label.tipo input { width: auto; margin-top: 3px; accent-color: var(--azul); }
+    label.tipo small { display: block; margin-top: 3px; color: var(--mudo); font-weight: 400; }
     label.tipo:has(input:checked) {
-      border-color: #c6ff3d;
-      box-shadow: inset 0 0 0 1px #c6ff3d;
+      border-color: var(--azul);
+      background: var(--azul-suave);
     }
     button.voltar, button.copiar {
-      margin-top: 8px;
-      height: 36px;
-      padding: 0 16px;
-      border-radius: 999px;
-      border: 1px solid #c6ff3d;
-      background: transparent;
-      color: #c6ff3d;
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 8px;
+      border: 1px solid var(--linha);
+      background: var(--papel);
+      color: var(--tinta);
       font: inherit;
-      font-weight: 700;
+      font-weight: 600;
+      font-size: 13px;
       cursor: pointer;
     }
-    .erro { margin-top: 16px; color: #ff7a3c; }
+    button.voltar:hover, button.copiar:hover { background: var(--fundo); }
+    .erro { margin-top: 16px; color: #b91c1c; }
     article {
       margin-top: 16px;
-      background: #1c1e1a;
-      border-radius: 16px;
-      padding: 18px;
+      background: var(--fundo);
+      border: 1px solid var(--linha);
+      border-radius: 12px;
+      padding: 16px;
     }
-    article h2 {
-      font-size: 13px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #c6ff3d;
-      margin: 0 0 12px;
-    }
+    article h2 { font-size: 13px; font-weight: 600; color: var(--mudo); margin: 0 0 10px; }
     article h3 { margin: 14px 0 4px; font-size: 15px; }
-    article p, article li { white-space: pre-wrap; line-height: 1.45; margin: 0; }
+    article p, article li { white-space: pre-wrap; line-height: 1.5; margin: 0; }
     article ul { margin: 0; padding-left: 18px; }
     article li + li { margin-top: 10px; }
-    article img, article video, article audio { width: 100%; border-radius: 12px; margin-top: 8px; background: #000; }
-    a.baixar { display: inline-block; margin-top: 10px; color: #c6ff3d; font-weight: 700; }
+    article img, article video, article audio { width: 100%; border-radius: 10px; margin-top: 8px; background: #e8eaef; }
+    a.baixar { display: inline-block; margin-top: 10px; color: var(--azul); font-weight: 600; }
+    form.composer button.principal { width: auto; margin: 0; height: 36px; padding: 0 14px; flex: none; }
+    .lado > .secao { margin: 2px 2px 8px; }
+    .cartao-agenda .secao { margin: 0 0 4px; }
+    #agendar { margin-top: 12px; }
   </style>
 </head>
 <body>
   <main>
     <section id="menu" class="estudio">
+      <header class="topo">
+        <div class="topo-nome">Publicações</div>
+        <div class="topo-marca"><span>Marca</span><strong>Risca Aí</strong></div>
+      </header>
       <aside class="painel">
-        <p class="marca-nome">Risca Aí</p>
-        <p class="marca-linha">Público salvo: donos de bar no Brasil.</p>
-        <p class="marca-linha">Voz: direta, de quem vive o balcão.</p>
+        <div class="marca">
+          <div class="avatar">R</div>
+          <div>
+            <p class="marca-nome">Risca Aí</p>
+            <p class="marca-linha">Donos de bar no Brasil</p>
+          </div>
+        </div>
+        <p class="secao">Objetivo</p>
         <div class="atalhos" id="objetivos">
-          <button class="atalho" type="button" data-objetivo="interação">Interação</button>
-          <button class="atalho" type="button" data-objetivo="gancho de venda">Gancho de venda</button>
-          <button class="atalho" type="button" data-objetivo="viral">Viral</button>
+          <button class="atalho" type="button" data-objetivo="interação"><i class="fa-regular fa-comment"></i>Interação</button>
+          <button class="atalho" type="button" data-objetivo="gancho de venda"><i class="fa-solid fa-bullhorn"></i>Gancho de venda</button>
+          <button class="atalho" type="button" data-objetivo="viral"><i class="fa-solid fa-arrow-trend-up"></i>Viral</button>
         </div>
-        <p class="secao">Onde postar</p>
+        <p class="secao">Canal</p>
         <div class="atalhos" id="redes-post">
-          <button class="chip" type="button" data-rede-post="Instagram">Instagram</button>
-          <button class="chip" type="button" data-rede-post="Facebook">Facebook</button>
-          <button class="chip" type="button" data-rede-post="TikTok">TikTok</button>
-          <button class="chip" type="button" data-rede-post="Google">Google</button>
+          <button class="chip" type="button" data-rede-post="Instagram"><i class="fa-brands fa-instagram"></i>Instagram</button>
+          <button class="chip" type="button" data-rede-post="Facebook"><i class="fa-brands fa-facebook"></i>Facebook</button>
+          <button class="chip" type="button" data-rede-post="TikTok"><i class="fa-brands fa-tiktok"></i>TikTok</button>
+          <button class="chip" type="button" data-rede-post="Google"><i class="fa-brands fa-google"></i>Google</button>
         </div>
-        <p class="secao">Ainda separado</p>
+        <p class="secao">Ferramentas</p>
         <div class="atalhos">
-          <button class="atalho" type="button" data-acao="radar">Radar de clientes</button>
-          <button class="atalho" type="button" data-acao="clonador">Clonar vídeo</button>
-          <button class="atalho" type="button" data-acao="google">Google Meu Negócio</button>
+          <button class="atalho" type="button" data-acao="radar"><i class="fa-solid fa-location-dot"></i>Radar de clientes</button>
+          <button class="atalho" type="button" data-acao="clonador"><i class="fa-solid fa-clapperboard"></i>Clonar vídeo</button>
+          <button class="atalho" type="button" data-acao="google"><i class="fa-solid fa-store"></i>Google Meu Negócio</button>
         </div>
       </aside>
       <section class="conversa">
-        <div class="fio" id="fio"></div>
+        <div class="coluna-topo">Novo post</div>
+        <div class="fio" id="fio">
+          <div class="vazio-conversa" id="vazio-conversa">
+            <h2>Descreva o post</h2>
+            <p>Escolha o canal, diga o objetivo e a prévia aparece ao lado.</p>
+          </div>
+        </div>
         <form class="composer" id="composer">
-          <textarea id="pedido" required minlength="2" placeholder="Ex.: preciso de uma publicação de interação para donos de bar"></textarea>
-          <button class="principal" type="submit" id="enviar-chat">Criar</button>
+          <textarea id="pedido" required minlength="2" placeholder="Descreva a publicação. Ex.: interação para donos de bar"></textarea>
+          <button class="principal" type="submit" id="enviar-chat">Gerar</button>
         </form>
       </section>
       <aside class="lado">
-        <div class="post" id="previa">
-          <div class="post-topo"><div class="avatar">R</div><strong>Risca Aí</strong></div>
-          <div class="vazio-foto" id="foto-previa">A imagem entra aqui</div>
-          <p id="legenda-previa">O post aparece neste formato, como no Instagram, depois que você pedir.</p>
+        <p class="secao">Prévia · <span class="canal-nome" id="canal-previa">Instagram</span></p>
+        <div class="cartao-previa">
+          <div class="post" id="previa">
+            <div class="post-topo">
+              <div class="avatar">R</div>
+              <div class="post-conta"><strong>Risca Aí</strong><span>Agora</span></div>
+            </div>
+            <div class="vazio-foto" id="foto-previa"><i class="fa-regular fa-image"></i><span>A imagem aparece aqui</span></div>
+            <div class="post-acoes" aria-hidden="true">
+              <i class="fa-regular fa-heart"></i>
+              <i class="fa-regular fa-comment"></i>
+              <i class="fa-regular fa-paper-plane"></i>
+            </div>
+            <p id="legenda-previa">A legenda aparece aqui, no formato do post, depois que você gerar.</p>
+          </div>
         </div>
-        <p class="secao">Esta semana</p>
-        <div class="semana" id="semana"></div>
-        <button class="principal" type="button" id="agendar">Colocar às 9h</button>
-        <p class="nota" id="nota-agenda">A lista fica neste navegador. Publicar sozinho entra quando Instagram e Facebook estiverem ligados.</p>
+        <div class="cartao-agenda">
+          <p class="secao">Agenda</p>
+          <p class="agenda-hora">09:00</p>
+          <div class="semana" id="semana"></div>
+          <button class="principal" type="button" id="agendar">Agendar às 9h</button>
+          <p class="nota" id="nota-agenda">A lista fica neste navegador. Publicar sozinho entra quando Instagram e Facebook estiverem ligados.</p>
+        </div>
       </aside>
     </section>
 
@@ -583,6 +770,8 @@
     let diaEscolhido = "";
 
     function falar(quem, mensagem) {
+      const vazio = document.getElementById("vazio-conversa");
+      if (vazio) vazio.remove();
       const bloco = document.createElement("div");
       bloco.className = `balao ${quem}`;
       bloco.textContent = mensagem;
@@ -604,21 +793,22 @@
       const agenda = lerAgenda();
       semana.innerHTML = "";
       const nomes = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+      if (!diaEscolhido) diaEscolhido = diaIso(new Date());
       for (let i = 0; i < 7; i += 1) {
         const data = new Date();
         data.setDate(data.getDate() + i);
         const iso = diaIso(data);
         const botao = document.createElement("button");
         botao.type = "button";
-        botao.className = "dia" + (agenda.some((item) => item.dia === iso) || diaEscolhido === iso ? " marcado" : "");
-        botao.textContent = `${nomes[data.getDay()]}\n${data.getDate()}`;
+        const tem = agenda.some((item) => item.dia === iso);
+        botao.className = "dia" + (diaEscolhido === iso ? " escolhido" : "") + (tem ? " tem" : "");
+        botao.innerHTML = `<span class="dia-nome">${nomes[data.getDay()]}</span><span class="dia-num">${data.getDate()}</span>`;
         botao.addEventListener("click", () => {
           diaEscolhido = iso;
           desenharSemana();
         });
         semana.appendChild(botao);
       }
-      if (!diaEscolhido) diaEscolhido = diaIso(new Date());
     }
 
     function mostrarPrevia(dados, foto) {
@@ -667,7 +857,6 @@
       }
     }
 
-    falar("assistente", "Pode pedir uma publicação de interação, um gancho de venda ou um vídeo viral. Eu já sei que a marca é o Risca Aí e o público são donos de bar.");
     desenharSemana();
 
     document.getElementById("composer").addEventListener("submit", (evento) => {
@@ -689,6 +878,7 @@
         redePost = botao.dataset.redePost;
         document.querySelectorAll("[data-rede-post]").forEach((item) => item.classList.remove("ativo"));
         botao.classList.add("ativo");
+        document.getElementById("canal-previa").textContent = redePost;
       });
     });
 
