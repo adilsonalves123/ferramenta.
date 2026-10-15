@@ -461,7 +461,7 @@
           <button class="atalho" type="button" id="ligar-instagram"><i class="fa-brands fa-instagram"></i><span id="estado-instagram">Instagram desligado</span></button>
           <button class="atalho" type="button" id="ligar-facebook"><i class="fa-brands fa-facebook"></i><span id="estado-facebook">Facebook desligado</span></button>
         </div>
-        <p class="nota conta-nota">A ligação entra no próximo passo.</p>
+        <p class="nota conta-nota" id="nota-contas">O Facebook pede a Página para publicar o texto.</p>
         <p class="secao">Ferramentas</p>
         <div class="atalhos">
           <button class="atalho" type="button" data-acao="radar"><i class="fa-solid fa-location-dot"></i>Radar de clientes</button>
@@ -914,6 +914,8 @@
       facebook.textContent = dados.facebook.ligado ? `Facebook · ${dados.facebook.nome || "ligado"}` : "Facebook desligado";
       document.getElementById("ligar-instagram").classList.toggle("ativo", dados.instagram.ligado);
       document.getElementById("ligar-facebook").classList.toggle("ativo", dados.facebook.ligado);
+      const notaContas = document.getElementById("nota-contas");
+      if (notaContas) notaContas.textContent = dados.facebook.ligado ? "" : "O Facebook pede a Página para publicar o texto.";
     }
 
     function desenharSemana() {
@@ -1054,15 +1056,17 @@
       });
     });
 
-    function ligarContas() {
+    function ligarInstagram() {
       if (!metaPronta) {
         document.getElementById("nota-agenda").textContent = "A agenda já guarda o dia e o horário. Para sair sozinho, falta criar o aplicativo na Meta.";
         return;
       }
       window.location.href = "/contas/iniciar";
     }
-    document.getElementById("ligar-instagram").addEventListener("click", ligarContas);
-    document.getElementById("ligar-facebook").addEventListener("click", ligarContas);
+    document.getElementById("ligar-instagram").addEventListener("click", ligarInstagram);
+    document.getElementById("ligar-facebook").addEventListener("click", () => {
+      window.location.href = "/contas/iniciar?rede=facebook";
+    });
 
     document.getElementById("agendar").addEventListener("click", async () => {
       const nota = document.getElementById("nota-agenda");

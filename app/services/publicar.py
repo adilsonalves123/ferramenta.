@@ -24,6 +24,11 @@ def meta_pronta() -> bool:
     return bool(ajustes.instagram_app_id.strip() and ajustes.instagram_app_secret.strip())
 
 
+def facebook_pronta() -> bool:
+    ajustes = get_settings()
+    return bool(ajustes.meta_app_id.strip() and ajustes.meta_app_secret.strip())
+
+
 def url_retorno() -> str:
     return get_settings().app_url.rstrip("/") + "/contas/retorno"
 
@@ -65,6 +70,44 @@ def state_valido(state: str) -> bool:
     segredo = get_settings().instagram_app_secret.encode()
     assinatura = hmac.new(segredo, corpo.encode(), hashlib.sha256).hexdigest()[:24]
     return hmac.compare_digest(assinatura, partes[2])
+
+
+def criar_state_facebook() -> str:
+    expira = int(time.time()) + 600
+    corpo = f"facebook.{expira}"
+    segredo = get_settings().meta_app_secret.encode()
+    assinatura = hmac.new(segredo, corpo.encode(), hashlib.sha256).hexdigest()[:24]
+    return f"{corpo}.{assinatura}"
+
+
+def state_facebook_valido(state: str) -> bool:
+    partes = state.split(".")
+    if len(partes) != 3 or partes[0] != "facebook":
+        return False
+    corpo = f"{partes[0]}.{partes[1]}"
+    try:
+        expira = int(partes[1])
+    except ValueError:
+        return False
+    if expira < int(time.time()):
+        return False
+    segredo = get_settings().meta_app_secret.encode()
+    assinatura = hmac.new(segredo, corpo.encode(), hashlib.sha256).hexdigest()[:24]
+    return hmac.compare_digest(assinatura, partes[2])
+
+
+def url_oauth_facebook() -> str:
+    ajustes = get_settings()
+    query = urllib.parse.urlencode(
+        {
+            "client_id": ajustes.meta_app_id,
+            "redirect_uri": url_retorno(),
+            "state": criar_state_facebook(),
+            "scope": "pages_show_list,pages_manage_posts,business_management",
+            "response_type": "code",
+        }
+    )
+    return f"https://www.facebook.com/{VERSAO}/dialog/oauth?{query}"
 
 
 def url_oauth() -> str:
@@ -111,13 +154,49 @@ def trocar_codigo(codigo: str) -> tuple[str, str]:
 
 def listar_paginas(token: str) -> list[dict]:
     query = urllib.parse.urlencode(
-        {
-            "fields": "id,name,access_token,instagram_business_account{id,username}",
-            "access_token": token,
-        }
+        {"fields": "id,name,access_token", "access_token": token}
     )
     dados = _pedir(f"https://graph.facebook.com/{VERSAO}/me/accounts?{query}")
     return list(dados.get("data") or [])
+
+
+def trocar_codigo_facebook(codigo: str) -> tuple[str, str, str]:
+    ajustes = get_settings()
+    curto = _pedir(
+        f"https://graph.facebook.com/{VERSAO}/oauth/access_token",
+        {
+            "client_id": ajustes.meta_app_id,
+            "client_secret": ajustes.meta_app_secret,
+            "redirect_uri": url_retorno(),
+            "code": codigo,
+        },
+    )
+    token_curto = str(curto.get("access_token") or "")
+    if not token_curto:
+        raise RuntimeError("O Facebook não devolveu o acesso.")
+    estendido = _pedir(
+        f"https://graph.facebook.com/{VERSAO}/oauth/access_token",
+        {
+            "grant_type": "fb_exchange_token",
+            "client_id": ajustes.meta_app_id,
+            "client_secret": ajustes.meta_app_secret,
+            "fb_exchange_token": token_curto,
+        },
+    )
+    token = str(estendido.get("access_token") or token_curto)
+    paginas = listar_paginas(token)
+    if not paginas:
+        raise RuntimeError("Nenhuma Página do Facebook encontrada nesta conta.")
+    pagina = next(
+        (item for item in paginas if "risca" in str(item.get("name") or "").lower()),
+        paginas[0],
+    )
+    nome = str(pagina.get("name") or "Facebook")
+    pagina_id = str(pagina.get("id") or "")
+    token_pagina = str(pagina.get("access_token") or "")
+    if not pagina_id or not token_pagina:
+        raise RuntimeError("O Facebook não entregou a Página.")
+    return nome, pagina_id, token_pagina
 
 
 def publicar_facebook(pagina_id: str, token: str, texto: str) -> None:
@@ -173,6 +252,12 @@ def perfil_instagram(token: str) -> tuple[str, str]:
     query = urllib.parse.urlencode({"fields": "user_id,username", "access_token": token})
     dados = _pedir(f"https://graph.instagram.com/{VERSAO}/me?{query}")
     return str(dados.get("user_id") or ""), str(dados.get("username") or "Instagram")
+
+
+async def guardar_codigo_facebook(session: AsyncSession, codigo: str) -> None:
+    nome, pagina_id, token = await asyncio.to_thread(trocar_codigo_facebook, codigo)
+    await definir_conta(session, "facebook", nome, pagina_id, token)
+    await session.commit()
 
 
 async def guardar_codigo(session: AsyncSession, codigo: str) -> None:

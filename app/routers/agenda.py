@@ -8,11 +8,15 @@ from app.models import Agendamento
 from app.schemas import EstadoRede, ItemAgenda, PedidoAgenda, RespostaAgenda
 from app.services.publicar import (
     estado_contas,
+    facebook_pronta,
     guardar_codigo,
+    guardar_codigo_facebook,
     meta_pronta,
     publicar_vencidos,
+    state_facebook_valido,
     state_valido,
     url_oauth,
+    url_oauth_facebook,
 )
 
 router = APIRouter()
@@ -113,7 +117,11 @@ async def post_agenda(
 
 
 @router.get("/contas/iniciar", response_model=None)
-async def iniciar_contas():
+async def iniciar_contas(rede: str = "instagram"):
+    if rede == "facebook":
+        if not facebook_pronta():
+            return HTMLResponse(PAGINA_FALTA)
+        return RedirectResponse(url_oauth_facebook())
     if not meta_pronta():
         return HTMLResponse(PAGINA_FALTA)
     return RedirectResponse(url_oauth())
@@ -126,10 +134,17 @@ async def retorno_contas(
     error: str = "",
     session: AsyncSession = Depends(get_session),
 ):
-    if error or not code or not state_valido(state):
+    if error or not code:
         return RedirectResponse("/?contas=cancelado")
     try:
-        await guardar_codigo(session, code)
+        if state.startswith("facebook."):
+            if not state_facebook_valido(state):
+                return RedirectResponse("/?contas=cancelado")
+            await guardar_codigo_facebook(session, code)
+        elif state_valido(state):
+            await guardar_codigo(session, code)
+        else:
+            return RedirectResponse("/?contas=cancelado")
     except Exception:
         return RedirectResponse("/?contas=erro")
     return RedirectResponse("/?contas=ligado")
