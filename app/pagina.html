@@ -55,7 +55,18 @@
       font-weight: 700;
       cursor: pointer;
     }
-    button.principal:disabled { opacity: 0.5; cursor: wait; }
+    button.principal:disabled { opacity: 0.7; cursor: wait; }
+    button.principal { display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(17, 17, 17, 0.25);
+      border-top-color: #111;
+      border-radius: 50%;
+      animation: girar 0.7s linear infinite;
+    }
+    @keyframes girar { to { transform: rotate(360deg); } }
+    input[type="file"] { padding: 10px 14px; }
     button.voltar, button.copiar {
       margin-top: 8px;
       height: 36px;
@@ -69,14 +80,6 @@
       cursor: pointer;
     }
     .erro { margin-top: 16px; color: #ff7a3c; }
-    .carregando {
-      margin-top: 20px;
-      border-radius: 16px;
-      background: #1c1e1a;
-      padding: 18px;
-    }
-    .carregando strong { display: block; color: #c6ff3d; }
-    .carregando span { display: block; margin-top: 6px; color: #a3a3a3; }
     article {
       margin-top: 16px;
       background: #1c1e1a;
@@ -124,6 +127,16 @@
           <strong>Google Meu Negócio</strong>
           <span>Nome, categoria e descrição prontos.</span>
         </button>
+        <button class="opcao" type="button" data-acao="clonador">
+          <img src="/quadros/clonador.jpg" alt="Celular com um vídeo no balcão" />
+          <strong>Clonador de Vídeo Viral</strong>
+          <span>Cole um link ou envie um vídeo de sucesso e a IA recria um roteiro adaptado para o seu produto.</span>
+        </button>
+        <button class="opcao" type="button" data-acao="radar">
+          <img src="/quadros/radar.jpg" alt="Rua com pontos no mapa do celular" />
+          <strong>Radar de Clientes B2B</strong>
+          <span>Digite uma cidade e categoria e nosso sistema mapeia potenciais clientes na região.</span>
+        </button>
       </div>
     </section>
 
@@ -132,16 +145,29 @@
       <h1 id="titulo-tarefa">Ferramenta</h1>
       <p class="ajuda" id="ajuda-tarefa"></p>
       <form id="formulario">
-        <label for="nicho_negocio">Nicho do negócio</label>
-        <input id="nicho_negocio" name="nicho_negocio" required minlength="2" placeholder="Ex.: bar e petiscaria" />
-        <label for="produto_servico">Produto ou serviço</label>
-        <textarea id="produto_servico" name="produto_servico" required minlength="2" rows="3" placeholder="Ex.: combo de cerveja gelada no happy hour"></textarea>
-        <button class="principal" type="submit" id="enviar">Gerar</button>
+        <div id="campos-base">
+          <label for="nicho_negocio">Nicho do negócio</label>
+          <input id="nicho_negocio" name="nicho_negocio" required minlength="2" placeholder="Ex.: bar e petiscaria" />
+          <label for="produto_servico">Produto ou serviço</label>
+          <textarea id="produto_servico" name="produto_servico" required minlength="2" rows="3" placeholder="Ex.: combo de cerveja gelada no happy hour"></textarea>
+        </div>
+        <div id="campos-clonador" hidden>
+          <label for="link_video">Link do vídeo</label>
+          <input id="link_video" name="link_video" type="url" placeholder="https://www.instagram.com/reel/..." />
+          <label for="arquivo_video">Ou envie o vídeo</label>
+          <input id="arquivo_video" name="arquivo_video" type="file" accept="video/*" />
+        </div>
+        <div id="campos-radar" hidden>
+          <label for="cidade">Cidade</label>
+          <input id="cidade" name="cidade" minlength="2" placeholder="Ex.: Belo Horizonte" />
+          <label for="categoria">Categoria</label>
+          <input id="categoria" name="categoria" minlength="2" placeholder="Ex.: bar e petiscaria" />
+        </div>
+        <button class="principal" type="submit" id="enviar">
+          <span class="spinner" id="spinner" hidden></span>
+          <span id="enviar-texto">Gerar</span>
+        </button>
       </form>
-      <div class="carregando" id="carregando" hidden>
-        <strong id="carregando-titulo">Trabalhando</strong>
-        <span>A tela não travou. É só aguardar.</span>
-      </div>
       <p class="erro" id="erro" hidden></p>
       <section id="resultado" hidden></section>
     </section>
@@ -170,7 +196,16 @@
         titulo: "Google Meu Negócio",
         ajuda: "Gera nome, categoria e descrição. Não publica no Google daqui.",
         botao: "Gerar texto do Google",
-        espera: "Escrevendo o perfil",
+      },
+      clonador: {
+        titulo: "Clonador de Vídeo Viral",
+        ajuda: "O link ou o nome do arquivo entra como referência. A IA reescreve um roteiro novo para o seu produto. Ela não assiste o vídeo.",
+        botao: "Reescrever roteiro",
+      },
+      radar: {
+        titulo: "Radar de Clientes B2B",
+        ajuda: "Mostra três exemplos fictícios na cidade e na categoria que você digitar, para validar a tela.",
+        botao: "Mapear exemplos",
       },
     };
 
@@ -178,10 +213,13 @@
     const tarefa = document.getElementById("tarefa");
     const formulario = document.getElementById("formulario");
     const enviar = document.getElementById("enviar");
-    const carregando = document.getElementById("carregando");
-    const carregandoTitulo = document.getElementById("carregando-titulo");
+    const enviarTexto = document.getElementById("enviar-texto");
+    const spinner = document.getElementById("spinner");
     const erro = document.getElementById("erro");
     const resultado = document.getElementById("resultado");
+    const camposBase = document.getElementById("campos-base");
+    const camposClonador = document.getElementById("campos-clonador");
+    const camposRadar = document.getElementById("campos-radar");
     let acao = "texto";
 
     function texto(valor) {
@@ -196,16 +234,26 @@
       return "Não foi possível gerar agora.";
     }
 
+    function exigir(id, ativo) {
+      document.getElementById(id).required = ativo;
+    }
+
     function abrir(escolha) {
       acao = escolha;
       const item = FERRAMENTAS[escolha];
       document.getElementById("titulo-tarefa").textContent = item.titulo;
       document.getElementById("ajuda-tarefa").textContent = item.ajuda;
-      enviar.textContent = item.botao;
-      carregandoTitulo.textContent = item.espera;
+      enviarTexto.textContent = item.botao;
+      camposBase.hidden = escolha === "radar";
+      camposClonador.hidden = escolha !== "clonador";
+      camposRadar.hidden = escolha !== "radar";
+      exigir("nicho_negocio", escolha !== "radar");
+      exigir("produto_servico", escolha !== "radar");
+      exigir("cidade", escolha === "radar");
+      exigir("categoria", escolha === "radar");
       erro.hidden = true;
       resultado.hidden = true;
-      carregando.hidden = true;
+      spinner.hidden = true;
       menu.hidden = true;
       tarefa.hidden = false;
     }
@@ -252,6 +300,23 @@
           <li><strong>Descrição.</strong> ${texto(google.descricao_seo)}</li>
         </ul></article>`;
       }
+      if (acao === "clonador") {
+        corpo += `<article><h2>Roteiro reescrito</h2>
+          <h3>Título</h3><p>${texto(dados.titulo)}</p>
+          <p>Referência: ${texto(dados.referencia)}</p>
+          <ul>
+            <li><strong>Gancho.</strong> ${texto(dados.gancho)}</li>
+            <li><strong>Retenção.</strong> ${texto(dados.retencao)}</li>
+            <li><strong>Desenvolvimento.</strong> ${texto(dados.desenvolvimento)}</li>
+            <li><strong>CTA.</strong> ${texto(dados.cta)}</li>
+          </ul>
+          <h3>Legenda</h3><p>${texto(dados.legenda)}</p>
+        </article>`;
+      }
+      if (acao === "radar") {
+        const itens = (dados.empresas || []).map((empresa) => `<li><strong>${texto(empresa.nome)}.</strong> ${texto(empresa.categoria)} em ${texto(empresa.bairro)}. ${texto(empresa.endereco)}. ${texto(empresa.telefone)}. ${texto(empresa.porque)}</li>`).join("");
+        corpo += `<article><h2>Exemplos na região</h2><p>${texto(dados.aviso)}</p><ul>${itens}</ul></article>`;
+      }
       resultado.innerHTML = corpo;
       resultado.hidden = false;
     }
@@ -269,17 +334,42 @@
       evento.preventDefault();
       erro.hidden = true;
       resultado.hidden = true;
-      carregando.hidden = false;
+      const arquivo = document.getElementById("arquivo_video").files[0];
+      const link = document.getElementById("link_video").value.trim();
+      if (acao === "clonador" && !link && !arquivo) {
+        erro.textContent = "Cole um link ou escolha um vídeo.";
+        erro.hidden = false;
+        return;
+      }
+      spinner.hidden = false;
       enviar.disabled = true;
+      let caminho = "/gerar-campanha";
+      let corpo = {
+        nicho_negocio: document.getElementById("nicho_negocio").value.trim(),
+        produto_servico: document.getElementById("produto_servico").value.trim(),
+        acao,
+      };
+      if (acao === "clonador") {
+        caminho = "/clonar-video";
+        corpo = {
+          nicho_negocio: corpo.nicho_negocio,
+          produto_servico: corpo.produto_servico,
+          link_video: link,
+          nome_arquivo: arquivo ? arquivo.name : "",
+        };
+      }
+      if (acao === "radar") {
+        caminho = "/radar-clientes";
+        corpo = {
+          cidade: document.getElementById("cidade").value.trim(),
+          categoria: document.getElementById("categoria").value.trim(),
+        };
+      }
       try {
-        const resposta = await fetch("/gerar-campanha", {
+        const resposta = await fetch(caminho, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            nicho_negocio: document.getElementById("nicho_negocio").value.trim(),
-            produto_servico: document.getElementById("produto_servico").value.trim(),
-            acao,
-          }),
+          body: JSON.stringify(corpo),
         });
         const dados = await resposta.json();
         if (!resposta.ok) throw new Error(mensagemErro(dados));
@@ -288,7 +378,7 @@
         erro.textContent = falha.message || "Não foi possível gerar agora.";
         erro.hidden = false;
       } finally {
-        carregando.hidden = true;
+        spinner.hidden = true;
         enviar.disabled = false;
       }
     });

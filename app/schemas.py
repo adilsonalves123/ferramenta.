@@ -46,3 +46,43 @@ class CampanhaCompleta(CampanhaGerada):
     audio_url: str | None = None
     video_url: str | None = None
     aviso_midia: str | None = None
+
+
+class PedidoClonador(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    nicho: str = Field(min_length=2, max_length=120, validation_alias=AliasChoices("nicho", "nicho_negocio"))
+    produto: str = Field(min_length=2, max_length=200, validation_alias=AliasChoices("produto", "produto_servico"))
+    link_video: str = Field(default="", max_length=500)
+    nome_arquivo: str = Field(default="", max_length=200)
+
+
+class ClonagemGerada(BaseModel):
+    titulo: str
+    referencia: str
+    gancho: str
+    retencao: str
+    desenvolvimento: str
+    cta: str
+    legenda: str
+
+
+class PedidoRadar(BaseModel):
+    cidade: str = Field(min_length=2, max_length=80)
+    categoria: str = Field(min_length=2, max_length=80)
+
+
+class EmpresaRadar(BaseModel):
+    nome: str
+    categoria: str
+    bairro: str
+    endereco: str
+    telefone: str
+    porque: str
+
+
+class RadarResposta(BaseModel):
+    cidade: str
+    categoria: str
+    aviso: str
+    empresas: list[EmpresaRadar]
