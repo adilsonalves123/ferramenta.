@@ -22,6 +22,32 @@ class Campanha(SQLModel, table=True):
     criado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
 
 
+class Agendamento(SQLModel, table=True):
+    __tablename__ = "mkt_agendamentos"
+
+    id: int | None = Field(default=None, primary_key=True)
+    dia: str = Field(max_length=10, unique=True, index=True)
+    hora: str = Field(default="09:00", max_length=5)
+    rede: str = Field(max_length=20)
+    titulo: str = Field(sa_type=Text)
+    legenda: str = Field(sa_type=Text)
+    imagem_url: str = Field(default="", max_length=500)
+    status: str = Field(default="na_fila", max_length=20)
+    detalhe: str = Field(default="", sa_type=Text)
+    criado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
+
+
+class ContaRede(SQLModel, table=True):
+    __tablename__ = "mkt_contas"
+
+    id: int | None = Field(default=None, primary_key=True)
+    rede: str = Field(max_length=20, unique=True, index=True)
+    nome: str = Field(default="", max_length=120)
+    externo_id: str = Field(default="", max_length=80)
+    token: str = Field(default="", sa_type=Text)
+    atualizado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
+
+
 class Roteiro(SQLModel, table=True):
     __tablename__ = "mkt_roteiros"
 

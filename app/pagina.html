@@ -113,7 +113,7 @@
       text-align: left;
       cursor: pointer;
     }
-    button.atalho i, button.chip i { width: 16px; color: var(--mudo); text-align: center; }
+    button.atalho i, button.chip i { width: 16px; color: var(--mudo); text-align: center; flex: none; }
     button.atalho:hover, button.chip:hover { background: #eef0f3; }
     button.atalho.ativo, button.chip.ativo {
       background: var(--azul-suave);
@@ -228,6 +228,10 @@
     button.dia.escolhido.tem .dia-num { box-shadow: inset 0 -2px 0 white; }
     .nota { color: var(--mudo); font-size: 12px; line-height: 1.4; margin: 10px 2px 0; }
     .agenda-hora { margin: 0 0 8px; font-size: 12px; color: var(--mudo); }
+    .lista-agenda { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+    .lista-agenda li { font-size: 12px; line-height: 1.35; }
+    .lista-agenda strong { font-weight: 600; }
+    .lista-agenda span { display: block; color: var(--mudo); }
     h1 { font-size: 22px; letter-spacing: -0.02em; margin: 8px 0 6px; }
     p.ajuda { color: var(--mudo); margin: 0 0 8px; line-height: 1.45; }
     @media (max-width: 980px) {
@@ -401,6 +405,11 @@
           <button class="chip" type="button" data-rede-post="TikTok"><i class="fa-brands fa-tiktok"></i>TikTok</button>
           <button class="chip" type="button" data-rede-post="Google"><i class="fa-brands fa-google"></i>Google</button>
         </div>
+        <p class="secao">Contas</p>
+        <div class="atalhos">
+          <button class="atalho" type="button" id="ligar-instagram"><i class="fa-brands fa-instagram"></i><span id="estado-instagram">Instagram desligado</span></button>
+          <button class="atalho" type="button" id="ligar-facebook"><i class="fa-brands fa-facebook"></i><span id="estado-facebook">Facebook desligado</span></button>
+        </div>
         <p class="secao">Ferramentas</p>
         <div class="atalhos">
           <button class="atalho" type="button" data-acao="radar"><i class="fa-solid fa-location-dot"></i>Radar de clientes</button>
@@ -443,7 +452,8 @@
           <p class="agenda-hora">09:00</p>
           <div class="semana" id="semana"></div>
           <button class="principal" type="button" id="agendar">Agendar às 9h</button>
-          <p class="nota" id="nota-agenda">A lista fica neste navegador. Publicar sozinho entra quando Instagram e Facebook estiverem ligados.</p>
+          <ul class="lista-agenda" id="lista-agenda"></ul>
+          <p class="nota" id="nota-agenda">O horário fica salvo aqui. O post sai sozinho às 9h depois que Instagram e Facebook estiverem ligados.</p>
         </div>
       </aside>
     </section>
@@ -768,6 +778,8 @@
     let redePost = "";
     let postAtual = null;
     let diaEscolhido = "";
+    let agendaItens = [];
+    let metaPronta = false;
 
     function falar(quem, mensagem) {
       const vazio = document.getElementById("vazio-conversa");
@@ -780,17 +792,57 @@
     }
 
     function diaIso(data) {
-      return data.toISOString().slice(0, 10);
+      const mes = String(data.getMonth() + 1).padStart(2, "0");
+      const dia = String(data.getDate()).padStart(2, "0");
+      return `${data.getFullYear()}-${mes}-${dia}`;
     }
 
-    function lerAgenda() {
-      try { return JSON.parse(localStorage.getItem("ferramenta-agenda") || "[]"); }
-      catch { return []; }
+    function textoStatus(item) {
+      if (item.status === "publicado") return "Publicado";
+      if (item.status === "falta_imagem") return "Guardado. O Instagram pede uma imagem para sair sozinho.";
+      if (item.status === "erro") return item.detalhe || "Não publicou.";
+      if (item.status === "manual") return "Guardado. Essa rede ainda não publica sozinha.";
+      if (item.detalhe) return "Na fila das 9h. " + item.detalhe;
+      return "Sai às 9h.";
+    }
+
+    function desenharLista() {
+      const lista = document.getElementById("lista-agenda");
+      const inicio = diaIso(new Date());
+      const fimData = new Date();
+      fimData.setDate(fimData.getDate() + 6);
+      const fim = diaIso(fimData);
+      const visiveis = agendaItens.filter((item) => item.dia >= inicio && item.dia <= fim);
+      lista.innerHTML = "";
+      if (!visiveis.length) {
+        const vazio = document.createElement("li");
+        vazio.innerHTML = "<span>Nenhum horário nesta semana.</span>";
+        lista.appendChild(vazio);
+        return;
+      }
+      visiveis.forEach((item) => {
+        const linha = document.createElement("li");
+        const titulo = document.createElement("strong");
+        titulo.textContent = `${item.dia.slice(8)} · 09:00 · ${item.rede} · ${item.titulo}`;
+        const estado = document.createElement("span");
+        estado.textContent = textoStatus(item);
+        linha.append(titulo, estado);
+        lista.appendChild(linha);
+      });
+    }
+
+    function pintarContas(dados) {
+      metaPronta = Boolean(dados.meta_pronta);
+      const instagram = document.getElementById("estado-instagram");
+      const facebook = document.getElementById("estado-facebook");
+      instagram.textContent = dados.instagram.ligado ? `Instagram · ${dados.instagram.nome || "ligado"}` : "Instagram desligado";
+      facebook.textContent = dados.facebook.ligado ? `Facebook · ${dados.facebook.nome || "ligado"}` : "Facebook desligado";
+      document.getElementById("ligar-instagram").classList.toggle("ativo", dados.instagram.ligado);
+      document.getElementById("ligar-facebook").classList.toggle("ativo", dados.facebook.ligado);
     }
 
     function desenharSemana() {
       const semana = document.getElementById("semana");
-      const agenda = lerAgenda();
       semana.innerHTML = "";
       const nomes = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
       if (!diaEscolhido) diaEscolhido = diaIso(new Date());
@@ -800,7 +852,7 @@
         const iso = diaIso(data);
         const botao = document.createElement("button");
         botao.type = "button";
-        const tem = agenda.some((item) => item.dia === iso);
+        const tem = agendaItens.some((item) => item.dia === iso);
         botao.className = "dia" + (diaEscolhido === iso ? " escolhido" : "") + (tem ? " tem" : "");
         botao.innerHTML = `<span class="dia-nome">${nomes[data.getDay()]}</span><span class="dia-num">${data.getDate()}</span>`;
         botao.addEventListener("click", () => {
@@ -809,6 +861,16 @@
         });
         semana.appendChild(botao);
       }
+      desenharLista();
+    }
+
+    async function carregarAgenda() {
+      const resposta = await fetch("/agenda");
+      const dados = await resposta.json();
+      if (!resposta.ok) throw new Error(mensagemErro(dados));
+      agendaItens = dados.itens || [];
+      pintarContas(dados);
+      desenharSemana();
     }
 
     function mostrarPrevia(dados, foto) {
@@ -857,7 +919,17 @@
       }
     }
 
-    desenharSemana();
+    carregarAgenda().catch(() => {
+      document.getElementById("nota-agenda").textContent = "Não consegui abrir a agenda agora.";
+      desenharSemana();
+    });
+
+    const avisoConta = new URLSearchParams(location.search).get("contas");
+    if (avisoConta === "ligado") {
+      document.getElementById("nota-agenda").textContent = "Contas ligadas. O que estiver na fila sai às 9h.";
+    } else if (avisoConta === "erro" || avisoConta === "cancelado") {
+      document.getElementById("nota-agenda").textContent = "A conta não ligou. Tente de novo.";
+    }
 
     document.getElementById("composer").addEventListener("submit", (evento) => {
       evento.preventDefault();
@@ -882,16 +954,54 @@
       });
     });
 
-    document.getElementById("agendar").addEventListener("click", () => {
-      if (!postAtual) {
-        document.getElementById("nota-agenda").textContent = "Crie o post antes de colocar no dia.";
+    function ligarContas() {
+      if (!metaPronta) {
+        document.getElementById("nota-agenda").textContent = "A agenda já guarda as 9h. Para sair sozinho, falta criar o aplicativo na Meta.";
         return;
       }
-      const agenda = lerAgenda().filter((item) => item.dia !== diaEscolhido);
-      agenda.push({ dia: diaEscolhido, hora: "09:00", titulo: postAtual.titulo_anuncio, rede: redePost });
-      localStorage.setItem("ferramenta-agenda", JSON.stringify(agenda));
-      desenharSemana();
-      document.getElementById("nota-agenda").textContent = "Marcado às 9h. A lista fica neste navegador. Publicar sozinho entra quando Instagram e Facebook estiverem ligados.";
+      window.location.href = "/contas/iniciar";
+    }
+    document.getElementById("ligar-instagram").addEventListener("click", ligarContas);
+    document.getElementById("ligar-facebook").addEventListener("click", ligarContas);
+
+    document.getElementById("agendar").addEventListener("click", async () => {
+      const nota = document.getElementById("nota-agenda");
+      if (!postAtual) {
+        nota.textContent = "Gere o post antes de colocar no dia.";
+        return;
+      }
+      if (!redePost) {
+        nota.textContent = "Escolha Instagram, Facebook, TikTok ou Google antes de agendar.";
+        return;
+      }
+      const botao = document.getElementById("agendar");
+      botao.disabled = true;
+      try {
+        const resposta = await fetch("/agenda", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            dia: diaEscolhido,
+            rede: redePost,
+            titulo: postAtual.titulo_anuncio,
+            legenda: postAtual.legenda_redes,
+          }),
+        });
+        const dados = await resposta.json();
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        await carregarAgenda();
+        if (redePost === "Facebook") {
+          nota.textContent = "Marcado às 9h. Sai sozinho quando o Facebook estiver ligado.";
+        } else if (redePost === "Instagram") {
+          nota.textContent = "Marcado às 9h. O Instagram publica sozinho quando a conta estiver ligada e o post tiver imagem.";
+        } else {
+          nota.textContent = "Marcado às 9h. Essa rede ainda não publica sozinha.";
+        }
+      } catch (falha) {
+        nota.textContent = falha.message || "Não consegui guardar o horário.";
+      } finally {
+        botao.disabled = false;
+      }
     });
   </script>
 </body>

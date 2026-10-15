@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.database import criar_tabelas, fechar_engine
+from app.routers.agenda import router as router_agenda
 from app.routers.campanhas import router
 from app.routers.novas import router as router_novas
 from app.services.midia import PASTA_MIDIA
@@ -35,6 +36,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(router)
     app.include_router(router_novas)
+    app.include_router(router_agenda)
     PASTA_MIDIA.mkdir(parents=True, exist_ok=True)
     PASTA_QUADROS.mkdir(parents=True, exist_ok=True)
     app.mount("/midia", StaticFiles(directory=PASTA_MIDIA), name="midia")
