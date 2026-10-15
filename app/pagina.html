@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ferramenta</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0;
+      font-family: Segoe UI, sans-serif;
+      background: #10110f;
+      color: #f5f5f5;
+    }
+    main { max-width: 720px; margin: 0 auto; padding: 32px 20px 64px; }
+    h1 { font-size: 28px; margin: 0 0 8px; }
+    p.ajuda { color: #a3a3a3; margin: 0 0 24px; }
+    .opcoes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 640px) { .opcoes { grid-template-columns: 1fr; } }
+    button.opcao {
+      text-align: left;
+      border: 0;
+      border-radius: 18px;
+      background: #1c1e1a;
+      color: white;
+      padding: 0 0 14px;
+      cursor: pointer;
+      font: inherit;
+      overflow: hidden;
+    }
+    button.opcao img { width: 100%; height: 168px; object-fit: cover; display: block; }
+    button.opcao strong { display: block; font-size: 17px; padding: 12px 14px 0; }
+    button.opcao span { display: block; margin-top: 4px; padding: 0 14px; color: #a3a3a3; font-size: 14px; }
+    button.opcao:hover { outline: 1px solid #c6ff3d; }
+    label { display: block; font-size: 14px; font-weight: 600; margin: 16px 0 6px; }
+    input, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border: 0;
+      border-radius: 12px;
+      background: #1c1e1a;
+      color: white;
+      padding: 14px 16px;
+      font: inherit;
+    }
+    button.principal {
+      margin-top: 20px;
+      height: 48px;
+      width: 100%;
+      border: 0;
+      border-radius: 999px;
+      background: #c6ff3d;
+      color: #111;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.principal:disabled { opacity: 0.5; cursor: wait; }
+    button.voltar, button.copiar {
+      margin-top: 8px;
+      height: 36px;
+      padding: 0 16px;
+      border-radius: 999px;
+      border: 1px solid #c6ff3d;
+      background: transparent;
+      color: #c6ff3d;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .erro { margin-top: 16px; color: #ff7a3c; }
+    .carregando {
+      margin-top: 20px;
+      border-radius: 16px;
+      background: #1c1e1a;
+      padding: 18px;
+    }
+    .carregando strong { display: block; color: #c6ff3d; }
+    .carregando span { display: block; margin-top: 6px; color: #a3a3a3; }
+    article {
+      margin-top: 16px;
+      background: #1c1e1a;
+      border-radius: 16px;
+      padding: 18px;
+    }
+    article h2 {
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #c6ff3d;
+      margin: 0 0 12px;
+    }
+    article h3 { margin: 14px 0 4px; font-size: 15px; }
+    article p, article li { white-space: pre-wrap; line-height: 1.45; margin: 0; }
+    article ul { margin: 0; padding-left: 18px; }
+    article li + li { margin-top: 10px; }
+    article img, article video, article audio { width: 100%; border-radius: 12px; margin-top: 8px; background: #000; }
+    a.baixar { display: inline-block; margin-top: 10px; color: #c6ff3d; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <main>
+    <section id="menu">
+      <h1>O que você quer fazer?</h1>
+      <p class="ajuda">Escolha uma ferramenta. Só ela vai rodar.</p>
+      <div class="opcoes">
+        <button class="opcao" type="button" data-acao="texto">
+          <img src="/quadros/anuncio.jpg" alt="Anúncio no celular" />
+          <strong>Texto do anúncio</strong>
+          <span>Título, legenda e roteiro.</span>
+        </button>
+        <button class="opcao" type="button" data-acao="foto">
+          <img src="/quadros/foto.jpg" alt="Foto de produto" />
+          <strong>Foto</strong>
+          <span>Imagem do personagem para o post.</span>
+        </button>
+        <button class="opcao" type="button" data-acao="video">
+          <img src="/quadros/video.jpg" alt="Pessoa gravando um vídeo" />
+          <strong>Vídeo com voz</strong>
+          <span>Personagem na imagem e a voz lendo o roteiro.</span>
+        </button>
+        <button class="opcao" type="button" data-acao="google">
+          <img src="/quadros/google.jpg" alt="Fachada do negócio" />
+          <strong>Google Meu Negócio</strong>
+          <span>Nome, categoria e descrição prontos.</span>
+        </button>
+      </div>
+    </section>
+
+    <section id="tarefa" hidden>
+      <button class="voltar" type="button" id="voltar">Escolher outra</button>
+      <h1 id="titulo-tarefa">Ferramenta</h1>
+      <p class="ajuda" id="ajuda-tarefa"></p>
+      <form id="formulario">
+        <label for="nicho_negocio">Nicho do negócio</label>
+        <input id="nicho_negocio" name="nicho_negocio" required minlength="2" placeholder="Ex.: bar e petiscaria" />
+        <label for="produto_servico">Produto ou serviço</label>
+        <textarea id="produto_servico" name="produto_servico" required minlength="2" rows="3" placeholder="Ex.: combo de cerveja gelada no happy hour"></textarea>
+        <button class="principal" type="submit" id="enviar">Gerar</button>
+      </form>
+      <div class="carregando" id="carregando" hidden>
+        <strong id="carregando-titulo">Trabalhando</strong>
+        <span>A tela não travou. É só aguardar.</span>
+      </div>
+      <p class="erro" id="erro" hidden></p>
+      <section id="resultado" hidden></section>
+    </section>
+  </main>
+  <script>
+    const FERRAMENTAS = {
+      texto: {
+        titulo: "Texto do anúncio",
+        ajuda: "Gera o título, a legenda e o roteiro. Não cria foto nem vídeo.",
+        botao: "Gerar texto",
+        espera: "Escrevendo o anúncio",
+      },
+      foto: {
+        titulo: "Foto",
+        ajuda: "Gera só a imagem do personagem para o post.",
+        botao: "Gerar foto",
+        espera: "Criando a foto",
+      },
+      video: {
+        titulo: "Vídeo com voz",
+        ajuda: "Gera o vídeo com o personagem e a voz do roteiro. Pode levar cerca de um minuto.",
+        botao: "Gerar vídeo",
+        espera: "Montando o vídeo",
+      },
+      google: {
+        titulo: "Google Meu Negócio",
+        ajuda: "Gera nome, categoria e descrição. Não publica no Google daqui.",
+        botao: "Gerar texto do Google",
+        espera: "Escrevendo o perfil",
+      },
+    };
+
+    const menu = document.getElementById("menu");
+    const tarefa = document.getElementById("tarefa");
+    const formulario = document.getElementById("formulario");
+    const enviar = document.getElementById("enviar");
+    const carregando = document.getElementById("carregando");
+    const carregandoTitulo = document.getElementById("carregando-titulo");
+    const erro = document.getElementById("erro");
+    const resultado = document.getElementById("resultado");
+    let acao = "texto";
+
+    function texto(valor) {
+      return String(valor ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+    }
+
+    function mensagemErro(dados) {
+      if (typeof dados?.detail === "string") return dados.detail;
+      return "Não foi possível gerar agora.";
+    }
+
+    function abrir(escolha) {
+      acao = escolha;
+      const item = FERRAMENTAS[escolha];
+      document.getElementById("titulo-tarefa").textContent = item.titulo;
+      document.getElementById("ajuda-tarefa").textContent = item.ajuda;
+      enviar.textContent = item.botao;
+      carregandoTitulo.textContent = item.espera;
+      erro.hidden = true;
+      resultado.hidden = true;
+      carregando.hidden = true;
+      menu.hidden = true;
+      tarefa.hidden = false;
+    }
+
+    function mostrarResultado(dados) {
+      const roteiro = dados.roteiro_video;
+      const google = dados.google_meu_negocio;
+      const aviso = dados.aviso_midia ? `<p class="erro" style="display:block">${texto(dados.aviso_midia)}</p>` : "";
+      let corpo = aviso;
+      if (acao === "foto" && dados.foto_url) {
+        corpo += `<article><h2>Foto</h2><img src="${texto(dados.foto_url)}" alt="Personagem do anúncio" /><a class="baixar" href="${texto(dados.foto_url)}" download>Baixar foto</a></article>`;
+      }
+      if (acao === "video" && dados.video_url) {
+        corpo += `<article><h2>Vídeo</h2><video src="${texto(dados.video_url)}" controls></video><a class="baixar" href="${texto(dados.video_url)}" download>Baixar vídeo</a></article>`;
+      }
+      if (acao === "texto") {
+        const anuncio = `${dados.titulo_anuncio}\n\n${dados.legenda_redes}`;
+        corpo += `<article>
+          <h2>Título e legenda</h2>
+          <h3>Título</h3><p>${texto(dados.titulo_anuncio)}</p>
+          <h3>Legenda</h3><p>${texto(dados.legenda_redes)}</p>
+          <button class="copiar" type="button" id="copiar">Copiar texto</button>
+        </article>
+        <article><h2>Roteiro</h2><ul>
+          <li><strong>Gancho.</strong> ${texto(roteiro.gancho)}</li>
+          <li><strong>Problema.</strong> ${texto(roteiro.problema)}</li>
+          <li><strong>Solução.</strong> ${texto(roteiro.solucao)}</li>
+          <li><strong>CTA.</strong> ${texto(roteiro.cta)}</li>
+        </ul></article>`;
+        resultado.innerHTML = corpo;
+        resultado.hidden = false;
+        document.getElementById("copiar").addEventListener("click", async () => {
+          await navigator.clipboard.writeText(anuncio);
+          const botao = document.getElementById("copiar");
+          botao.textContent = "Copiado";
+          window.setTimeout(() => { botao.textContent = "Copiar texto"; }, 1600);
+        });
+        return;
+      }
+      if (acao === "google") {
+        corpo += `<article><h2>Google Meu Negócio</h2><ul>
+          <li><strong>Nome.</strong> ${texto(google.nome_otimizado)}</li>
+          <li><strong>Categoria.</strong> ${texto(google.categoria)}</li>
+          <li><strong>Descrição.</strong> ${texto(google.descricao_seo)}</li>
+        </ul></article>`;
+      }
+      resultado.innerHTML = corpo;
+      resultado.hidden = false;
+    }
+
+    document.querySelectorAll(".opcao").forEach((botao) => {
+      botao.addEventListener("click", () => abrir(botao.dataset.acao));
+    });
+
+    document.getElementById("voltar").addEventListener("click", () => {
+      tarefa.hidden = true;
+      menu.hidden = false;
+    });
+
+    formulario.addEventListener("submit", async (evento) => {
+      evento.preventDefault();
+      erro.hidden = true;
+      resultado.hidden = true;
+      carregando.hidden = false;
+      enviar.disabled = true;
+      try {
+        const resposta = await fetch("/gerar-campanha", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nicho_negocio: document.getElementById("nicho_negocio").value.trim(),
+            produto_servico: document.getElementById("produto_servico").value.trim(),
+            acao,
+          }),
+        });
+        const dados = await resposta.json();
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        mostrarResultado(dados);
+      } catch (falha) {
+        erro.textContent = falha.message || "Não foi possível gerar agora.";
+        erro.hidden = false;
+      } finally {
+        carregando.hidden = true;
+        enviar.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
