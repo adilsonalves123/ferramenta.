@@ -13,7 +13,77 @@
       background: #10110f;
       color: #f5f5f5;
     }
-    main { max-width: 720px; margin: 0 auto; padding: 32px 20px 64px; }
+    main { margin: 0; padding: 0; }
+    #tarefa { max-width: 720px; margin: 0 auto; padding: 32px 20px 64px; }
+    .estudio {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr) 330px;
+      gap: 16px;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 20px;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    @media (max-width: 980px) { .estudio { grid-template-columns: 1fr; } }
+    .painel, .conversa, .lado {
+      background: #181a16;
+      border-radius: 18px;
+      padding: 16px;
+    }
+    .conversa { display: flex; flex-direction: column; min-height: 70vh; }
+    .marca-nome { font-size: 22px; margin: 0; }
+    .marca-linha { color: #a3a3a3; font-size: 13px; margin: 8px 0 0; }
+    .atalhos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    button.atalho, button.chip {
+      border: 1px solid #2a2c28;
+      background: #10110f;
+      color: #f5f5f5;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    button.atalho.ativo, button.chip.ativo, button.atalho:hover, button.chip:hover {
+      border-color: #c6ff3d;
+      color: #c6ff3d;
+    }
+    .fio { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+    .balao { max-width: 85%; border-radius: 16px; padding: 12px 14px; line-height: 1.4; white-space: pre-wrap; }
+    .balao.assistente { background: #10110f; }
+    .balao.pessoa { align-self: flex-end; background: #24300f; }
+    form.composer { display: flex; gap: 8px; margin-top: 12px; }
+    form.composer textarea { min-height: 64px; resize: vertical; }
+    form.composer button { width: auto; margin-top: 0; padding: 0 18px; }
+    .post {
+      background: #10110f;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .post-topo { display: flex; gap: 10px; align-items: center; padding: 12px; }
+    .avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: #c6ff3d; color: #111; font-weight: 700;
+      display: grid; place-items: center;
+    }
+    .post p { margin: 0; padding: 0 12px 12px; white-space: pre-wrap; }
+    .post img, .post .vazio-foto { width: 100%; height: 220px; object-fit: cover; background: #24261f; display: block; }
+    .vazio-foto { color: #a3a3a3; display: grid; place-items: center; }
+    .semana { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 12px; }
+    button.dia {
+      border: 1px solid #2a2c28;
+      background: #10110f;
+      color: white;
+      border-radius: 10px;
+      padding: 8px 0;
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: pre-line;
+    }
+    button.dia.marcado { border-color: #c6ff3d; color: #c6ff3d; }
+    .nota { color: #a3a3a3; font-size: 12px; margin: 8px 0 0; }
     h1 { font-size: 28px; margin: 0 0 8px; }
     p.ajuda { color: #a3a3a3; margin: 0 0 24px; }
     .opcoes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -147,41 +217,48 @@
 </head>
 <body>
   <main>
-    <section id="menu">
-      <h1>O que você quer fazer?</h1>
-      <p class="ajuda">Escolha uma ferramenta. Só ela vai rodar.</p>
-      <div class="opcoes">
-        <button class="opcao" type="button" data-acao="texto">
-          <img src="/quadros/anuncio.jpg" alt="Anúncio no celular" />
-          <strong>Texto do anúncio</strong>
-          <span>Título, legenda e roteiro.</span>
-        </button>
-        <button class="opcao" type="button" data-acao="foto">
-          <img src="/quadros/foto.jpg" alt="Foto de produto" />
-          <strong>Foto</strong>
-          <span>Imagem do personagem para o post.</span>
-        </button>
-        <button class="opcao" type="button" data-acao="video">
-          <img src="/quadros/video.jpg" alt="Pessoa gravando um vídeo" />
-          <strong>Vídeo com voz</strong>
-          <span>Personagem na imagem e a voz lendo o roteiro.</span>
-        </button>
-        <button class="opcao" type="button" data-acao="google">
-          <img src="/quadros/google.jpg" alt="Fachada do negócio" />
-          <strong>Google Meu Negócio</strong>
-          <span>Nome, categoria e descrição prontos.</span>
-        </button>
-        <button class="opcao" type="button" data-acao="clonador">
-          <img src="/quadros/clonador.jpg" alt="Celular com um vídeo no balcão" />
-          <strong>Clonador de Vídeo Viral</strong>
-          <span>Cole um link ou envie um vídeo de sucesso e a IA recria um roteiro adaptado para o seu produto.</span>
-        </button>
-        <button class="opcao" type="button" data-acao="radar">
-          <img src="/quadros/radar.jpg" alt="Rua com pontos no mapa do celular" />
-          <strong>Radar de Clientes B2B</strong>
-          <span>Escolha as redes, a cidade e o tipo de busca.</span>
-        </button>
-      </div>
+    <section id="menu" class="estudio">
+      <aside class="painel">
+        <p class="marca-nome">Risca Aí</p>
+        <p class="marca-linha">Público salvo: donos de bar no Brasil.</p>
+        <p class="marca-linha">Voz: direta, de quem vive o balcão.</p>
+        <div class="atalhos" id="objetivos">
+          <button class="atalho" type="button" data-objetivo="interação">Interação</button>
+          <button class="atalho" type="button" data-objetivo="gancho de venda">Gancho de venda</button>
+          <button class="atalho" type="button" data-objetivo="viral">Viral</button>
+        </div>
+        <p class="secao">Onde postar</p>
+        <div class="atalhos" id="redes-post">
+          <button class="chip" type="button" data-rede-post="Instagram">Instagram</button>
+          <button class="chip" type="button" data-rede-post="Facebook">Facebook</button>
+          <button class="chip" type="button" data-rede-post="TikTok">TikTok</button>
+          <button class="chip" type="button" data-rede-post="Google">Google</button>
+        </div>
+        <p class="secao">Ainda separado</p>
+        <div class="atalhos">
+          <button class="atalho" type="button" data-acao="radar">Radar de clientes</button>
+          <button class="atalho" type="button" data-acao="clonador">Clonar vídeo</button>
+          <button class="atalho" type="button" data-acao="google">Google Meu Negócio</button>
+        </div>
+      </aside>
+      <section class="conversa">
+        <div class="fio" id="fio"></div>
+        <form class="composer" id="composer">
+          <textarea id="pedido" required minlength="2" placeholder="Ex.: preciso de uma publicação de interação para donos de bar"></textarea>
+          <button class="principal" type="submit" id="enviar-chat">Criar</button>
+        </form>
+      </section>
+      <aside class="lado">
+        <div class="post" id="previa">
+          <div class="post-topo"><div class="avatar">R</div><strong>Risca Aí</strong></div>
+          <div class="vazio-foto" id="foto-previa">A imagem entra aqui</div>
+          <p id="legenda-previa">O post aparece neste formato, como no Instagram, depois que você pedir.</p>
+        </div>
+        <p class="secao">Esta semana</p>
+        <div class="semana" id="semana"></div>
+        <button class="principal" type="button" id="agendar">Colocar às 9h</button>
+        <p class="nota" id="nota-agenda">A lista fica neste navegador. Publicar sozinho entra quando Instagram e Facebook estiverem ligados.</p>
+      </aside>
     </section>
 
     <section id="tarefa" hidden>
@@ -399,7 +476,7 @@
       resultado.hidden = false;
     }
 
-    document.querySelectorAll(".opcao").forEach((botao) => {
+    document.querySelectorAll("[data-acao]").forEach((botao) => {
       botao.addEventListener("click", () => abrir(botao.dataset.acao));
     });
 
@@ -491,6 +568,140 @@
         spinner.hidden = true;
         enviar.disabled = false;
       }
+    });
+
+    const MARCA = {
+      nicho: "sistema para bares, petiscarias e restaurantes",
+      produto: "Risca Aí, aplicativo de venda, estoque, caixa e mesas para o dono do bar",
+      publico: "donos de bar no Brasil",
+    };
+    const fio = document.getElementById("fio");
+    const pedidoCampo = document.getElementById("pedido");
+    let objetivo = "";
+    let redePost = "";
+    let postAtual = null;
+    let diaEscolhido = "";
+
+    function falar(quem, mensagem) {
+      const bloco = document.createElement("div");
+      bloco.className = `balao ${quem}`;
+      bloco.textContent = mensagem;
+      fio.appendChild(bloco);
+      fio.scrollTop = fio.scrollHeight;
+    }
+
+    function diaIso(data) {
+      return data.toISOString().slice(0, 10);
+    }
+
+    function lerAgenda() {
+      try { return JSON.parse(localStorage.getItem("ferramenta-agenda") || "[]"); }
+      catch { return []; }
+    }
+
+    function desenharSemana() {
+      const semana = document.getElementById("semana");
+      const agenda = lerAgenda();
+      semana.innerHTML = "";
+      const nomes = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+      for (let i = 0; i < 7; i += 1) {
+        const data = new Date();
+        data.setDate(data.getDate() + i);
+        const iso = diaIso(data);
+        const botao = document.createElement("button");
+        botao.type = "button";
+        botao.className = "dia" + (agenda.some((item) => item.dia === iso) || diaEscolhido === iso ? " marcado" : "");
+        botao.textContent = `${nomes[data.getDay()]}\n${data.getDate()}`;
+        botao.addEventListener("click", () => {
+          diaEscolhido = iso;
+          desenharSemana();
+        });
+        semana.appendChild(botao);
+      }
+      if (!diaEscolhido) diaEscolhido = diaIso(new Date());
+    }
+
+    function mostrarPrevia(dados, foto) {
+      document.getElementById("legenda-previa").textContent = `${dados.titulo_anuncio}\n\n${dados.legenda_redes}`;
+      const lugar = document.getElementById("foto-previa");
+      if (foto) {
+        const imagem = document.createElement("img");
+        imagem.src = foto;
+        imagem.alt = "Imagem do post";
+        lugar.replaceWith(imagem);
+        imagem.id = "foto-previa";
+      }
+    }
+
+    async function criarPost() {
+      const textoPedido = pedidoCampo.value.trim();
+      if (textoPedido.length < 2) return;
+      falar("pessoa", textoPedido);
+      if (!redePost) {
+        falar("assistente", "Onde você quer postar? Escolha Instagram, Facebook, TikTok ou Google ao lado e mande de novo.");
+        return;
+      }
+      pedidoCampo.value = "";
+      falar("assistente", "Estou montando o post do Risca Aí para " + MARCA.publico + ", no " + redePost + ".");
+      const botao = document.getElementById("enviar-chat");
+      botao.disabled = true;
+      try {
+        const resposta = await fetch("/gerar-campanha", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nicho_negocio: MARCA.nicho,
+            produto_servico: `${MARCA.produto}. Pedido: ${textoPedido}. Objetivo: ${objetivo || "publicação"}. Público: ${MARCA.publico}. Rede: ${redePost}.`,
+            acao: "texto",
+          }),
+        });
+        const dados = await resposta.json();
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        postAtual = dados;
+        mostrarPrevia(dados);
+        falar("assistente", "O post está na prévia ao lado. Se quiser, coloque às 9h num dia da semana.");
+      } catch (falha) {
+        falar("assistente", falha.message || "Não foi possível criar agora.");
+      } finally {
+        botao.disabled = false;
+      }
+    }
+
+    falar("assistente", "Pode pedir uma publicação de interação, um gancho de venda ou um vídeo viral. Eu já sei que a marca é o Risca Aí e o público são donos de bar.");
+    desenharSemana();
+
+    document.getElementById("composer").addEventListener("submit", (evento) => {
+      evento.preventDefault();
+      criarPost();
+    });
+
+    document.querySelectorAll("[data-objetivo]").forEach((botao) => {
+      botao.addEventListener("click", () => {
+        objetivo = botao.dataset.objetivo;
+        document.querySelectorAll("[data-objetivo]").forEach((item) => item.classList.remove("ativo"));
+        botao.classList.add("ativo");
+        if (!pedidoCampo.value.trim()) pedidoCampo.value = "Preciso de uma publicação de " + objetivo;
+      });
+    });
+
+    document.querySelectorAll("[data-rede-post]").forEach((botao) => {
+      botao.addEventListener("click", () => {
+        redePost = botao.dataset.redePost;
+        document.querySelectorAll("[data-rede-post]").forEach((item) => item.classList.remove("ativo"));
+        botao.classList.add("ativo");
+      });
+    });
+
+    document.getElementById("agendar").addEventListener("click", () => {
+      if (!postAtual) {
+        document.getElementById("nota-agenda").textContent = "Crie o post antes de colocar no dia.";
+        return;
+      }
+      const agenda = lerAgenda().filter((item) => item.dia !== diaEscolhido);
+      agenda.push({ dia: diaEscolhido, hora: "09:00", titulo: postAtual.titulo_anuncio, rede: redePost });
+      localStorage.setItem("ferramenta-agenda", JSON.stringify(agenda));
+      desenharSemana();
+      document.getElementById("nota-agenda").textContent = "Marcado às 9h. A lista fica neste navegador. Publicar sozinho entra quando Instagram e Facebook estiverem ligados.";
     });
   </script>
 </body>
