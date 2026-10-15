@@ -26,4 +26,6 @@ async def post_clonar_video(pedido: PedidoClonador) -> ClonagemGerada:
 
 @router.post("/radar-clientes", response_model=RadarResposta)
 async def post_radar_clientes(pedido: PedidoRadar) -> RadarResposta:
+    if pedido.tipo_busca == "determinada" and len(pedido.tags.strip()) < 2:
+        raise HTTPException(status_code=422, detail="Digite as tags da busca determinada.")
     return mapear(pedido)

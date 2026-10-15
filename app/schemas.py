@@ -69,7 +69,10 @@ class ClonagemGerada(BaseModel):
 
 class PedidoRadar(BaseModel):
     cidade: str = Field(min_length=2, max_length=80)
-    categoria: str = Field(min_length=2, max_length=80)
+    redes: list[Literal["instagram", "tiktok", "facebook", "google"]] = Field(min_length=1, max_length=4)
+    tipo_busca: Literal["geral", "determinada"] = "geral"
+    tags: str = Field(default="", max_length=200)
+    categoria: str = Field(default="", max_length=80)
 
 
 class EmpresaRadar(BaseModel):
@@ -84,5 +87,8 @@ class EmpresaRadar(BaseModel):
 class RadarResposta(BaseModel):
     cidade: str
     categoria: str
+    redes: list[str]
+    tipo_busca: str
+    tags: str
     aviso: str
     empresas: list[EmpresaRadar]

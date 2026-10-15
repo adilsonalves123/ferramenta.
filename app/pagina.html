@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ferramenta</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
   <style>
     :root { color-scheme: dark; }
     body {
@@ -67,6 +68,49 @@
     }
     @keyframes girar { to { transform: rotate(360deg); } }
     input[type="file"] { padding: 10px 14px; }
+    p.secao { margin: 22px 0 10px; font-size: 14px; font-weight: 700; }
+    .redes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    button.rede {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      border: 1px solid #2a2c28;
+      border-radius: 14px;
+      background: #1c1e1a;
+      color: #f5f5f5;
+      padding: 14px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.rede i { width: 22px; font-size: 20px; color: #a3a3a3; text-align: center; }
+    button.rede:hover,
+    button.rede:hover i { color: #c6ff3d; border-color: #6b8f22; }
+    button.rede.selecionada {
+      color: #c6ff3d;
+      border-color: #c6ff3d;
+      box-shadow: inset 0 0 0 1px #c6ff3d;
+    }
+    button.rede.selecionada i { color: #c6ff3d; }
+    .tipos { display: grid; gap: 8px; }
+    label.tipo {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin: 0;
+      padding: 12px 14px;
+      border: 1px solid #2a2c28;
+      border-radius: 14px;
+      background: #1c1e1a;
+      cursor: pointer;
+    }
+    label.tipo input { width: auto; margin-top: 3px; accent-color: #c6ff3d; }
+    label.tipo small { display: block; margin-top: 3px; color: #a3a3a3; font-weight: 400; }
+    label.tipo:has(input:checked) {
+      border-color: #c6ff3d;
+      box-shadow: inset 0 0 0 1px #c6ff3d;
+    }
     button.voltar, button.copiar {
       margin-top: 8px;
       height: 36px;
@@ -135,7 +179,7 @@
         <button class="opcao" type="button" data-acao="radar">
           <img src="/quadros/radar.jpg" alt="Rua com pontos no mapa do celular" />
           <strong>Radar de Clientes B2B</strong>
-          <span>Digite uma cidade e categoria e nosso sistema mapeia potenciais clientes na região.</span>
+          <span>Escolha as redes, a cidade e o tipo de busca.</span>
         </button>
       </div>
     </section>
@@ -160,8 +204,28 @@
         <div id="campos-radar" hidden>
           <label for="cidade">Cidade</label>
           <input id="cidade" name="cidade" minlength="2" placeholder="Ex.: Belo Horizonte" />
-          <label for="categoria">Categoria</label>
-          <input id="categoria" name="categoria" minlength="2" placeholder="Ex.: bar e petiscaria" />
+          <p class="secao">Onde você quer buscar?</p>
+          <div class="redes" id="redes">
+            <button class="rede" type="button" data-rede="instagram" aria-pressed="false"><i class="fa-brands fa-instagram" aria-hidden="true"></i>Instagram</button>
+            <button class="rede" type="button" data-rede="tiktok" aria-pressed="false"><i class="fa-brands fa-tiktok" aria-hidden="true"></i>TikTok</button>
+            <button class="rede" type="button" data-rede="facebook" aria-pressed="false"><i class="fa-brands fa-facebook" aria-hidden="true"></i>Facebook</button>
+            <button class="rede" type="button" data-rede="google" aria-pressed="false"><i class="fa-solid fa-location-dot" aria-hidden="true"></i>Google Maps</button>
+          </div>
+          <p class="secao">Tipo de busca</p>
+          <div class="tipos">
+            <label class="tipo">
+              <input type="radio" name="tipo_busca" value="geral" checked />
+              <span>Busca Geral<small>Procura de forma ampla todas as empresas do nicho na cidade.</small></span>
+            </label>
+            <label class="tipo">
+              <input type="radio" name="tipo_busca" value="determinada" />
+              <span>Busca Determinada<small>Abre um campo para tags específicas, como proprietário, gerente ou compras.</small></span>
+            </label>
+          </div>
+          <div id="campo-tags" hidden>
+            <label for="tags">Tags</label>
+            <input id="tags" name="tags" minlength="2" placeholder="Ex.: proprietário, gerente, compras" />
+          </div>
         </div>
         <button class="principal" type="submit" id="enviar">
           <span class="spinner" id="spinner" hidden></span>
@@ -204,7 +268,7 @@
       },
       radar: {
         titulo: "Radar de Clientes B2B",
-        ajuda: "Mostra três exemplos fictícios na cidade e na categoria que você digitar, para validar a tela.",
+        ajuda: "Escolha onde buscar e o tipo de busca. A tela mostra três exemplos fictícios.",
         botao: "Mapear exemplos",
       },
     };
@@ -234,8 +298,20 @@
       return "Não foi possível gerar agora.";
     }
 
+    const redesEscolhidas = new Set();
+
     function exigir(id, ativo) {
       document.getElementById(id).required = ativo;
+    }
+
+    function tipoBusca() {
+      return document.querySelector('input[name="tipo_busca"]:checked')?.value || "geral";
+    }
+
+    function atualizarTags() {
+      const determinada = tipoBusca() === "determinada";
+      document.getElementById("campo-tags").hidden = !determinada;
+      exigir("tags", acao === "radar" && determinada);
     }
 
     function abrir(escolha) {
@@ -250,12 +326,13 @@
       exigir("nicho_negocio", escolha !== "radar");
       exigir("produto_servico", escolha !== "radar");
       exigir("cidade", escolha === "radar");
-      exigir("categoria", escolha === "radar");
+      exigir("tags", escolha === "radar" && tipoBusca() === "determinada");
       erro.hidden = true;
       resultado.hidden = true;
       spinner.hidden = true;
       menu.hidden = true;
       tarefa.hidden = false;
+      atualizarTags();
     }
 
     function mostrarResultado(dados) {
@@ -315,7 +392,8 @@
       }
       if (acao === "radar") {
         const itens = (dados.empresas || []).map((empresa) => `<li><strong>${texto(empresa.nome)}.</strong> ${texto(empresa.categoria)} em ${texto(empresa.bairro)}. ${texto(empresa.endereco)}. ${texto(empresa.telefone)}. ${texto(empresa.porque)}</li>`).join("");
-        corpo += `<article><h2>Exemplos na região</h2><p>${texto(dados.aviso)}</p><ul>${itens}</ul></article>`;
+        const redes = (dados.redes || []).join(", ");
+        corpo += `<article><h2>Exemplos na região</h2><p>${texto(dados.aviso)}</p><p>${texto(dados.tipo_busca)} em ${texto(redes)}.</p><ul>${itens}</ul></article>`;
       }
       resultado.innerHTML = corpo;
       resultado.hidden = false;
@@ -328,6 +406,25 @@
     document.getElementById("voltar").addEventListener("click", () => {
       tarefa.hidden = true;
       menu.hidden = false;
+    });
+
+    document.querySelectorAll(".rede").forEach((botao) => {
+      botao.addEventListener("click", () => {
+        const rede = botao.dataset.rede;
+        if (redesEscolhidas.has(rede)) {
+          redesEscolhidas.delete(rede);
+          botao.classList.remove("selecionada");
+          botao.setAttribute("aria-pressed", "false");
+        } else {
+          redesEscolhidas.add(rede);
+          botao.classList.add("selecionada");
+          botao.setAttribute("aria-pressed", "true");
+        }
+      });
+    });
+
+    document.querySelectorAll('input[name="tipo_busca"]').forEach((opcao) => {
+      opcao.addEventListener("change", atualizarTags);
     });
 
     formulario.addEventListener("submit", async (evento) => {
@@ -359,10 +456,23 @@
         };
       }
       if (acao === "radar") {
+        if (redesEscolhidas.size === 0) {
+          erro.textContent = "Escolha pelo menos uma rede.";
+          erro.hidden = false;
+          return;
+        }
+        const tags = document.getElementById("tags").value.trim();
+        if (tipoBusca() === "determinada" && tags.length < 2) {
+          erro.textContent = "Digite as tags da busca determinada.";
+          erro.hidden = false;
+          return;
+        }
         caminho = "/radar-clientes";
         corpo = {
           cidade: document.getElementById("cidade").value.trim(),
-          categoria: document.getElementById("categoria").value.trim(),
+          redes: [...redesEscolhidas],
+          tipo_busca: tipoBusca(),
+          tags,
         };
       }
       try {
