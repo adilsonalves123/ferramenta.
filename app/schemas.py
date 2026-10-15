@@ -86,9 +86,19 @@ class EmpresaRadar(BaseModel):
 
 class PedidoAgenda(BaseModel):
     dia: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    hora: str = "09:00"
     rede: str = Field(min_length=2, max_length=20)
     titulo: str = Field(min_length=1, max_length=300)
     legenda: str = Field(min_length=1)
+
+    def hora_normalizada(self) -> str:
+        partes = self.hora.strip().split(":")
+        if len(partes) < 2 or not partes[0].isdigit() or not partes[1].isdigit():
+            raise ValueError("Escolha um horário válido.")
+        horas, minutos = int(partes[0]), int(partes[1])
+        if not (0 <= horas <= 23 and 0 <= minutos <= 59):
+            raise ValueError("Escolha um horário válido.")
+        return f"{horas:02d}:{minutos:02d}"
 
 
 class ItemAgenda(BaseModel):

@@ -227,7 +227,9 @@
     button.dia.tem .dia-num { box-shadow: inset 0 -2px 0 var(--azul); }
     button.dia.escolhido.tem .dia-num { box-shadow: inset 0 -2px 0 white; }
     .nota { color: var(--mudo); font-size: 12px; line-height: 1.4; margin: 10px 2px 0; }
-    .agenda-hora { margin: 0 0 8px; font-size: 12px; color: var(--mudo); }
+    .hora-linha { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+    .hora-linha label { margin: 0; font-size: 13px; }
+    .hora-linha input { width: 120px; padding: 8px 10px; }
     .lista-agenda { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
     .lista-agenda li { font-size: 12px; line-height: 1.35; }
     .lista-agenda strong { font-weight: 600; }
@@ -449,11 +451,14 @@
         </div>
         <div class="cartao-agenda">
           <p class="secao">Agenda</p>
-          <p class="agenda-hora">09:00</p>
           <div class="semana" id="semana"></div>
-          <button class="principal" type="button" id="agendar">Agendar às 9h</button>
+          <div class="hora-linha">
+            <label for="hora-post">Horário</label>
+            <input id="hora-post" type="time" value="09:00" required />
+          </div>
+          <button class="principal" type="button" id="agendar">Agendar</button>
           <ul class="lista-agenda" id="lista-agenda"></ul>
-          <p class="nota" id="nota-agenda">O horário fica salvo aqui. O post sai sozinho às 9h depois que Instagram e Facebook estiverem ligados.</p>
+          <p class="nota" id="nota-agenda">Escolha o dia e o horário. O post sai sozinho nesse momento, depois que Instagram e Facebook estiverem ligados.</p>
         </div>
       </aside>
     </section>
@@ -802,8 +807,8 @@
       if (item.status === "falta_imagem") return "Guardado. O Instagram pede uma imagem para sair sozinho.";
       if (item.status === "erro") return item.detalhe || "Não publicou.";
       if (item.status === "manual") return "Guardado. Essa rede ainda não publica sozinha.";
-      if (item.detalhe) return "Na fila das 9h. " + item.detalhe;
-      return "Sai às 9h.";
+      if (item.detalhe) return "Na fila das " + item.hora + ". " + item.detalhe;
+      return "Sai às " + item.hora + ".";
     }
 
     function desenharLista() {
@@ -823,7 +828,7 @@
       visiveis.forEach((item) => {
         const linha = document.createElement("li");
         const titulo = document.createElement("strong");
-        titulo.textContent = `${item.dia.slice(8)} · 09:00 · ${item.rede} · ${item.titulo}`;
+        titulo.textContent = `${item.dia.slice(8)} · ${item.hora} · ${item.rede} · ${item.titulo}`;
         const estado = document.createElement("span");
         estado.textContent = textoStatus(item);
         linha.append(titulo, estado);
@@ -911,7 +916,7 @@
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         postAtual = dados;
         mostrarPrevia(dados);
-        falar("assistente", "O post está na prévia ao lado. Se quiser, coloque às 9h num dia da semana.");
+        falar("assistente", "O post está na prévia ao lado. Escolha o dia e o horário para agendar.");
       } catch (falha) {
         falar("assistente", falha.message || "Não foi possível criar agora.");
       } finally {
@@ -926,7 +931,7 @@
 
     const avisoConta = new URLSearchParams(location.search).get("contas");
     if (avisoConta === "ligado") {
-      document.getElementById("nota-agenda").textContent = "Contas ligadas. O que estiver na fila sai às 9h.";
+      document.getElementById("nota-agenda").textContent = "Contas ligadas. O que estiver na fila sai no horário marcado.";
     } else if (avisoConta === "erro" || avisoConta === "cancelado") {
       document.getElementById("nota-agenda").textContent = "A conta não ligou. Tente de novo.";
     }
@@ -956,7 +961,7 @@
 
     function ligarContas() {
       if (!metaPronta) {
-        document.getElementById("nota-agenda").textContent = "A agenda já guarda as 9h. Para sair sozinho, falta criar o aplicativo na Meta.";
+        document.getElementById("nota-agenda").textContent = "A agenda já guarda o dia e o horário. Para sair sozinho, falta criar o aplicativo na Meta.";
         return;
       }
       window.location.href = "/contas/iniciar";
@@ -974,6 +979,11 @@
         nota.textContent = "Escolha Instagram, Facebook, TikTok ou Google antes de agendar.";
         return;
       }
+      const hora = document.getElementById("hora-post").value;
+      if (!hora) {
+        nota.textContent = "Escolha o horário.";
+        return;
+      }
       const botao = document.getElementById("agendar");
       botao.disabled = true;
       try {
@@ -982,6 +992,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             dia: diaEscolhido,
+            hora,
             rede: redePost,
             titulo: postAtual.titulo_anuncio,
             legenda: postAtual.legenda_redes,
@@ -991,11 +1002,11 @@
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         await carregarAgenda();
         if (redePost === "Facebook") {
-          nota.textContent = "Marcado às 9h. Sai sozinho quando o Facebook estiver ligado.";
+          nota.textContent = "Marcado às " + hora + ". Sai sozinho quando o Facebook estiver ligado.";
         } else if (redePost === "Instagram") {
-          nota.textContent = "Marcado às 9h. O Instagram publica sozinho quando a conta estiver ligada e o post tiver imagem.";
+          nota.textContent = "Marcado às " + hora + ". O Instagram publica sozinho quando a conta estiver ligada e o post tiver imagem.";
         } else {
-          nota.textContent = "Marcado às 9h. Essa rede ainda não publica sozinha.";
+          nota.textContent = "Marcado às " + hora + ". Essa rede ainda não publica sozinha.";
         }
       } catch (falha) {
         nota.textContent = falha.message || "Não consegui guardar o horário.";

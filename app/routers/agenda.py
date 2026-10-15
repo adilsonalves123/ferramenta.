@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -30,7 +30,7 @@ PAGINA_FALTA = """<!DOCTYPE html>
 </head>
 <body>
   <main>
-    <h1>A agenda já guarda as 9h</h1>
+    <h1>A agenda já guarda o dia e o horário</h1>
     <p>Para o post sair sozinho, falta criar o aplicativo na Meta e ligar o Instagram e o Facebook.</p>
     <p><a href="/">Voltar</a></p>
   </main>
@@ -75,11 +75,16 @@ async def post_agenda(
     pedido: PedidoAgenda,
     session: AsyncSession = Depends(get_session),
 ) -> ItemAgenda:
+    try:
+        hora = pedido.hora_normalizada()
+    except ValueError as erro:
+        raise HTTPException(status_code=422, detail=str(erro)) from erro
     resultado = await session.exec(select(Agendamento).where(Agendamento.dia == pedido.dia))
     registro = resultado.first()
     if registro is None:
         registro = Agendamento(
             dia=pedido.dia,
+            hora=hora,
             rede=pedido.rede.strip(),
             titulo=pedido.titulo.strip(),
             legenda=pedido.legenda.strip(),
@@ -89,7 +94,7 @@ async def post_agenda(
         registro.rede = pedido.rede.strip()
         registro.titulo = pedido.titulo.strip()
         registro.legenda = pedido.legenda.strip()
-        registro.hora = "09:00"
+        registro.hora = hora
         registro.status = "na_fila"
         registro.detalhe = ""
         registro.imagem_url = ""
