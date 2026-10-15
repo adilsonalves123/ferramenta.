@@ -11,20 +11,23 @@
   <style>
     :root {
       color-scheme: light;
-      --fundo: #f3f4f6;
+      --fundo: #eef3fb;
       --papel: #ffffff;
       --tinta: #1a1d23;
-      --mudo: #6b7280;
-      --linha: #e6e8ee;
-      --azul: #1d4ed8;
-      --azul-suave: #eef2ff;
+      --mudo: #5c6b82;
+      --linha: #e3e8f2;
+      --azul: #4f46e5;
+      --azul-suave: #eef0ff;
       --sombra: 0 1px 2px rgba(16, 24, 40, 0.04), 0 12px 32px rgba(16, 24, 40, 0.06);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: Inter, Segoe UI, sans-serif;
-      background: var(--fundo);
+      background:
+        radial-gradient(900px 420px at 0% 0%, #dbe4ff 0%, transparent 60%),
+        radial-gradient(700px 380px at 100% 0%, #ffe7d6 0%, transparent 55%),
+        var(--fundo);
       color: var(--tinta);
       font-size: 14px;
     }
@@ -59,7 +62,10 @@
       justify-content: space-between;
       padding: 0 20px;
       border-bottom: 1px solid var(--linha);
-      background: var(--papel);
+      border-top: 3px solid transparent;
+      background:
+        linear-gradient(#fff, #fff) padding-box,
+        linear-gradient(90deg, #4f46e5, #0ea5e9 55%, #f59e0b) border-box;
     }
     .topo-nome { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
     .topo-marca {
@@ -181,13 +187,14 @@
     .post-conta span, .canal-nome { color: var(--mudo); font-size: 12px; font-weight: 400; }
     .avatar {
       width: 32px; height: 32px; border-radius: 50%;
-      background: #e8eaef; color: #3f4652; font-weight: 600; font-size: 13px;
+      background: linear-gradient(135deg, #4f46e5, #0ea5e9);
+      color: white; font-weight: 600; font-size: 13px;
       display: grid; place-items: center; flex: none;
     }
     .post p { margin: 0; padding: 0 14px 14px; white-space: pre-wrap; font-size: 13px; line-height: 1.45; }
     .post img, .post .vazio-foto {
       width: 100%; height: 210px; object-fit: cover;
-      background: #eef0f3; display: block;
+      background: linear-gradient(160deg, #e0e7ff, #fce7f3); display: block;
     }
     .vazio-foto {
       color: var(--mudo);
@@ -203,9 +210,11 @@
       display: flex;
       gap: 16px;
       padding: 10px 14px 4px;
-      color: var(--tinta);
+      color: #e11d48;
       font-size: 18px;
     }
+    .post-acoes i:nth-child(2) { color: #4f46e5; }
+    .post-acoes i:nth-child(3) { color: #0ea5e9; }
     .semana { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 8px; }
     button.dia {
       display: flex;
@@ -274,7 +283,7 @@
       width: 100%;
       border: 0;
       border-radius: 8px;
-      background: var(--azul);
+      background: linear-gradient(180deg, #6366f1, #4338ca);
       color: white;
       font: inherit;
       font-weight: 600;
@@ -377,6 +386,38 @@
     .lado > .secao { margin: 2px 2px 8px; }
     .cartao-agenda .secao { margin: 0 0 4px; }
     #agendar { margin-top: 12px; }
+    .marca-campos { min-width: 0; flex: 1; display: grid; gap: 2px; }
+    .marca-campos input {
+      width: 100%;
+      border: 1px solid transparent;
+      background: transparent;
+      padding: 3px 6px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--mudo);
+    }
+    .marca-campos input:first-of-type { font-size: 14px; font-weight: 600; color: var(--tinta); }
+    .marca-campos input:focus {
+      background: white;
+      border-color: #c7d2fe;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    }
+    .ponto { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+    .tema-bastidores { background: #7c3aed; }
+    .tema-oferta { background: #ea580c; }
+    .tema-dica { background: #0891b2; }
+    .tema-historia { background: #db2777; }
+    .tema-prova { background: #16a34a; }
+    button.chip[data-rede-post="Instagram"] i,
+    #ligar-instagram i { color: #e1306c; }
+    button.chip[data-rede-post="Facebook"] i,
+    #ligar-facebook i { color: #1877f2; }
+    button.chip[data-rede-post="TikTok"] i { color: #111827; }
+    button.chip[data-rede-post="Google"] i { color: #ea4335; }
+    button.atalho[data-objetivo="interação"] i { color: #2563eb; }
+    button.atalho[data-objetivo="gancho de venda"] i { color: #d97706; }
+    button.atalho[data-objetivo="viral"] i { color: #e11d48; }
+    .conta-nota { margin: 8px 10px 0; }
   </style>
 </head>
 <body>
@@ -384,15 +425,23 @@
     <section id="menu" class="estudio">
       <header class="topo">
         <div class="topo-nome">Publicações</div>
-        <div class="topo-marca"><span>Marca</span><strong>Risca Aí</strong></div>
+        <div class="topo-marca"><span>Marca</span><strong id="nome-topo">Risca Aí</strong></div>
       </header>
       <aside class="painel">
         <div class="marca">
-          <div class="avatar">R</div>
-          <div>
-            <p class="marca-nome">Risca Aí</p>
-            <p class="marca-linha">Donos de bar no Brasil</p>
+          <div class="avatar" id="avatar-marca">R</div>
+          <div class="marca-campos">
+            <input id="nome-marca" value="Risca Aí" aria-label="Marca" />
+            <input id="publico-marca" value="Donos de bar no Brasil" aria-label="Público" />
           </div>
+        </div>
+        <p class="secao">Tema</p>
+        <div class="atalhos" id="temas">
+          <button class="atalho" type="button" data-tema="bastidores"><span class="ponto tema-bastidores"></span>Bastidores</button>
+          <button class="atalho" type="button" data-tema="oferta"><span class="ponto tema-oferta"></span>Oferta</button>
+          <button class="atalho" type="button" data-tema="dica"><span class="ponto tema-dica"></span>Dica</button>
+          <button class="atalho" type="button" data-tema="história"><span class="ponto tema-historia"></span>História</button>
+          <button class="atalho" type="button" data-tema="prova"><span class="ponto tema-prova"></span>Prova</button>
         </div>
         <p class="secao">Objetivo</p>
         <div class="atalhos" id="objetivos">
@@ -412,6 +461,7 @@
           <button class="atalho" type="button" id="ligar-instagram"><i class="fa-brands fa-instagram"></i><span id="estado-instagram">Instagram desligado</span></button>
           <button class="atalho" type="button" id="ligar-facebook"><i class="fa-brands fa-facebook"></i><span id="estado-facebook">Facebook desligado</span></button>
         </div>
+        <p class="nota conta-nota">A ligação entra no próximo passo.</p>
         <p class="secao">Ferramentas</p>
         <div class="atalhos">
           <button class="atalho" type="button" data-acao="radar"><i class="fa-solid fa-location-dot"></i>Radar de clientes</button>
@@ -424,7 +474,7 @@
         <div class="fio" id="fio">
           <div class="vazio-conversa" id="vazio-conversa">
             <h2>Descreva o post</h2>
-            <p>Escolha o canal, diga o objetivo e a prévia aparece ao lado.</p>
+            <p>Escolha a marca, o tema e o canal. A prévia aparece ao lado.</p>
           </div>
         </div>
         <form class="composer" id="composer">
@@ -437,8 +487,8 @@
         <div class="cartao-previa">
           <div class="post" id="previa">
             <div class="post-topo">
-              <div class="avatar">R</div>
-              <div class="post-conta"><strong>Risca Aí</strong><span>Agora</span></div>
+              <div class="avatar" id="avatar-previa">R</div>
+              <div class="post-conta"><strong id="nome-previa">Risca Aí</strong><span>Agora</span></div>
             </div>
             <div class="vazio-foto" id="foto-previa"><i class="fa-regular fa-image"></i><span>A imagem aparece aqui</span></div>
             <div class="post-acoes" aria-hidden="true">
@@ -772,19 +822,39 @@
       }
     });
 
-    const MARCA = {
-      nicho: "sistema para bares, petiscarias e restaurantes",
-      produto: "Risca Aí, aplicativo de venda, estoque, caixa e mesas para o dono do bar",
-      publico: "donos de bar no Brasil",
-    };
     const fio = document.getElementById("fio");
     const pedidoCampo = document.getElementById("pedido");
+    const campoMarca = document.getElementById("nome-marca");
+    const campoPublico = document.getElementById("publico-marca");
     let objetivo = "";
+    let tema = "";
     let redePost = "";
     let postAtual = null;
     let diaEscolhido = "";
     let agendaItens = [];
     let metaPronta = false;
+
+    function lerMarca() {
+      const nome = campoMarca.value.trim() || "Risca Aí";
+      const publico = campoPublico.value.trim() || "Donos de bar no Brasil";
+      const risca = nome.toLowerCase().includes("risca");
+      return {
+        nome,
+        publico,
+        nicho: risca ? "sistema para bares, petiscarias e restaurantes" : nome,
+        produto: risca ? "Risca Aí, aplicativo de venda, estoque, caixa e mesas para o dono do bar" : nome,
+      };
+    }
+
+    function atualizarMarcaVisual() {
+      const marca = lerMarca();
+      const letra = marca.nome.slice(0, 1).toUpperCase();
+      document.getElementById("nome-topo").textContent = marca.nome;
+      document.getElementById("nome-previa").textContent = marca.nome;
+      document.getElementById("avatar-marca").textContent = letra;
+      document.getElementById("avatar-previa").textContent = letra;
+      localStorage.setItem("ferramenta-marca", JSON.stringify({ nome: marca.nome, publico: marca.publico, tema }));
+    }
 
     function falar(quem, mensagem) {
       const vazio = document.getElementById("vazio-conversa");
@@ -899,7 +969,8 @@
         return;
       }
       pedidoCampo.value = "";
-      falar("assistente", "Estou montando o post do Risca Aí para " + MARCA.publico + ", no " + redePost + ".");
+      const marca = lerMarca();
+      falar("assistente", "Estou montando o post de " + marca.nome + " para " + marca.publico + ", no " + redePost + ".");
       const botao = document.getElementById("enviar-chat");
       botao.disabled = true;
       try {
@@ -907,8 +978,8 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            nicho_negocio: MARCA.nicho,
-            produto_servico: `${MARCA.produto}. Pedido: ${textoPedido}. Objetivo: ${objetivo || "publicação"}. Público: ${MARCA.publico}. Rede: ${redePost}.`,
+            nicho_negocio: marca.nicho,
+            produto_servico: `${marca.produto}. Pedido: ${textoPedido}. Objetivo: ${objetivo || "publicação"}. Tema: ${tema || "livre"}. Público: ${marca.publico}. Rede: ${redePost}.`,
             acao: "texto",
           }),
         });
@@ -939,6 +1010,30 @@
     document.getElementById("composer").addEventListener("submit", (evento) => {
       evento.preventDefault();
       criarPost();
+    });
+
+    try {
+      const salva = JSON.parse(localStorage.getItem("ferramenta-marca") || "");
+      if (salva.nome) campoMarca.value = salva.nome;
+      if (salva.publico) campoPublico.value = salva.publico;
+      if (salva.tema) tema = salva.tema;
+    } catch { /* a primeira visita ainda não tem marca salva */ }
+    atualizarMarcaVisual();
+    if (tema) {
+      const botaoTema = [...document.querySelectorAll("[data-tema]")].find((item) => item.dataset.tema === tema);
+      if (botaoTema) botaoTema.classList.add("ativo");
+      else tema = "";
+    }
+    campoMarca.addEventListener("input", atualizarMarcaVisual);
+    campoPublico.addEventListener("input", atualizarMarcaVisual);
+
+    document.querySelectorAll("[data-tema]").forEach((botao) => {
+      botao.addEventListener("click", () => {
+        tema = botao.dataset.tema;
+        document.querySelectorAll("[data-tema]").forEach((item) => item.classList.remove("ativo"));
+        botao.classList.add("ativo");
+        atualizarMarcaVisual();
+      });
     });
 
     document.querySelectorAll("[data-objetivo]").forEach((botao) => {
