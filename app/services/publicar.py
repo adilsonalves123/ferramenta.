@@ -21,7 +21,7 @@ REDES_PUBLICAVEIS = {"Instagram", "Facebook"}
 
 def meta_pronta() -> bool:
     ajustes = get_settings()
-    return bool(ajustes.meta_app_id.strip() and ajustes.meta_app_secret.strip())
+    return bool(ajustes.instagram_app_id.strip() and ajustes.instagram_app_secret.strip())
 
 
 def url_retorno() -> str:
@@ -46,7 +46,7 @@ def _pedir(url: str, dados: dict | None = None) -> dict:
 def criar_state() -> str:
     expira = int(time.time()) + 600
     corpo = f"contas.{expira}"
-    segredo = get_settings().meta_app_secret.encode()
+    segredo = get_settings().instagram_app_secret.encode()
     assinatura = hmac.new(segredo, corpo.encode(), hashlib.sha256).hexdigest()[:24]
     return f"{corpo}.{assinatura}"
 
@@ -62,62 +62,51 @@ def state_valido(state: str) -> bool:
         return False
     if expira < int(time.time()):
         return False
-    segredo = get_settings().meta_app_secret.encode()
+    segredo = get_settings().instagram_app_secret.encode()
     assinatura = hmac.new(segredo, corpo.encode(), hashlib.sha256).hexdigest()[:24]
     return hmac.compare_digest(assinatura, partes[2])
 
 
 def url_oauth() -> str:
     ajustes = get_settings()
-    escopos = ",".join(
-        [
-            "pages_show_list",
-            "pages_read_engagement",
-            "pages_manage_posts",
-            "instagram_basic",
-            "instagram_content_publish",
-            "business_management",
-        ]
-    )
     query = urllib.parse.urlencode(
         {
-            "client_id": ajustes.meta_app_id,
+            "client_id": ajustes.instagram_app_id,
             "redirect_uri": url_retorno(),
             "state": criar_state(),
-            "scope": escopos,
+            "scope": "instagram_business_basic,instagram_business_content_publish",
             "response_type": "code",
         }
     )
-    return f"https://www.facebook.com/{VERSAO}/dialog/oauth?{query}"
+    return f"https://www.instagram.com/oauth/authorize?{query}"
 
 
-def trocar_codigo(codigo: str) -> str:
+def trocar_codigo(codigo: str) -> tuple[str, str]:
     ajustes = get_settings()
-    query = urllib.parse.urlencode(
+    dados = _pedir(
+        "https://api.instagram.com/oauth/access_token",
         {
-            "client_id": ajustes.meta_app_id,
-            "client_secret": ajustes.meta_app_secret,
+            "client_id": ajustes.instagram_app_id,
+            "client_secret": ajustes.instagram_app_secret,
+            "grant_type": "authorization_code",
             "redirect_uri": url_retorno(),
             "code": codigo,
-        }
+        },
     )
-    dados = _pedir(f"https://graph.facebook.com/{VERSAO}/oauth/access_token?{query}")
-    curto = dados.get("access_token", "")
+    curto = str(dados.get("access_token") or "")
+    usuario = str(dados.get("user_id") or "")
     if not curto:
-        raise RuntimeError("A Meta não devolveu o acesso.")
+        raise RuntimeError("O Instagram não devolveu o acesso.")
     longo = urllib.parse.urlencode(
         {
-            "grant_type": "fb_exchange_token",
-            "client_id": ajustes.meta_app_id,
-            "client_secret": ajustes.meta_app_secret,
-            "fb_exchange_token": curto,
+            "grant_type": "ig_exchange_token",
+            "client_secret": ajustes.instagram_app_secret,
+            "access_token": curto,
         }
     )
-    estendido = _pedir(f"https://graph.facebook.com/{VERSAO}/oauth/access_token?{longo}")
-    token = estendido.get("access_token", "")
-    if not token:
-        raise RuntimeError("A Meta não alongou o acesso.")
-    return token
+    estendido = _pedir(f"https://graph.instagram.com/access_token?{longo}")
+    token = str(estendido.get("access_token") or curto)
+    return token, usuario
 
 
 def listar_paginas(token: str) -> list[dict]:
@@ -140,14 +129,14 @@ def publicar_facebook(pagina_id: str, token: str, texto: str) -> None:
 
 def publicar_instagram(conta_id: str, token: str, texto: str, imagem_url: str) -> None:
     criado = _pedir(
-        f"https://graph.facebook.com/{VERSAO}/{conta_id}/media",
+        f"https://graph.instagram.com/{VERSAO}/{conta_id}/media",
         {"image_url": imagem_url, "caption": texto[:2200], "access_token": token},
     )
     criacao = criado.get("id", "")
     if not criacao:
         raise RuntimeError("O Instagram não preparou a imagem.")
     _pedir(
-        f"https://graph.facebook.com/{VERSAO}/{conta_id}/media_publish",
+        f"https://graph.instagram.com/{VERSAO}/{conta_id}/media_publish",
         {"creation_id": criacao, "access_token": token},
     )
 
@@ -180,30 +169,23 @@ async def apagar_conta(session: AsyncSession, rede: str) -> None:
         await session.delete(conta)
 
 
+def perfil_instagram(token: str) -> tuple[str, str]:
+    query = urllib.parse.urlencode({"fields": "user_id,username", "access_token": token})
+    dados = _pedir(f"https://graph.instagram.com/{VERSAO}/me?{query}")
+    return str(dados.get("user_id") or ""), str(dados.get("username") or "Instagram")
+
+
 async def guardar_codigo(session: AsyncSession, codigo: str) -> None:
-    token = await asyncio.to_thread(trocar_codigo, codigo)
-    paginas = await asyncio.to_thread(listar_paginas, token)
-    if not paginas:
-        raise RuntimeError("Nenhuma Página do Facebook apareceu nessa conta.")
-    pagina = next((item for item in paginas if item.get("instagram_business_account")), paginas[0])
-    await definir_conta(
-        session,
-        "facebook",
-        str(pagina.get("name") or "Facebook"),
-        str(pagina["id"]),
-        str(pagina.get("access_token") or ""),
-    )
-    instagram = pagina.get("instagram_business_account") or {}
-    if instagram.get("id"):
-        await definir_conta(
-            session,
-            "instagram",
-            str(instagram.get("username") or "Instagram"),
-            str(instagram["id"]),
-            str(pagina.get("access_token") or ""),
-        )
-    else:
-        await apagar_conta(session, "instagram")
+    token, usuario = await asyncio.to_thread(trocar_codigo, codigo)
+    try:
+        usuario_perfil, nome = await asyncio.to_thread(perfil_instagram, token)
+        if usuario_perfil:
+            usuario = usuario_perfil
+    except Exception:
+        nome = "Instagram"
+    if not usuario:
+        raise RuntimeError("O Instagram não informou a conta.")
+    await definir_conta(session, "instagram", nome, usuario, token)
     await session.commit()
 
 
