@@ -20,6 +20,7 @@ class PedidoCampanha(BaseModel):
     )
     acao: Literal["texto", "foto", "video", "google"] = "texto"
     foto_base64: str = Field(default="", max_length=6_000_000)
+    brief_foto: str = Field(default="", max_length=800)
 
 
 class RoteiroVideo(BaseModel):
@@ -84,8 +85,9 @@ class PedidoSugestao(BaseModel):
 
     nicho: str = Field(min_length=2, max_length=120, validation_alias=AliasChoices("nicho", "nicho_negocio"))
     produto: str = Field(min_length=2, max_length=4000, validation_alias=AliasChoices("produto", "produto_servico"))
-    origem: Literal["video", "clonador"] = "video"
+    origem: Literal["video", "clonador", "foto"] = "video"
     transcricao: str = Field(default="", max_length=8000)
+    link: str = Field(default="", max_length=500)
     mensagens: list[MensagemCriacao] = Field(default_factory=list, max_length=12)
 
 
@@ -112,6 +114,17 @@ class SugestaoVideo(BaseModel):
     roteiro: str = ""
     cenas: list[CenaHistoria] = Field(default_factory=list)
     opcoes: list[OpcaoCriacao] = Field(default_factory=list)
+
+
+class PedidoFotoConfirmada(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    nicho: str = Field(min_length=2, max_length=120, validation_alias=AliasChoices("nicho", "nicho_negocio"))
+    produto: str = Field(min_length=2, max_length=4000, validation_alias=AliasChoices("produto", "produto_servico"))
+    titulo: str = Field(min_length=2, max_length=200)
+    legenda: str = Field(default="", max_length=1000)
+    cena: str = Field(min_length=2, max_length=800)
+    foto_base64: str = Field(default="", max_length=6_000_000)
 
 
 class PedidoVideoConfirmado(BaseModel):

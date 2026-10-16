@@ -730,6 +730,11 @@
           <textarea id="produto_servico" name="produto_servico" required minlength="2" rows="3" placeholder="Ex.: combo de cerveja gelada no happy hour"></textarea>
         </div>
         <div id="campos-foto" hidden>
+          <div id="campo-link-app" hidden>
+            <label for="link_app">Link do seu app</label>
+            <input id="link_app" name="link_app" type="url" inputmode="url" maxlength="500" placeholder="https://www.riscaai.com.br" />
+            <p class="nota">Opcional. Se colar, o chat lê a página e sugere o que criar e postar.</p>
+          </div>
           <label for="foto_referencia">Foto do seu bar</label>
           <input id="foto_referencia" name="foto_referencia" type="file" accept="image/jpeg,image/png,image/webp" />
           <p class="nota">Opcional. Se enviar, a imagem usa essa foto como base e não inventa outro lugar.</p>
@@ -799,9 +804,9 @@
       },
       foto: {
         titulo: "Foto",
-        ajuda: "Gera a foto do produto no lugar. Se você enviar uma foto do bar, ela entra como base.",
-        botao: "Gerar foto",
-        espera: "Criando a foto",
+        ajuda: "Cole o link do app, se quiser. O chat lê a página, sugere a foto e a legenda. A foto só é criada quando você confirmar.",
+        botao: "Continuar",
+        espera: "Lendo a página",
       },
       video: {
         titulo: "Vídeo com voz",
@@ -948,6 +953,7 @@
       camposClonador.hidden = escolha !== "clonador";
       camposRadar.hidden = escolha !== "radar";
       document.getElementById("campos-foto").hidden = escolha !== "foto" && escolha !== "video" && escolha !== "clonador";
+      document.getElementById("campo-link-app").hidden = escolha !== "foto";
       document.getElementById("foto_referencia").value = "";
       exigir("nicho_negocio", escolha !== "radar");
       exigir("produto_servico", escolha !== "radar");
@@ -975,7 +981,12 @@
         return { titulo: perfil.nome_otimizado || "Google", legenda: perfil.descricao_seo || "", imagem: "", video: "" };
       }
       if (acao === "foto") {
-        return { titulo: "Foto", legenda: "", imagem: dados.foto_url || "", video: "" };
+        return {
+          titulo: dados.titulo_anuncio || "Foto",
+          legenda: dados.legenda_redes || "",
+          imagem: dados.foto_url || "",
+          video: "",
+        };
       }
       return {
         titulo: dados.titulo_anuncio || (acao === "video" ? "Vídeo" : "Anúncio"),
@@ -1007,7 +1018,28 @@
       const aviso = dados.aviso_midia ? `<p class="erro" style="display:block">${texto(dados.aviso_midia)}</p>` : "";
       let corpo = aviso;
       if (acao === "foto" && dados.foto_url) {
+        const anuncioFoto = `${dados.titulo_anuncio || ""}\n\n${dados.legenda_redes || ""}`.trim();
         corpo += `<article><h2>Foto</h2><img src="${texto(dados.foto_url)}" alt="Foto do post" /><a class="baixar" href="${texto(dados.foto_url)}" download>Baixar foto</a></article>`;
+        if (anuncioFoto) {
+          corpo += `<article>
+            <h2>Título e legenda</h2>
+            <h3>Título</h3><p>${texto(dados.titulo_anuncio)}</p>
+            <h3>Legenda</h3><p>${texto(dados.legenda_redes)}</p>
+            <button class="copiar" type="button" id="copiar">Copiar texto</button>
+          </article>`;
+        }
+        resultado.innerHTML = corpo;
+        resultado.hidden = false;
+        salvarProjeto(dados);
+        const copiarFoto = document.getElementById("copiar");
+        if (copiarFoto) {
+          copiarFoto.addEventListener("click", async () => {
+            await navigator.clipboard.writeText(anuncioFoto);
+            copiarFoto.textContent = "Copiado";
+            window.setTimeout(() => { copiarFoto.textContent = "Copiar texto"; }, 1600);
+          });
+        }
+        return;
       }
       if (acao === "video") {
         if (dados.video_url) {
@@ -1326,9 +1358,10 @@
       botao.disabled = true;
       botao.textContent = "Pensando";
       erro.hidden = true;
-      mostrarMiniatura(10, "Escrevendo o roteiro", "");
-      document.getElementById("miniatura-criacao").dataset.fase = "roteiro";
-      pulsarRoteiro();
+      etapaPulso = acao === "foto" ? "Pensando no post" : "Escrevendo o roteiro";
+      mostrarMiniatura(10, etapaPulso, "");
+      document.getElementById("miniatura-criacao").dataset.fase = "pulso";
+      pulsarAte(30, etapaPulso);
       try {
         sugestaoAtual = await pedirSugestao();
         window.clearTimeout(pulsoMiniatura);
@@ -1379,16 +1412,18 @@
       cartao.scrollIntoView({ block: "nearest" });
     }
 
-    function pulsarRoteiro() {
+    let etapaPulso = "Escrevendo o roteiro";
+
+    function pulsarAte(teto, etapa) {
       window.clearTimeout(pulsoMiniatura);
       pulsoMiniatura = window.setTimeout(() => {
         const cartao = document.getElementById("miniatura-criacao");
-        if (!cartao || cartao.dataset.fase !== "roteiro") return;
+        if (!cartao || cartao.dataset.fase !== "pulso") return;
         const atual = Number(cartao.dataset.percent || 10);
-        if (atual >= 30) return;
-        mostrarMiniatura(atual + 4, "Escrevendo o roteiro", "");
-        cartao.dataset.fase = "roteiro";
-        pulsarRoteiro();
+        if (atual >= teto) return;
+        mostrarMiniatura(Math.min(atual + 4, teto), etapa, "");
+        cartao.dataset.fase = "pulso";
+        pulsarAte(teto, etapa);
       }, 4000);
     }
 
@@ -1402,8 +1437,9 @@
           body: JSON.stringify({
             nicho_negocio: document.getElementById("nicho_negocio").value.trim(),
             produto_servico: document.getElementById("produto_servico").value.trim(),
-            origem: acao === "clonador" ? "clonador" : "video",
+            origem: acao === "clonador" ? "clonador" : acao === "foto" ? "foto" : "video",
             transcricao: transcricaoCriacao,
+            link: acao === "foto" ? document.getElementById("link_app").value.trim() : "",
             mensagens: mensagensCriacao,
           }),
         });
@@ -1423,9 +1459,14 @@
       document.getElementById("formulario").hidden = true;
       document.getElementById("chat-criacao").hidden = false;
       document.getElementById("fio-criacao").innerHTML = "";
-      mostrarMiniatura(10, "Escrevendo o roteiro", "");
-      document.getElementById("miniatura-criacao").dataset.fase = "roteiro";
-      pulsarRoteiro();
+      const linkApp = acao === "foto" ? document.getElementById("link_app").value.trim() : "";
+      etapaPulso = acao === "foto" ? (linkApp ? "Lendo a página" : "Pensando no post") : "Escrevendo o roteiro";
+      document.getElementById("pedido-criacao").placeholder = acao === "foto"
+        ? "Peça um ajuste. Ex.: foque no controle de fiados"
+        : "Peça um ajuste. Ex.: mais curto, fala da sexta";
+      mostrarMiniatura(10, etapaPulso, "");
+      document.getElementById("miniatura-criacao").dataset.fase = "pulso";
+      pulsarAte(30, etapaPulso);
       if (acao === "clonador") {
         const arquivo = document.getElementById("arquivo_video").files[0];
         const link = document.getElementById("link_video").value.trim();
@@ -1442,6 +1483,7 @@
       }
       sugestaoAtual = await pedirSugestao();
       window.clearTimeout(pulsoMiniatura);
+      if (acao === "foto" && sugestaoAtual.transcricao) transcricaoCriacao = sugestaoAtual.transcricao;
       mensagensCriacao = [{ papel: "assistente", texto: sugestaoAtual.mensagem }];
       document.getElementById("miniatura-criacao")?.remove();
       desenharSugestao(sugestaoAtual);
@@ -1459,11 +1501,41 @@
       if (!sugestaoAtual) return;
       const botao = document.getElementById("confirmar-criacao");
       botao.disabled = true;
-      botao.textContent = "Montando o vídeo";
+      botao.textContent = acao === "foto" ? "Criando a foto" : "Montando o vídeo";
       erro.hidden = true;
       window.clearTimeout(pulsoMiniatura);
-      mostrarMiniatura(35, "Criando a primeira cena", "");
+      if (acao === "foto") {
+        mostrarMiniatura(40, "Criando a foto", "");
+        document.getElementById("miniatura-criacao").dataset.fase = "pulso";
+        pulsarAte(85, "Criando a foto");
+      } else {
+        mostrarMiniatura(35, "Criando a primeira cena", "");
+      }
       try {
+        if (acao === "foto") {
+          const respostaFoto = await fetch("/confirmar-foto", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: AbortSignal.timeout(180000),
+            body: JSON.stringify({
+              nicho_negocio: document.getElementById("nicho_negocio").value.trim(),
+              produto_servico: document.getElementById("produto_servico").value.trim(),
+              titulo: String(sugestaoAtual.titulo || "Foto").slice(0, 200),
+              legenda: String(sugestaoAtual.legenda || sugestaoAtual.roteiro || "").slice(0, 1000),
+              cena: String(sugestaoAtual.cena || "").slice(0, 800),
+              foto_base64: fotoCriacao,
+            }),
+          });
+          const fotoPronta = await lerResposta(respostaFoto);
+          if (!respostaFoto.ok) throw new Error(mensagemErro(fotoPronta));
+          window.clearTimeout(pulsoMiniatura);
+          mostrarMiniatura(100, "Foto pronta", fotoPronta.foto_url || "");
+          mostrarResultado(fotoPronta);
+          postAtual = fotoPronta;
+          imagemProjeto = fotoPronta.foto_url || "";
+          if (document.getElementById("legenda-previa")) mostrarPrevia(fotoPronta, imagemProjeto);
+          return;
+        }
         const resposta = await fetch("/confirmar-video", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1492,7 +1564,11 @@
         mostrarMiniatura(100, "Vídeo pronto", pronto.foto_url || "");
         mostrarResultado(pronto);
       } catch (falha) {
-        erro.textContent = falha.message || "Não foi possível montar o vídeo agora.";
+        window.clearTimeout(pulsoMiniatura);
+        const demorou = falha.name === "TimeoutError" || falha.name === "AbortError";
+        erro.textContent = demorou
+          ? (acao === "foto" ? "A foto demorou demais. Clique em Pode gerar de novo." : "A montagem passou do tempo. Clique em Pode gerar de novo.")
+          : (falha.message || (acao === "foto" ? "Não foi possível criar a foto agora." : "Não foi possível montar o vídeo agora."));
         erro.hidden = false;
       } finally {
         botao.disabled = false;
@@ -1565,11 +1641,18 @@
         };
       }
       try {
-        if (acao === "video" || acao === "clonador") {
+        if (acao === "foto") {
+          const campoLink = document.getElementById("link_app");
+          let linkApp = campoLink.value.trim();
+          if (linkApp && !/^https?:\/\//i.test(linkApp)) {
+            linkApp = "https://" + linkApp.replace(/^\/+/, "");
+            campoLink.value = linkApp;
+          }
+        }
+        if (acao === "video" || acao === "clonador" || acao === "foto") {
           await abrirChatCriacao();
           return;
         }
-        if (acao === "foto") corpo.foto_base64 = await lerFotoReferencia();
         let resposta;
         if (acao === "clonador") {
           if (arquivo && arquivo.size > 25 * 1024 * 1024) {
@@ -1592,7 +1675,7 @@
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         mostrarResultado(dados);
       } catch (falha) {
-        if ((acao === "video" || acao === "clonador") && !sugestaoAtual) {
+        if ((acao === "video" || acao === "clonador" || acao === "foto") && !sugestaoAtual) {
           window.clearTimeout(pulsoMiniatura);
           document.getElementById("formulario").hidden = false;
           document.getElementById("chat-criacao").hidden = true;

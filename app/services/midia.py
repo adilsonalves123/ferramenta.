@@ -28,6 +28,19 @@ def _aviso(rotulo: str, erro: Exception) -> str:
 def _prompt_foto(pedido: PedidoCampanha, acao: str, tem_referencia: bool) -> str:
     nicho = pedido.nicho.strip()
     produto = pedido.produto.strip()
+    brief = pedido.brief_foto.strip()
+    if brief:
+        cena = (
+            "Fotografia realista para post de rede social, luz natural do lugar. "
+            f"{brief} "
+            "Sem texto legível, sem letras, sem números na imagem, sem logotipo, sem marca d'água, sem menu de aplicativo com palavras."
+        )
+        if tem_referencia:
+            return (
+                "Use a foto enviada como o lugar real. Conserve o balcão, as cores e o ambiente. "
+                + cena
+            )
+        return cena
     if tem_referencia:
         return (
             "Use a foto enviada como a cena real. Conserve o produto, o balcão, as cores e o lugar. "
