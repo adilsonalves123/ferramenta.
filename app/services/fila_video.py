@@ -182,6 +182,8 @@ async def previa(ident: str) -> bytes | None:
 async def retomar() -> None:
     async with get_sessionmaker()() as session:
         achados = await session.exec(select(VideoTrabalho).where(VideoTrabalho.status.in_(["montando", "gerando"])))
-        ids = [item.id for item in achados.all()]
-    for ident in ids:
-        _agendar(ident)
+        for item in achados.all():
+            item.status = "erro"
+            item.detalhe = "A montagem parou porque o servidor reiniciou. Clique em Pode gerar de novo."
+            session.add(item)
+        await session.commit()
