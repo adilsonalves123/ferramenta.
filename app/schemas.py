@@ -94,6 +94,11 @@ class CenaHistoria(BaseModel):
     imagem: str = Field(min_length=2, max_length=800)
 
 
+class OpcaoCriacao(BaseModel):
+    titulo: str = Field(min_length=2, max_length=80)
+    detalhe: str = Field(default="", max_length=240)
+
+
 class SugestaoVideo(BaseModel):
     mensagem: str
     titulo: str
@@ -106,6 +111,7 @@ class SugestaoVideo(BaseModel):
     transcricao: str = ""
     roteiro: str = ""
     cenas: list[CenaHistoria] = Field(default_factory=list)
+    opcoes: list[OpcaoCriacao] = Field(default_factory=list)
 
 
 class PedidoVideoConfirmado(BaseModel):

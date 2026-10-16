@@ -358,9 +358,10 @@ async def montar_historia(
     async def uma_cena(indice: int, descricao: str) -> Path | None:
         destino = pasta / f"cena-{indice}.png"
         prompt = (
-            "Fotografia realista, luz natural, detalhe de um momento verdadeiro. "
+            "Fotografia documental feita com câmera real. Pele com textura, poros, cabelo natural, "
+            "roupa de quem trabalha, luz do próprio lugar. "
+            "Sem plástico, sem boneco, sem pele lisa de anúncio, sem ilustração, sem 3D, sem desenho. "
             "Sem texto, sem letras, sem logotipo, sem marca d'água. "
-            "Ninguém olha para a câmera. "
             f"Lugar: {nicho}. Cena: {descricao}"
         )
         try:
