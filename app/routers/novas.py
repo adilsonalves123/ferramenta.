@@ -1,4 +1,5 @@
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import Response
 
 from app.schemas import (
     CampanhaGerada,
@@ -16,6 +17,7 @@ from app.schemas import (
 from app.services.clonador import clonar_video, ouvir_video
 from app.services.fila_video import abrir as abrir_fila
 from app.services.fila_video import ler as ler_fila
+from app.services.fila_video import previa as previa_fila
 from app.services.midia import montar_midia
 from app.services.radar import mapear
 from app.services.sugestao import sugerir_video
@@ -138,6 +140,14 @@ async def post_confirmar_video(pedido: PedidoVideoConfirmado) -> dict:
         }
     )
     return {"id": ident, "status": "montando", "detail": ""}
+
+
+@router.get("/video-trabalho/{ident}/previa")
+async def get_video_previa(ident: str) -> Response:
+    dados = await previa_fila(ident)
+    if not dados:
+        raise HTTPException(status_code=404, detail="A cena ainda não saiu.")
+    return Response(content=dados, media_type="image/png", headers={"Cache-Control": "no-store"})
 
 
 @router.get("/video-trabalho/{ident}")

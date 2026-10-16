@@ -160,6 +160,19 @@ def _quadro(destino: Path) -> None:
         raise RuntimeError("Não consegui criar a imagem do vídeo.")
 
 
+def _executar_ffmpeg(comando: list[str]) -> subprocess.CompletedProcess[str]:
+    try:
+        return subprocess.run(
+            comando,
+            capture_output=True,
+            text=True,
+            stdin=subprocess.DEVNULL,
+            timeout=120,
+        )
+    except subprocess.TimeoutExpired as erro:
+        raise RuntimeError("O vídeo não foi montado.") from erro
+
+
 def _duracao_audio(ffmpeg: str, audio: Path) -> str:
     import re
 
@@ -181,6 +194,7 @@ def _video(foto: Path, audio: Path, destino: Path) -> None:
     duracao = _duracao_audio(ffmpeg, audio)
     comando = [
         ffmpeg,
+        "-nostdin",
         "-y",
         "-loop",
         "1",
@@ -192,6 +206,8 @@ def _video(foto: Path, audio: Path, destino: Path) -> None:
         str(foto),
         "-i",
         str(audio),
+        "-t",
+        duracao,
         "-c:v",
         "libx264",
         "-preset",
@@ -204,12 +220,11 @@ def _video(foto: Path, audio: Path, destino: Path) -> None:
         "128k",
         "-pix_fmt",
         "yuv420p",
-        "-shortest",
         "-movflags",
         "+faststart",
         str(destino),
     ]
-    resultado = subprocess.run(comando, capture_output=True, text=True)
+    resultado = _executar_ffmpeg(comando)
     if resultado.returncode != 0 or not destino.exists() or destino.stat().st_size < 1000:
         raise RuntimeError("O vídeo não foi montado.")
 
@@ -300,7 +315,8 @@ def _video_cenas(fotos: list[Path], audio: Path, destino: Path) -> None:
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
     duracao = float(_duracao_audio(ffmpeg, audio))
     cada = max(duracao / len(fotos), 0.8)
-    comando = [ffmpeg, "-y"]
+    total = f"{cada * len(fotos):.2f}"
+    comando = [ffmpeg, "-nostdin", "-y"]
     for foto in fotos:
         comando += ["-loop", "1", "-framerate", "25", "-t", f"{cada:.2f}", "-i", str(foto)]
     comando += ["-i", str(audio)]
@@ -326,12 +342,13 @@ def _video_cenas(fotos: list[Path], audio: Path, destino: Path) -> None:
         "aac",
         "-b:a",
         "128k",
-        "-shortest",
+        "-t",
+        total,
         "-movflags",
         "+faststart",
         str(destino),
     ]
-    resultado = subprocess.run(comando, capture_output=True, text=True)
+    resultado = _executar_ffmpeg(comando)
     if resultado.returncode != 0 or not destino.exists() or destino.stat().st_size < 1000:
         raise RuntimeError("O vídeo não foi montado.")
 

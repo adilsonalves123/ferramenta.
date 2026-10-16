@@ -315,6 +315,36 @@
     }
     button.principal:hover { background: #1e40af; }
     button.principal:disabled { opacity: 0.65; cursor: wait; }
+    .miniatura-criacao {
+      width: 196px;
+      border: 1px solid var(--linha);
+      border-radius: 14px;
+      overflow: hidden;
+      background: white;
+      box-shadow: var(--sombra);
+    }
+    .miniatura-criacao .quadro {
+      position: relative;
+      aspect-ratio: 1;
+      background: linear-gradient(160deg, #312e81, #1e1b4b 55%, #0f172a);
+    }
+    .miniatura-criacao img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .miniatura-criacao strong {
+      position: absolute;
+      left: 10px;
+      bottom: 10px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.82);
+      color: white;
+      font-size: 13px;
+    }
+    .miniatura-criacao small {
+      display: block;
+      padding: 8px 12px 10px;
+      color: var(--mudo);
+      font-size: 12px;
+    }
     .opcoes-criacao { display: grid; gap: 8px; margin-top: 4px; }
     button.opcao-criacao {
       display: grid;
@@ -856,6 +886,9 @@
         }
         sumicos = 0;
         if (pronto.status === "erro") throw new Error(pronto.detail || "Não foi possível montar o vídeo agora.");
+        if (typeof pronto.percent === "number") {
+          mostrarMiniatura(pronto.percent, pronto.etapa || "Montando o vídeo", pronto.previa || "");
+        }
         if (pronto.status === "pronto") return pronto;
       }
     }
@@ -1280,12 +1313,20 @@
       botao.disabled = true;
       botao.textContent = "Pensando";
       erro.hidden = true;
+      mostrarMiniatura(10, "Escrevendo o roteiro", "");
+      document.getElementById("miniatura-criacao").dataset.fase = "roteiro";
+      pulsarRoteiro();
       try {
         sugestaoAtual = await pedirSugestao();
+        window.clearTimeout(pulsoMiniatura);
+        document.getElementById("miniatura-criacao")?.remove();
         mensagensCriacao.push({ papel: "assistente", texto: sugestaoAtual.mensagem });
         desenharSugestao(sugestaoAtual);
         document.getElementById("resultado").hidden = true;
       } catch (falha) {
+        window.clearTimeout(pulsoMiniatura);
+        const cartao = document.getElementById("miniatura-criacao");
+        if (cartao) cartao.dataset.fase = "";
         erro.textContent = falha.message || "Não foi possível ajustar agora.";
         erro.hidden = false;
       } finally {
@@ -1294,18 +1335,68 @@
       }
     }
 
+    let pulsoMiniatura = 0;
+
+    function mostrarMiniatura(percent, etapa, imagem) {
+      const fioCriacao = document.getElementById("fio-criacao");
+      let cartao = document.getElementById("miniatura-criacao");
+      if (!cartao) {
+        cartao = document.createElement("div");
+        cartao.id = "miniatura-criacao";
+        cartao.className = "miniatura-criacao";
+        cartao.innerHTML = '<div class="quadro"><strong></strong></div><small></small>';
+        fioCriacao.prepend(cartao);
+      }
+      cartao.dataset.percent = String(percent);
+      cartao.querySelector("strong").textContent = `${percent}%`;
+      cartao.querySelector("small").textContent = etapa;
+      const quadro = cartao.querySelector(".quadro");
+      let foto = quadro.querySelector("img");
+      if (imagem) {
+        if (!foto) {
+          foto = document.createElement("img");
+          foto.alt = "Cena em criação";
+          quadro.prepend(foto);
+        }
+        if (foto.getAttribute("src") !== imagem) foto.src = imagem;
+      }
+      fioCriacao.scrollTop = 0;
+    }
+
+    function pulsarRoteiro() {
+      window.clearTimeout(pulsoMiniatura);
+      pulsoMiniatura = window.setTimeout(() => {
+        const cartao = document.getElementById("miniatura-criacao");
+        if (!cartao || cartao.dataset.fase !== "roteiro") return;
+        const atual = Number(cartao.dataset.percent || 10);
+        if (atual >= 30) return;
+        mostrarMiniatura(atual + 4, "Escrevendo o roteiro", "");
+        cartao.dataset.fase = "roteiro";
+        pulsarRoteiro();
+      }, 4000);
+    }
+
     async function pedirSugestao() {
-      const resposta = await fetch("/sugerir-video", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nicho_negocio: document.getElementById("nicho_negocio").value.trim(),
-          produto_servico: document.getElementById("produto_servico").value.trim(),
-          origem: acao === "clonador" ? "clonador" : "video",
-          transcricao: transcricaoCriacao,
-          mensagens: mensagensCriacao,
-        }),
-      });
+      let resposta;
+      try {
+        resposta = await fetch("/sugerir-video", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(90000),
+          body: JSON.stringify({
+            nicho_negocio: document.getElementById("nicho_negocio").value.trim(),
+            produto_servico: document.getElementById("produto_servico").value.trim(),
+            origem: acao === "clonador" ? "clonador" : "video",
+            transcricao: transcricaoCriacao,
+            mensagens: mensagensCriacao,
+          }),
+        });
+      } catch (falha) {
+        if (falha.name === "TimeoutError" || falha.name === "AbortError") {
+          throw new Error("O roteiro demorou demais. Clique em Continuar de novo.");
+        }
+        throw falha;
+      }
       const dados = await lerResposta(resposta);
       if (!resposta.ok) throw new Error(mensagemErro(dados));
       return dados;
@@ -1313,6 +1404,12 @@
 
     async function abrirChatCriacao() {
       fotoCriacao = await lerFotoReferencia();
+      document.getElementById("formulario").hidden = true;
+      document.getElementById("chat-criacao").hidden = false;
+      document.getElementById("fio-criacao").innerHTML = "";
+      mostrarMiniatura(10, "Escrevendo o roteiro", "");
+      document.getElementById("miniatura-criacao").dataset.fase = "roteiro";
+      pulsarRoteiro();
       if (acao === "clonador") {
         const arquivo = document.getElementById("arquivo_video").files[0];
         const link = document.getElementById("link_video").value.trim();
@@ -1328,10 +1425,9 @@
         transcricaoCriacao = escuta.transcricao || "";
       }
       sugestaoAtual = await pedirSugestao();
+      window.clearTimeout(pulsoMiniatura);
       mensagensCriacao = [{ papel: "assistente", texto: sugestaoAtual.mensagem }];
-      document.getElementById("formulario").hidden = true;
-      document.getElementById("chat-criacao").hidden = false;
-      document.getElementById("fio-criacao").innerHTML = "";
+      document.getElementById("miniatura-criacao")?.remove();
       desenharSugestao(sugestaoAtual);
     }
 
@@ -1349,6 +1445,8 @@
       botao.disabled = true;
       botao.textContent = "Montando o vídeo";
       erro.hidden = true;
+      window.clearTimeout(pulsoMiniatura);
+      mostrarMiniatura(35, "Criando a primeira cena", "");
       try {
         const resposta = await fetch("/confirmar-video", {
           method: "POST",
@@ -1375,6 +1473,7 @@
           pronto = await acompanharVideo(dados.id);
         }
         acao = "video";
+        mostrarMiniatura(100, "Vídeo pronto", pronto.foto_url || "");
         mostrarResultado(pronto);
       } catch (falha) {
         erro.textContent = falha.message || "Não foi possível montar o vídeo agora.";
@@ -1477,6 +1576,11 @@
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         mostrarResultado(dados);
       } catch (falha) {
+        if ((acao === "video" || acao === "clonador") && !sugestaoAtual) {
+          window.clearTimeout(pulsoMiniatura);
+          document.getElementById("formulario").hidden = false;
+          document.getElementById("chat-criacao").hidden = true;
+        }
         erro.textContent = falha.message || "Não foi possível gerar agora.";
         erro.hidden = false;
       } finally {

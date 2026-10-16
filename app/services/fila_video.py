@@ -122,6 +122,26 @@ async def _correr(ident: str) -> None:
         await session.commit()
 
 
+def _andamento(progresso: dict) -> tuple[int, str, int]:
+    fotos = [str(item) for item in (progresso.get("fotos") or [])]
+    prontas = [item for item in fotos if item and item != "falhou"]
+    vazios = [item for item in fotos if not item]
+    audio = str(progresso.get("audio") or "")
+    if audio and audio != "falhou":
+        percent, etapa = 95, "Montando o vídeo"
+    elif fotos and not vazios:
+        percent, etapa = 85, "Gravando a voz"
+    elif len(prontas) >= 2:
+        percent, etapa = 70, "Cena 2 pronta"
+    elif len(prontas) >= 1:
+        percent, etapa = 50, "Cena 1 pronta"
+    elif any(fotos):
+        percent, etapa = 40, "Criando a próxima cena"
+    else:
+        percent, etapa = 35, "Criando a primeira cena"
+    return percent, etapa, len(prontas)
+
+
 async def ler(ident: str) -> dict | None:
     async with get_sessionmaker()() as session:
         item = await session.get(VideoTrabalho, ident)
@@ -132,7 +152,31 @@ async def ler(ident: str) -> dict | None:
             return {"id": ident, "detail": "", **dados, "status": "pronto"}
         if item.status == "erro":
             return {"id": ident, "status": "erro", "detail": item.detalhe or "Não foi possível montar o vídeo agora."}
-        return {"id": ident, "status": "montando", "detail": ""}
+        progresso = _progresso(item.resultado or "")
+        percent, etapa, cenas = _andamento(progresso)
+        previa = f"/video-trabalho/{ident}/previa?v={cenas}" if cenas else ""
+        return {
+            "id": ident,
+            "status": "montando",
+            "detail": "",
+            "percent": percent,
+            "etapa": etapa,
+            "previa": previa,
+        }
+
+
+async def previa(ident: str) -> bytes | None:
+    import base64
+
+    async with get_sessionmaker()() as session:
+        item = await session.get(VideoTrabalho, ident)
+        if item is None:
+            return None
+        progresso = _progresso(item.resultado or "")
+    for foto in reversed([str(item) for item in (progresso.get("fotos") or [])]):
+        if foto and foto != "falhou":
+            return base64.b64decode(foto)
+    return None
 
 
 async def retomar() -> None:
