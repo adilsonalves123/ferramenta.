@@ -262,7 +262,29 @@
       .conversa { min-height: 70vh; }
       .painel, .lado { border: 0; }
     }
-    label { display: block; font-size: 13px; font-weight: 600; margin: 16px 0 6px; }
+    #chat-criacao { margin-top: 18px; }
+    #fio-criacao {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 420px;
+      overflow: auto;
+      padding-bottom: 8px;
+    }
+    #composer-criacao textarea { min-height: 72px; resize: vertical; }
+    .botoes-criacao { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .botoes-criacao button { margin-top: 0; }
+    button.secundario {
+      height: 40px;
+      width: 100%;
+      border: 1px solid var(--linha);
+      border-radius: 8px;
+      background: white;
+      color: var(--tinta);
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
     input, textarea {
       width: 100%;
       border: 1px solid var(--linha);
@@ -293,6 +315,7 @@
     }
     button.principal:hover { background: #1e40af; }
     button.principal:disabled { opacity: 0.65; cursor: wait; }
+    .botoes-criacao button.principal { margin-top: 0; }
     button.principal { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
     .spinner {
       width: 16px;
@@ -640,9 +663,9 @@
       <p class="ajuda" id="ajuda-tarefa"></p>
       <form id="formulario">
         <div id="campos-base">
-          <label for="nicho_negocio">Nicho do negócio</label>
+          <label id="rotulo-nicho" for="nicho_negocio">Nicho do negócio</label>
           <input id="nicho_negocio" name="nicho_negocio" required minlength="2" placeholder="Ex.: bar e petiscaria" />
-          <label for="produto_servico">Produto ou serviço</label>
+          <label id="rotulo-produto" for="produto_servico">Produto ou serviço</label>
           <textarea id="produto_servico" name="produto_servico" required minlength="2" rows="3" placeholder="Ex.: combo de cerveja gelada no happy hour"></textarea>
         </div>
         <div id="campos-foto" hidden>
@@ -690,6 +713,16 @@
           <span id="enviar-texto">Gerar</span>
         </button>
       </form>
+      <section id="chat-criacao" hidden>
+        <div id="fio-criacao"></div>
+        <form id="composer-criacao">
+          <textarea id="pedido-criacao" required minlength="2" placeholder="Peça um ajuste. Ex.: mais curto, fala da sexta"></textarea>
+          <div class="botoes-criacao">
+            <button class="secundario" type="submit" id="enviar-ajuste">Enviar</button>
+            <button class="principal" type="button" id="confirmar-criacao">Pode gerar</button>
+          </div>
+        </form>
+      </section>
       <p class="erro" id="erro" hidden></p>
       <section id="resultado" hidden></section>
     </section>
@@ -710,9 +743,9 @@
       },
       video: {
         titulo: "Vídeo com voz",
-        ajuda: "Monta o vídeo com a foto do lugar e a voz do roteiro. Se enviar uma foto do bar, ela entra como imagem. Pode levar cerca de um minuto.",
-        botao: "Gerar vídeo",
-        espera: "Montando o vídeo",
+        ajuda: "Escreva o título e o que você quer. O chat sugere a cena e a fala. O vídeo só é montado quando você confirmar.",
+        botao: "Continuar",
+        espera: "Pensando na sugestão",
       },
       google: {
         titulo: "Google Meu Negócio",
@@ -721,9 +754,9 @@
       },
       clonador: {
         titulo: "Clonador de Vídeo Viral",
-        ajuda: "Corrige o português e devolve um vídeo com outra voz. Cole o link do YouTube ou envie o arquivo. A imagem é nova e não copia o vídeo original.",
-        botao: "Gerar vídeo",
-        espera: "Montando o vídeo",
+        ajuda: "Escreva o título, o que você quer e o vídeo de referência. O chat sugere a fala corrigida. O vídeo só é montado quando você confirmar.",
+        botao: "Continuar",
+        espera: "Lendo o vídeo",
       },
       radar: {
         titulo: "Radar de Clientes B2B",
@@ -744,6 +777,10 @@
     const camposClonador = document.getElementById("campos-clonador");
     const camposRadar = document.getElementById("campos-radar");
     let acao = "texto";
+    let sugestaoAtual = null;
+    let mensagensCriacao = [];
+    let transcricaoCriacao = "";
+    let fotoCriacao = "";
 
     function texto(valor) {
       return String(valor ?? "")
@@ -779,10 +816,24 @@
       document.getElementById("titulo-tarefa").textContent = item.titulo;
       document.getElementById("ajuda-tarefa").textContent = item.ajuda;
       enviarTexto.textContent = item.botao;
+      const criacao = escolha === "video" || escolha === "clonador";
+      document.getElementById("formulario").hidden = false;
+      document.getElementById("chat-criacao").hidden = true;
+      document.getElementById("fio-criacao").innerHTML = "";
+      sugestaoAtual = null;
+      mensagensCriacao = [];
+      transcricaoCriacao = "";
+      fotoCriacao = "";
+      document.getElementById("rotulo-nicho").textContent = criacao ? "Título" : "Nicho do negócio";
+      document.getElementById("nicho_negocio").placeholder = criacao ? "Ex.: Sexta no bar" : "Ex.: bar e petiscaria";
+      document.getElementById("rotulo-produto").textContent = criacao ? "O que você quer" : "Produto ou serviço";
+      document.getElementById("produto_servico").placeholder = criacao
+        ? "Ex.: um vídeo curto chamando para o happy hour"
+        : "Ex.: combo de cerveja gelada no happy hour";
       camposBase.hidden = escolha === "radar";
       camposClonador.hidden = escolha !== "clonador";
       camposRadar.hidden = escolha !== "radar";
-      document.getElementById("campos-foto").hidden = escolha !== "foto" && escolha !== "video";
+      document.getElementById("campos-foto").hidden = escolha !== "foto" && escolha !== "video" && escolha !== "clonador";
       document.getElementById("foto_referencia").value = "";
       exigir("nicho_negocio", escolha !== "radar");
       exigir("produto_servico", escolha !== "radar");
@@ -1120,6 +1171,118 @@
       return btoa(binario);
     }
 
+    function falarCriacao(quem, mensagem) {
+      const bloco = document.createElement("div");
+      bloco.className = `balao ${quem}`;
+      bloco.textContent = mensagem;
+      const fioCriacao = document.getElementById("fio-criacao");
+      fioCriacao.appendChild(bloco);
+      fioCriacao.scrollTop = fioCriacao.scrollHeight;
+    }
+
+    async function pedirSugestao() {
+      const resposta = await fetch("/sugerir-video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nicho_negocio: document.getElementById("nicho_negocio").value.trim(),
+          produto_servico: document.getElementById("produto_servico").value.trim(),
+          origem: acao === "clonador" ? "clonador" : "video",
+          transcricao: transcricaoCriacao,
+          mensagens: mensagensCriacao,
+        }),
+      });
+      const dados = await resposta.json();
+      if (!resposta.ok) throw new Error(mensagemErro(dados));
+      return dados;
+    }
+
+    async function abrirChatCriacao() {
+      fotoCriacao = await lerFotoReferencia();
+      if (acao === "clonador") {
+        const arquivo = document.getElementById("arquivo_video").files[0];
+        const link = document.getElementById("link_video").value.trim();
+        if (arquivo && arquivo.size > 25 * 1024 * 1024) {
+          throw new Error("O vídeo precisa ter até 25 MB. Ou cole o link do YouTube.");
+        }
+        const form = new FormData();
+        form.append("link_video", link);
+        if (arquivo) form.append("arquivo_video", arquivo, arquivo.name);
+        const ouviu = await fetch("/ouvir-video", { method: "POST", body: form });
+        const escuta = await ouviu.json();
+        if (!ouviu.ok) throw new Error(mensagemErro(escuta));
+        transcricaoCriacao = escuta.transcricao || "";
+      }
+      sugestaoAtual = await pedirSugestao();
+      mensagensCriacao = [{ papel: "assistente", texto: sugestaoAtual.mensagem }];
+      document.getElementById("formulario").hidden = true;
+      document.getElementById("chat-criacao").hidden = false;
+      document.getElementById("fio-criacao").innerHTML = "";
+      falarCriacao("assistente", sugestaoAtual.mensagem);
+    }
+
+    document.getElementById("composer-criacao").addEventListener("submit", async (evento) => {
+      evento.preventDefault();
+      const campo = document.getElementById("pedido-criacao");
+      const textoPedido = campo.value.trim();
+      if (textoPedido.length < 2 || !sugestaoAtual) return;
+      campo.value = "";
+      falarCriacao("pessoa", textoPedido);
+      mensagensCriacao.push({ papel: "pessoa", texto: textoPedido });
+      const botao = document.getElementById("enviar-ajuste");
+      botao.disabled = true;
+      botao.textContent = "Pensando";
+      erro.hidden = true;
+      try {
+        sugestaoAtual = await pedirSugestao();
+        mensagensCriacao.push({ papel: "assistente", texto: sugestaoAtual.mensagem });
+        falarCriacao("assistente", sugestaoAtual.mensagem);
+        document.getElementById("resultado").hidden = true;
+      } catch (falha) {
+        erro.textContent = falha.message || "Não foi possível ajustar agora.";
+        erro.hidden = false;
+      } finally {
+        botao.disabled = false;
+        botao.textContent = "Enviar";
+      }
+    });
+
+    document.getElementById("confirmar-criacao").addEventListener("click", async () => {
+      if (!sugestaoAtual) return;
+      const botao = document.getElementById("confirmar-criacao");
+      botao.disabled = true;
+      botao.textContent = "Montando o vídeo";
+      erro.hidden = true;
+      try {
+        const resposta = await fetch("/confirmar-video", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nicho_negocio: document.getElementById("nicho_negocio").value.trim(),
+            produto_servico: document.getElementById("produto_servico").value.trim(),
+            titulo: sugestaoAtual.titulo,
+            cena: sugestaoAtual.cena,
+            gancho: sugestaoAtual.gancho,
+            problema: sugestaoAtual.problema,
+            solucao: sugestaoAtual.solucao,
+            cta: sugestaoAtual.cta,
+            legenda: sugestaoAtual.legenda,
+            foto_base64: fotoCriacao,
+          }),
+        });
+        const dados = await resposta.json();
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        acao = "video";
+        mostrarResultado(dados);
+      } catch (falha) {
+        erro.textContent = falha.message || "Não foi possível montar o vídeo agora.";
+        erro.hidden = false;
+      } finally {
+        botao.disabled = false;
+        botao.textContent = "Pode gerar";
+      }
+    });
+
     formulario.addEventListener("submit", async (evento) => {
       evento.preventDefault();
       erro.hidden = true;
@@ -1185,7 +1348,11 @@
         };
       }
       try {
-        if (acao === "foto" || acao === "video") corpo.foto_base64 = await lerFotoReferencia();
+        if (acao === "video" || acao === "clonador") {
+          await abrirChatCriacao();
+          return;
+        }
+        if (acao === "foto") corpo.foto_base64 = await lerFotoReferencia();
         let resposta;
         if (acao === "clonador") {
           if (arquivo && arquivo.size > 25 * 1024 * 1024) {

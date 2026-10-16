@@ -74,6 +74,48 @@ class ClonagemGerada(ClonagemTexto):
     aviso_midia: str | None = None
 
 
+class MensagemCriacao(BaseModel):
+    papel: Literal["pessoa", "assistente"]
+    texto: str = Field(min_length=1, max_length=2000)
+
+
+class PedidoSugestao(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    nicho: str = Field(min_length=2, max_length=120, validation_alias=AliasChoices("nicho", "nicho_negocio"))
+    produto: str = Field(min_length=2, max_length=400, validation_alias=AliasChoices("produto", "produto_servico"))
+    origem: Literal["video", "clonador"] = "video"
+    transcricao: str = Field(default="", max_length=8000)
+    mensagens: list[MensagemCriacao] = Field(default_factory=list, max_length=12)
+
+
+class SugestaoVideo(BaseModel):
+    mensagem: str
+    titulo: str
+    cena: str
+    gancho: str
+    problema: str
+    solucao: str
+    cta: str
+    legenda: str
+    transcricao: str = ""
+
+
+class PedidoVideoConfirmado(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    nicho: str = Field(min_length=2, max_length=120, validation_alias=AliasChoices("nicho", "nicho_negocio"))
+    produto: str = Field(min_length=2, max_length=400, validation_alias=AliasChoices("produto", "produto_servico"))
+    titulo: str = Field(min_length=2, max_length=200)
+    cena: str = Field(min_length=2, max_length=500)
+    gancho: str = Field(min_length=2, max_length=500)
+    problema: str = Field(min_length=2, max_length=500)
+    solucao: str = Field(min_length=2, max_length=500)
+    cta: str = Field(min_length=2, max_length=500)
+    legenda: str = Field(default="", max_length=1000)
+    foto_base64: str = Field(default="", max_length=6_000_000)
+
+
 class PedidoRadar(BaseModel):
     cidade: str = Field(min_length=2, max_length=80)
     redes: list[Literal["instagram", "tiktok", "facebook", "google"]] = Field(min_length=1, max_length=4)
