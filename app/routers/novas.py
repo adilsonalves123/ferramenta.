@@ -15,6 +15,8 @@ from app.schemas import (
     SugestaoVideo,
 )
 from app.services.clonador import clonar_video, ouvir_video
+from app.services.fila_video import abrir as abrir_fila
+from app.services.fila_video import ler as ler_fila
 from app.services.midia import _referencia, montar_historia, montar_midia
 from app.services.radar import mapear
 from app.services.sugestao import sugerir_video
@@ -116,8 +118,8 @@ async def post_sugerir_video(pedido: PedidoSugestao) -> SugestaoVideo:
         raise HTTPException(status_code=502, detail=detalhe) from erro
 
 
-@router.post("/confirmar-video", response_model=CampanhaCompleta)
-async def post_confirmar_video(pedido: PedidoVideoConfirmado) -> CampanhaCompleta:
+@router.post("/confirmar-video")
+async def post_confirmar_video(pedido: PedidoVideoConfirmado) -> dict:
     cenas = [(cena.narracao.strip(), cena.imagem.strip()) for cena in pedido.cenas if cena.narracao.strip() and cena.imagem.strip()]
     fala = pedido.roteiro.strip() or " ".join(narracao for narracao, _ in cenas) or " ".join(
         parte for parte in (pedido.gancho, pedido.problema, pedido.solucao, pedido.cta) if parte.strip()
@@ -136,32 +138,34 @@ async def post_confirmar_video(pedido: PedidoVideoConfirmado) -> CampanhaComplet
         ),
         google_meu_negocio=GoogleMeuNegocio(nome_otimizado="", categoria="", descricao_seo=""),
     )
-    try:
+    referencia, tipo = _referencia(
+        PedidoCampanha(nicho=pedido.nicho, produto=pedido.produto[:200], foto_base64=pedido.foto_base64)
+    )
+    nicho = pedido.nicho.strip()
+    produto = f"{pedido.cena.strip()}. {pedido.produto.strip()}"[:200]
+    foto_base64 = pedido.foto_base64
+
+    async def montar() -> dict:
         if cenas:
-            referencia, tipo = _referencia(
-                PedidoCampanha(nicho=pedido.nicho, produto=pedido.produto[:200], foto_base64=pedido.foto_base64)
-            )
-            midia = await montar_historia(pedido.nicho.strip(), cenas[:3], fala.strip(), referencia, tipo)
+            midia = await montar_historia(nicho, cenas[:3], fala.strip(), referencia, tipo)
         else:
-            produto = f"{pedido.cena.strip()}. {pedido.produto.strip()}"[:200]
             midia = await montar_midia(
-                PedidoCampanha(
-                    nicho=pedido.nicho.strip(),
-                    produto=produto,
-                    acao="video",
-                    foto_base64=pedido.foto_base64,
-                ),
+                PedidoCampanha(nicho=nicho, produto=produto, acao="video", foto_base64=foto_base64),
                 gerada,
                 "video",
             )
-    except Exception as erro:
-        texto = str(erro)
-        if "insufficient_quota" in texto or "credit_balance_exhausted" in texto:
-            detalhe = "A conta da OpenAI está sem créditos. Adicione créditos no site da OpenAI e tente de novo."
-        else:
-            detalhe = "Não foi possível montar o vídeo agora."
-        raise HTTPException(status_code=502, detail=detalhe) from erro
-    return CampanhaCompleta(**gerada.model_dump(), **midia)
+        return CampanhaCompleta(**gerada.model_dump(), **midia).model_dump()
+
+    ident = abrir_fila(montar)
+    return {"id": ident, "status": "montando", "detail": ""}
+
+
+@router.get("/video-trabalho/{ident}")
+async def get_video_trabalho(ident: str) -> dict:
+    item = ler_fila(ident)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Esse vídeo não está mais na fila.")
+    return item
 
 
 @router.post("/radar-clientes", response_model=RadarResposta)

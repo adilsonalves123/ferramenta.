@@ -1333,8 +1333,22 @@
         });
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
+        let pronto = dados;
+        if (dados.status === "montando" && dados.id) {
+          for (let tentativa = 0; tentativa < 40; tentativa += 1) {
+            await new Promise((resolver) => window.setTimeout(resolver, 3000));
+            const consulta = await fetch("/video-trabalho/" + dados.id);
+            pronto = await lerResposta(consulta);
+            if (!consulta.ok) throw new Error(mensagemErro(pronto));
+            if (pronto.status === "erro") throw new Error(pronto.detail || "Não foi possível montar o vídeo agora.");
+            if (pronto.status === "pronto") break;
+          }
+          if (pronto.status !== "pronto") {
+            throw new Error("A montagem ainda está andando. Espere um minuto e clique em Pode gerar de novo.");
+          }
+        }
         acao = "video";
-        mostrarResultado(dados);
+        mostrarResultado(pronto);
       } catch (falha) {
         erro.textContent = falha.message || "Não foi possível montar o vídeo agora.";
         erro.hidden = false;
