@@ -94,6 +94,7 @@ async def post_agenda(
             rede=pedido.rede.strip(),
             titulo=pedido.titulo.strip(),
             legenda=pedido.legenda.strip(),
+            imagem_url=pedido.imagem_url.strip()[:500],
         )
         session.add(registro)
     else:
@@ -103,13 +104,15 @@ async def post_agenda(
         registro.hora = hora
         registro.status = "na_fila"
         registro.detalhe = ""
-        registro.imagem_url = ""
+        registro.imagem_url = pedido.imagem_url.strip()[:500]
     contas = await estado_contas(session)
     if registro.rede == "Facebook" and _estado(contas["facebook"]).ligado is False:
         registro.detalhe = "Falta ligar a conta."
-    elif registro.rede == "Instagram":
+    elif registro.rede == "Instagram" and not registro.imagem_url:
         registro.status = "falta_imagem"
         registro.detalhe = "Falta ligar a conta e a imagem do post." if not _estado(contas["instagram"]).ligado else "Falta a imagem do post."
+    elif registro.rede == "Instagram" and _estado(contas["instagram"]).ligado is False:
+        registro.detalhe = "Falta ligar a conta."
     elif registro.rede not in ("Instagram", "Facebook"):
         registro.status = "manual"
         registro.detalhe = "Essa rede ainda não publica sozinha."

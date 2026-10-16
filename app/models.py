@@ -37,6 +37,18 @@ class Agendamento(SQLModel, table=True):
     criado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
 
 
+class Projeto(SQLModel, table=True):
+    __tablename__ = "mkt_projetos"
+
+    id: int | None = Field(default=None, primary_key=True)
+    tipo: str = Field(max_length=20, index=True)
+    titulo: str = Field(max_length=200)
+    legenda: str = Field(default="", sa_type=Text)
+    imagem_url: str = Field(default="", max_length=500)
+    video_url: str = Field(default="", max_length=500)
+    criado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
+
+
 class ContaRede(SQLModel, table=True):
     __tablename__ = "mkt_contas"
 

@@ -192,7 +192,7 @@
       display: grid; place-items: center; flex: none;
     }
     .post p { margin: 0; padding: 0 14px 14px; white-space: pre-wrap; font-size: 13px; line-height: 1.45; }
-    .post img, .post .vazio-foto {
+    .post img, .post video, .post .vazio-foto {
       width: 100%; height: 210px; object-fit: cover;
       background: linear-gradient(160deg, #e0e7ff, #fce7f3); display: block;
     }
@@ -418,6 +418,40 @@
     button.atalho[data-objetivo="gancho de venda"] i { color: #d97706; }
     button.atalho[data-objetivo="viral"] i { color: #e11d48; }
     .conta-nota { margin: 8px 10px 0; }
+    #painel-projetos { flex: 1; min-height: 0; overflow: auto; padding-bottom: 24px; }
+    #painel-projetos[hidden] { display: none; }
+    .grade-capas, .grade-salvos {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 12px 20px 0;
+    }
+    button.capa, button.salvo {
+      border: 1px solid var(--linha);
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      padding: 0;
+      text-align: left;
+      cursor: pointer;
+      font: inherit;
+      color: var(--tinta);
+    }
+    button.capa img, button.salvo img, button.salvo video {
+      width: 100%;
+      height: 110px;
+      object-fit: cover;
+      display: block;
+      background: #e8eaef;
+    }
+    button.capa span, button.salvo strong {
+      display: block;
+      padding: 8px 10px 10px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    button.salvo small { display: block; padding: 0 10px 10px; color: var(--mudo); font-size: 12px; }
+    #adicionar-projeto { margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -465,13 +499,11 @@
         <div class="atalhos" id="paginas-facebook" hidden></div>
         <p class="secao">Ferramentas</p>
         <div class="atalhos">
-          <button class="atalho" type="button" data-acao="radar"><i class="fa-solid fa-location-dot"></i>Radar de clientes</button>
-          <button class="atalho" type="button" data-acao="clonador"><i class="fa-solid fa-clapperboard"></i>Clonar vídeo</button>
-          <button class="atalho" type="button" data-acao="google"><i class="fa-solid fa-store"></i>Google Meu Negócio</button>
+          <button class="atalho" type="button" id="abrir-projetos"><i class="fa-solid fa-folder-open"></i>Projetos</button>
         </div>
       </aside>
       <section class="conversa">
-        <div class="coluna-topo">Novo post</div>
+        <div class="coluna-topo" id="topo-conversa">Novo post</div>
         <div class="fio" id="fio">
           <div class="vazio-conversa" id="vazio-conversa">
             <h2>Descreva o post</h2>
@@ -482,6 +514,12 @@
           <textarea id="pedido" required minlength="2" placeholder="Descreva a publicação. Ex.: interação para donos de bar"></textarea>
           <button class="principal" type="submit" id="enviar-chat">Gerar</button>
         </form>
+        <div id="painel-projetos" hidden>
+          <div class="coluna-topo">Projetos</div>
+          <div class="grade-capas" id="capas-projetos"></div>
+          <p class="secao">Salvos</p>
+          <div class="grade-salvos" id="lista-projetos"></div>
+        </div>
       </section>
       <aside class="lado">
         <p class="secao">Prévia · <span class="canal-nome" id="canal-previa">Instagram</span></p>
@@ -499,6 +537,8 @@
             </div>
             <p id="legenda-previa">A legenda aparece aqui, no formato do post, depois que você gerar.</p>
           </div>
+          <button class="atalho" type="button" id="adicionar-projeto">Adicionar projeto</button>
+          <div class="atalhos" id="lista-adicionar" hidden></div>
         </div>
         <div class="cartao-agenda">
           <p class="secao">Agenda</p>
@@ -667,6 +707,45 @@
       atualizarTags();
     }
 
+    function resumoProjeto(dados) {
+      if (acao === "radar") {
+        const nomes = (dados.empresas || []).map((empresa) => empresa.nome).filter(Boolean).join(", ");
+        return { titulo: dados.cidade || "Radar", legenda: nomes || dados.aviso || "", imagem: "", video: "" };
+      }
+      if (acao === "clonador") {
+        return { titulo: dados.titulo || "Vídeo", legenda: dados.legenda || "", imagem: "", video: "" };
+      }
+      if (acao === "google") {
+        const perfil = dados.google_meu_negocio || {};
+        return { titulo: perfil.nome_otimizado || "Google", legenda: perfil.descricao_seo || "", imagem: "", video: "" };
+      }
+      if (acao === "foto") {
+        return { titulo: "Foto", legenda: "", imagem: dados.foto_url || "", video: "" };
+      }
+      return {
+        titulo: dados.titulo_anuncio || (acao === "video" ? "Vídeo" : "Anúncio"),
+        legenda: dados.legenda_redes || "",
+        imagem: dados.foto_url || "",
+        video: dados.video_url || "",
+      };
+    }
+
+    function salvarProjeto(dados) {
+      const resumo = resumoProjeto(dados);
+      if (!resumo.titulo && !resumo.legenda && !resumo.imagem && !resumo.video) return;
+      fetch("/projetos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tipo: acao,
+          titulo: (resumo.titulo || "Projeto").slice(0, 200),
+          legenda: resumo.legenda,
+          imagem_url: resumo.imagem,
+          video_url: resumo.video,
+        }),
+      }).catch(() => {});
+    }
+
     function mostrarResultado(dados) {
       const roteiro = dados.roteiro_video;
       const google = dados.google_meu_negocio;
@@ -694,6 +773,7 @@
         </ul></article>`;
         resultado.innerHTML = corpo;
         resultado.hidden = false;
+        salvarProjeto(dados);
         document.getElementById("copiar").addEventListener("click", async () => {
           await navigator.clipboard.writeText(anuncio);
           const botao = document.getElementById("copiar");
@@ -729,15 +809,159 @@
       }
       resultado.innerHTML = corpo;
       resultado.hidden = false;
+      salvarProjeto(dados);
     }
 
     document.querySelectorAll("[data-acao]").forEach((botao) => {
       botao.addEventListener("click", () => abrir(botao.dataset.acao));
     });
 
+    let veioDeProjetos = false;
+
+    const CAPAS = [
+      { acao: "texto", nome: "Anúncio", imagem: "/quadros/anuncio.jpg" },
+      { acao: "foto", nome: "Foto", imagem: "/quadros/foto.jpg" },
+      { acao: "video", nome: "Vídeo", imagem: "/quadros/video.jpg" },
+      { acao: "clonador", nome: "Clonar vídeo", imagem: "/quadros/clonador.jpg" },
+      { acao: "google", nome: "Google", imagem: "/quadros/google.jpg" },
+      { acao: "radar", nome: "Radar", imagem: "/quadros/radar.jpg" },
+    ];
+
+    function desenharCapas() {
+      const lugar = document.getElementById("capas-projetos");
+      if (lugar.childElementCount) return;
+      CAPAS.forEach((capa) => {
+        const botao = document.createElement("button");
+        botao.type = "button";
+        botao.className = "capa";
+        const imagem = document.createElement("img");
+        imagem.src = capa.imagem;
+        imagem.alt = "";
+        const nome = document.createElement("span");
+        nome.textContent = capa.nome;
+        botao.append(imagem, nome);
+        botao.addEventListener("click", () => {
+          veioDeProjetos = true;
+          abrir(capa.acao);
+        });
+        lugar.appendChild(botao);
+      });
+    }
+
+    function colocarNaPrevia(projeto) {
+      const legenda = projeto.legenda || projeto.titulo;
+      postAtual = { titulo_anuncio: projeto.titulo, legenda_redes: legenda };
+      imagemProjeto = projeto.imagem_url || "";
+      document.getElementById("legenda-previa").textContent = projeto.legenda
+        ? projeto.titulo + "\n\n" + projeto.legenda
+        : projeto.titulo;
+      const lugar = document.getElementById("foto-previa");
+      if (projeto.video_url) {
+        const video = document.createElement("video");
+        video.id = "foto-previa";
+        video.src = projeto.video_url;
+        video.controls = true;
+        lugar.replaceWith(video);
+      } else if (projeto.imagem_url) {
+        const imagem = document.createElement("img");
+        imagem.id = "foto-previa";
+        imagem.src = projeto.imagem_url;
+        imagem.alt = projeto.titulo;
+        lugar.replaceWith(imagem);
+      }
+      document.getElementById("lista-adicionar").hidden = true;
+      document.getElementById("nota-agenda").textContent = "Projeto na prévia. Escolha o dia e o horário.";
+    }
+
+    async function listarProjetos() {
+      const resposta = await fetch("/projetos");
+      if (!resposta.ok) return [];
+      return resposta.json();
+    }
+
+    function cartaoSalvo(projeto) {
+      const botao = document.createElement("button");
+      botao.type = "button";
+      botao.className = "salvo";
+      if (projeto.imagem_url) {
+        const imagem = document.createElement("img");
+        imagem.src = projeto.imagem_url;
+        imagem.alt = "";
+        botao.appendChild(imagem);
+      }
+      const nome = document.createElement("strong");
+      nome.textContent = projeto.titulo;
+      const tipo = document.createElement("small");
+      tipo.textContent = projeto.tipo;
+      botao.append(nome, tipo);
+      botao.addEventListener("click", () => colocarNaPrevia(projeto));
+      return botao;
+    }
+
+    async function mostrarProjetos() {
+      desenharCapas();
+      document.getElementById("fio").hidden = true;
+      document.getElementById("composer").hidden = true;
+      document.getElementById("topo-conversa").hidden = true;
+      document.getElementById("painel-projetos").hidden = false;
+      const lista = document.getElementById("lista-projetos");
+      lista.innerHTML = "";
+      const projetos = await listarProjetos();
+      if (!projetos.length) {
+        const vazio = document.createElement("p");
+        vazio.className = "nota";
+        vazio.textContent = "Nada gerado ainda. Escolha uma capa.";
+        lista.appendChild(vazio);
+        return;
+      }
+      projetos.forEach((projeto) => lista.appendChild(cartaoSalvo(projeto)));
+    }
+
+    document.getElementById("abrir-projetos").addEventListener("click", () => {
+      const painel = document.getElementById("painel-projetos");
+      if (!painel.hidden) {
+        painel.hidden = true;
+        document.getElementById("fio").hidden = false;
+        document.getElementById("composer").hidden = false;
+        document.getElementById("topo-conversa").hidden = false;
+        return;
+      }
+      mostrarProjetos().catch(() => {});
+    });
+
+    document.getElementById("adicionar-projeto").addEventListener("click", async () => {
+      const lista = document.getElementById("lista-adicionar");
+      if (!lista.hidden) {
+        lista.hidden = true;
+        return;
+      }
+      lista.innerHTML = "";
+      const projetos = await listarProjetos();
+      if (!projetos.length) {
+        const vazio = document.createElement("p");
+        vazio.className = "nota";
+        vazio.textContent = "Nenhum projeto salvo.";
+        lista.appendChild(vazio);
+      } else {
+        projetos.forEach((projeto) => {
+          const botao = document.createElement("button");
+          botao.type = "button";
+          botao.className = "atalho";
+          botao.textContent = projeto.titulo;
+          botao.addEventListener("click", () => colocarNaPrevia(projeto));
+          lista.appendChild(botao);
+        });
+      }
+      lista.hidden = false;
+    });
+
     document.getElementById("voltar").addEventListener("click", () => {
       tarefa.hidden = true;
       menu.hidden = false;
+      if (veioDeProjetos) {
+        veioDeProjetos = false;
+        mostrarProjetos();
+      }
     });
 
     document.querySelectorAll(".rede").forEach((botao) => {
@@ -846,6 +1070,7 @@
     let tema = "";
     let redePost = "";
     let postAtual = null;
+    let imagemProjeto = "";
     let diaEscolhido = "";
     let agendaItens = [];
     let metaPronta = false;
@@ -1159,6 +1384,7 @@
             rede: redePost,
             titulo: postAtual.titulo_anuncio,
             legenda: postAtual.legenda_redes,
+            imagem_url: imagemProjeto,
           }),
         });
         const dados = await resposta.json();

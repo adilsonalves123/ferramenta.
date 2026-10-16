@@ -33,6 +33,14 @@ def url_retorno() -> str:
     return get_settings().app_url.rstrip("/") + "/contas/retorno"
 
 
+def endereco_publico(caminho: str) -> str:
+    if caminho.startswith("http://") or caminho.startswith("https://"):
+        return caminho
+    if not caminho.startswith("/"):
+        caminho = "/" + caminho
+    return get_settings().app_url.rstrip("/") + caminho
+
+
 def _pedir(url: str, dados: dict | None = None) -> dict:
     corpo = urllib.parse.urlencode(dados).encode() if dados is not None else None
     pedido = urllib.request.Request(url, data=corpo)
@@ -336,7 +344,11 @@ async def publicar_vencidos(session: AsyncSession) -> None:
                 await asyncio.to_thread(publicar_facebook, conta.externo_id, conta.token, texto)
             else:
                 await asyncio.to_thread(
-                    publicar_instagram, conta.externo_id, conta.token, texto, item.imagem_url
+                    publicar_instagram,
+                    conta.externo_id,
+                    conta.token,
+                    texto,
+                    endereco_publico(item.imagem_url),
                 )
             item.status = "publicado"
             item.detalhe = ""

@@ -50,7 +50,12 @@ def buscar_mapa(consulta: str) -> list[EmpresaRadar]:
         with urllib.request.urlopen(pedido, timeout=30) as resposta:
             dados = json.loads(resposta.read().decode())
     except urllib.error.HTTPError as erro:
-        raise RuntimeError("O Google Maps não completou a busca.") from erro
+        texto = erro.read().decode(errors="replace")
+        try:
+            mensagem = json.loads(texto).get("error", {}).get("message", texto)
+        except json.JSONDecodeError:
+            mensagem = texto
+        raise RuntimeError(f"O Google Maps não completou a busca. {mensagem[:180]}") from erro
     empresas: list[EmpresaRadar] = []
     for lugar in dados.get("places") or []:
         nome = str((lugar.get("displayName") or {}).get("text") or "").strip()

@@ -11,6 +11,7 @@ from app.database import criar_tabelas, fechar_engine
 from app.routers.agenda import router as router_agenda
 from app.routers.campanhas import router
 from app.routers.novas import router as router_novas
+from app.routers.projetos import router as router_projetos
 from app.services.midia import PASTA_MIDIA
 
 PAGINA = Path(__file__).with_name("pagina.html")
@@ -36,6 +37,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(router)
     app.include_router(router_novas)
+    app.include_router(router_projetos)
     app.include_router(router_agenda)
     PASTA_MIDIA.mkdir(parents=True, exist_ok=True)
     PASTA_QUADROS.mkdir(parents=True, exist_ok=True)
