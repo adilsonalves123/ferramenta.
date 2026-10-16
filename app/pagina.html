@@ -32,6 +32,7 @@
       font-size: 14px;
     }
     button, input, textarea { font-family: inherit; }
+    [hidden] { display: none !important; }
     main { margin: 0; padding: 0; }
     #tarefa {
       max-width: 680px;
@@ -418,16 +419,20 @@
     button.atalho[data-objetivo="gancho de venda"] i { color: #d97706; }
     button.atalho[data-objetivo="viral"] i { color: #e11d48; }
     .conta-nota { margin: 8px 10px 0; }
+    #alternar-paginas span { flex: 1; }
+    #alternar-paginas i:last-child { margin-left: auto; font-size: 11px; }
     #adicionar-projeto { margin-top: 8px; }
     .pagina-projetos {
-      width: min(1100px, calc(100% - 32px));
-      min-height: calc(100vh - 32px);
-      margin: 16px auto;
+      position: fixed;
+      inset: 16px;
+      z-index: 30;
+      width: auto;
+      margin: 0;
       background: var(--papel);
       border: 1px solid var(--linha);
       border-radius: 16px;
       box-shadow: var(--sombra);
-      overflow: hidden;
+      overflow: auto;
     }
     .pagina-projetos[hidden] { display: none; }
     .topo-projetos {
@@ -560,6 +565,7 @@
           <button class="atalho" type="button" id="ligar-facebook"><i class="fa-brands fa-facebook"></i><span id="estado-facebook">Facebook desligado</span></button>
         </div>
         <p class="nota conta-nota" id="nota-contas">O Facebook pede a Página para publicar o texto.</p>
+        <button class="atalho" type="button" id="alternar-paginas" hidden><i class="fa-brands fa-facebook"></i><span id="rotulo-paginas">Páginas</span><i class="fa-solid fa-chevron-down" id="seta-paginas"></i></button>
         <div class="atalhos" id="paginas-facebook" hidden></div>
         <p class="secao">Ferramentas</p>
         <div class="atalhos">
@@ -1003,6 +1009,7 @@
       document.getElementById("tarefa").hidden = true;
       document.getElementById("pagina-projetos").hidden = false;
       vistaProjetos(qual);
+      window.scrollTo(0, 0);
     }
 
     async function mostrarGaleria() {
@@ -1338,19 +1345,34 @@
       desenharSemana();
     });
 
-    async function mostrarPaginas() {
+    let paginasAbertas = new URLSearchParams(location.search).get("contas") === "escolher";
+
+    function aplicarListaPaginas() {
+      const lugar = document.getElementById("paginas-facebook");
+      const seta = document.getElementById("seta-paginas");
+      lugar.hidden = !paginasAbertas || !lugar.childElementCount;
+      seta.className = paginasAbertas ? "fa-solid fa-chevron-up" : "fa-solid fa-chevron-down";
+    }
+
+    async function mostrarPaginas(acao) {
       const lugar = document.getElementById("paginas-facebook");
       const notaContas = document.getElementById("nota-contas");
+      const alternar = document.getElementById("alternar-paginas");
       const resposta = await fetch("/contas/facebook/paginas");
       const dados = await resposta.json();
       const paginas = dados.paginas || [];
       lugar.innerHTML = "";
       if (!paginas.length) {
+        alternar.hidden = true;
         lugar.hidden = true;
         return;
       }
-      lugar.hidden = false;
-      if (notaContas) notaContas.textContent = "Clique na Página que vai receber os posts.";
+      alternar.hidden = false;
+      if (acao === "fechar") paginasAbertas = false;
+      if (!dados.escolhida) paginasAbertas = true;
+      const escolhida = paginas.find((pagina) => pagina.id === dados.escolhida);
+      document.getElementById("rotulo-paginas").textContent = escolhida ? escolhida.nome : "Escolher Página";
+      if (notaContas && paginasAbertas) notaContas.textContent = "Clique na Página que vai receber os posts.";
       paginas.forEach((pagina) => {
         const botao = document.createElement("button");
         botao.type = "button";
@@ -1359,6 +1381,7 @@
         botao.addEventListener("click", () => escolherPagina(pagina.id, botao));
         lugar.appendChild(botao);
       });
+      aplicarListaPaginas();
     }
 
     async function escolherPagina(paginaId, botao) {
@@ -1374,7 +1397,7 @@
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         if (notaContas) notaContas.textContent = "Página escolhida: " + (dados.nome || "Facebook") + ".";
         await carregarAgenda();
-        await mostrarPaginas();
+        await mostrarPaginas("fechar");
       } catch (falha) {
         if (notaContas) notaContas.textContent = falha.message || "Não consegui escolher essa Página.";
         botao.disabled = false;
@@ -1389,6 +1412,10 @@
     } else if (avisoConta === "erro" || avisoConta === "cancelado") {
       document.getElementById("nota-agenda").textContent = "A conta não ligou. Tente de novo.";
     }
+    document.getElementById("alternar-paginas").addEventListener("click", () => {
+      paginasAbertas = !paginasAbertas;
+      aplicarListaPaginas();
+    });
     mostrarPaginas().catch(() => {});
 
     document.getElementById("composer").addEventListener("submit", (evento) => {
