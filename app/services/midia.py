@@ -156,10 +156,25 @@ def _quadro(destino: Path) -> None:
         raise RuntimeError("Não consegui criar a imagem do vídeo.")
 
 
+def _duracao_audio(ffmpeg: str, audio: Path) -> str:
+    import re
+
+    consulta = subprocess.run([ffmpeg, "-i", str(audio)], capture_output=True, text=True, timeout=20)
+    achado = re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", consulta.stderr or "")
+    if not achado:
+        return "20"
+    horas, minutos, segundos = achado.groups()
+    total = int(horas) * 3600 + int(minutos) * 60 + float(segundos)
+    if total <= 0:
+        return "20"
+    return f"{total + 0.2:.2f}"
+
+
 def _video(foto: Path, audio: Path, destino: Path) -> None:
     import imageio_ffmpeg
 
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+    duracao = _duracao_audio(ffmpeg, audio)
     comando = [
         ffmpeg,
         "-y",
@@ -171,6 +186,8 @@ def _video(foto: Path, audio: Path, destino: Path) -> None:
         str(foto),
         "-i",
         str(audio),
+        "-t",
+        duracao,
         "-c:v",
         "libx264",
         "-tune",
@@ -181,14 +198,17 @@ def _video(foto: Path, audio: Path, destino: Path) -> None:
         "128k",
         "-pix_fmt",
         "yuv420p",
-        "-shortest",
         "-movflags",
         "+faststart",
         str(destino),
     ]
-    resultado = subprocess.run(comando, capture_output=True, text=True, timeout=60)
+    try:
+        resultado = subprocess.run(comando, capture_output=True, text=True, timeout=90)
+    except subprocess.TimeoutExpired as erro:
+        raise RuntimeError("A montagem do vídeo passou do tempo.") from erro
     if resultado.returncode != 0 or not destino.exists():
-        raise RuntimeError(resultado.stderr[-400:] or "O vídeo não foi montado.")
+        detalhe = (resultado.stderr or "").strip().splitlines()
+        raise RuntimeError(detalhe[-1][:180] if detalhe else "O vídeo não foi montado.")
 
 
 async def montar_midia(
