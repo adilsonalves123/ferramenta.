@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     meta_app_secret: str = ""
     instagram_app_id: str = ""
     instagram_app_secret: str = ""
+    google_places_api_key: str = ""
     app_url: str = "https://ferramenta-ooun.onrender.com"
 
     model_config = SettingsConfigDict(

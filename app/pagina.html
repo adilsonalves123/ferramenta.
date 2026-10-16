@@ -534,6 +534,8 @@
         <div id="campos-radar" hidden>
           <label for="cidade">Cidade</label>
           <input id="cidade" name="cidade" minlength="2" placeholder="Ex.: Belo Horizonte" />
+          <label for="busca-radar">O que buscar</label>
+          <input id="busca-radar" name="busca_radar" minlength="2" placeholder="Ex.: bar, petiscaria" />
           <p class="secao">Onde você quer buscar?</p>
           <div class="redes" id="redes">
             <button class="rede" type="button" data-rede="instagram" aria-pressed="false"><i class="fa-brands fa-instagram" aria-hidden="true"></i>Instagram</button>
@@ -598,8 +600,8 @@
       },
       radar: {
         titulo: "Radar de Clientes B2B",
-        ajuda: "Escolha onde buscar e o tipo de busca. A tela mostra três exemplos fictícios.",
-        botao: "Mapear exemplos",
+        ajuda: "Busca lugares reais no Google Maps. Instagram, TikTok e Facebook ainda não entram nessa busca.",
+        botao: "Buscar no mapa",
       },
     };
 
@@ -723,7 +725,7 @@
       if (acao === "radar") {
         const itens = (dados.empresas || []).map((empresa) => `<li><strong>${texto(empresa.nome)}.</strong> ${texto(empresa.categoria)} em ${texto(empresa.bairro)}. ${texto(empresa.endereco)}. ${texto(empresa.telefone)}. ${texto(empresa.porque)}</li>`).join("");
         const redes = (dados.redes || []).join(", ");
-        corpo += `<article><h2>Exemplos na região</h2><p>${texto(dados.aviso)}</p><p>${texto(dados.tipo_busca)} em ${texto(redes)}.</p><ul>${itens}</ul></article>`;
+        corpo += `<article><h2>Lugares no Google Maps</h2><p>${texto(dados.aviso)}</p><p>${texto(dados.tipo_busca)} em ${texto(redes)}.</p><ul>${itens}</ul></article>`;
       }
       resultado.innerHTML = corpo;
       resultado.hidden = false;
@@ -789,12 +791,24 @@
         if (redesEscolhidas.size === 0) {
           erro.textContent = "Escolha pelo menos uma rede.";
           erro.hidden = false;
+          spinner.hidden = true;
+          enviar.disabled = false;
           return;
         }
         const tags = document.getElementById("tags").value.trim();
         if (tipoBusca() === "determinada" && tags.length < 2) {
           erro.textContent = "Digite as tags da busca determinada.";
           erro.hidden = false;
+          spinner.hidden = true;
+          enviar.disabled = false;
+          return;
+        }
+        const busca = document.getElementById("busca-radar").value.trim();
+        if (tipoBusca() === "geral" && busca.length < 2) {
+          erro.textContent = "Digite o que buscar.";
+          erro.hidden = false;
+          spinner.hidden = true;
+          enviar.disabled = false;
           return;
         }
         caminho = "/radar-clientes";
@@ -803,6 +817,7 @@
           redes: [...redesEscolhidas],
           tipo_busca: tipoBusca(),
           tags,
+          categoria: busca,
         };
       }
       try {
@@ -1150,7 +1165,10 @@
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         await carregarAgenda();
         if (redePost === "Facebook") {
-          nota.textContent = "Marcado às " + hora + ". Sai sozinho quando o Facebook estiver ligado.";
+          const facebookLigado = document.getElementById("estado-facebook").textContent.startsWith("Facebook ·");
+          nota.textContent = facebookLigado
+            ? "Marcado às " + hora + ". Sai na Página depois desse horário, quando o site for aberto."
+            : "Marcado às " + hora + ". Falta ligar o Facebook.";
         } else if (redePost === "Instagram") {
           nota.textContent = "Marcado às " + hora + ". O Instagram publica sozinho quando a conta estiver ligada e o post tiver imagem.";
         } else {

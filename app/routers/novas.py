@@ -28,4 +28,9 @@ async def post_clonar_video(pedido: PedidoClonador) -> ClonagemGerada:
 async def post_radar_clientes(pedido: PedidoRadar) -> RadarResposta:
     if pedido.tipo_busca == "determinada" and len(pedido.tags.strip()) < 2:
         raise HTTPException(status_code=422, detail="Digite as tags da busca determinada.")
-    return mapear(pedido)
+    if pedido.tipo_busca == "geral" and len(pedido.categoria.strip()) < 2:
+        raise HTTPException(status_code=422, detail="Digite o que buscar.")
+    try:
+        return await mapear(pedido)
+    except RuntimeError as erro:
+        raise HTTPException(status_code=502, detail=str(erro)) from erro
