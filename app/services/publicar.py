@@ -160,7 +160,7 @@ def listar_paginas(token: str) -> list[dict]:
     return list(dados.get("data") or [])
 
 
-def trocar_codigo_facebook(codigo: str) -> tuple[str, str, str]:
+def trocar_codigo_facebook(codigo: str) -> str:
     ajustes = get_settings()
     curto = _pedir(
         f"https://graph.facebook.com/{VERSAO}/oauth/access_token",
@@ -183,20 +183,15 @@ def trocar_codigo_facebook(codigo: str) -> tuple[str, str, str]:
             "fb_exchange_token": token_curto,
         },
     )
-    token = str(estendido.get("access_token") or token_curto)
-    paginas = listar_paginas(token)
-    if not paginas:
-        raise RuntimeError("Nenhuma Página do Facebook encontrada nesta conta.")
-    pagina = next(
-        (item for item in paginas if "risca" in str(item.get("name") or "").lower()),
-        paginas[0],
-    )
-    nome = str(pagina.get("name") or "Facebook")
-    pagina_id = str(pagina.get("id") or "")
-    token_pagina = str(pagina.get("access_token") or "")
-    if not pagina_id or not token_pagina:
-        raise RuntimeError("O Facebook não entregou a Página.")
-    return nome, pagina_id, token_pagina
+    return str(estendido.get("access_token") or token_curto)
+
+
+def nomes_paginas(token: str) -> list[dict[str, str]]:
+    return [
+        {"id": str(item.get("id") or ""), "nome": str(item.get("name") or "Página")}
+        for item in listar_paginas(token)
+        if item.get("id")
+    ]
 
 
 def publicar_facebook(pagina_id: str, token: str, texto: str) -> None:
@@ -255,9 +250,41 @@ def perfil_instagram(token: str) -> tuple[str, str]:
 
 
 async def guardar_codigo_facebook(session: AsyncSession, codigo: str) -> None:
-    nome, pagina_id, token = await asyncio.to_thread(trocar_codigo_facebook, codigo)
-    await definir_conta(session, "facebook", nome, pagina_id, token)
+    token = await asyncio.to_thread(trocar_codigo_facebook, codigo)
+    if not token:
+        raise RuntimeError("O Facebook não devolveu o acesso.")
+    await definir_conta(session, "facebook_acesso", "", "", token)
     await session.commit()
+
+
+async def paginas_facebook(session: AsyncSession) -> tuple[list[dict[str, str]], str]:
+    acesso = await _conta(session, "facebook_acesso")
+    escolhida = await _conta(session, "facebook")
+    escolhida_id = escolhida.externo_id if escolhida and escolhida.token else ""
+    if acesso is None or not acesso.token:
+        return [], escolhida_id
+    try:
+        paginas = await asyncio.to_thread(nomes_paginas, acesso.token)
+    except Exception:
+        return [], escolhida_id
+    return paginas, escolhida_id
+
+
+async def escolher_pagina_facebook(session: AsyncSession, pagina_id: str) -> str:
+    acesso = await _conta(session, "facebook_acesso")
+    if acesso is None or not acesso.token:
+        raise RuntimeError("Ligue o Facebook de novo para ver as Páginas.")
+    paginas = await asyncio.to_thread(listar_paginas, acesso.token)
+    pagina = next((item for item in paginas if str(item.get("id") or "") == pagina_id), None)
+    if pagina is None:
+        raise RuntimeError("Essa Página não está nesta conta.")
+    nome = str(pagina.get("name") or "Facebook")
+    token_pagina = str(pagina.get("access_token") or "")
+    if not token_pagina:
+        raise RuntimeError("O Facebook não entregou a Página.")
+    await definir_conta(session, "facebook", nome, pagina_id, token_pagina)
+    await session.commit()
+    return nome
 
 
 async def guardar_codigo(session: AsyncSession, codigo: str) -> None:

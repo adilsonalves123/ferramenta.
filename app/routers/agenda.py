@@ -5,13 +5,15 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database import get_session
 from app.models import Agendamento
-from app.schemas import EstadoRede, ItemAgenda, PedidoAgenda, RespostaAgenda
+from app.schemas import EstadoRede, ItemAgenda, PedidoAgenda, PedidoPagina, RespostaAgenda, RespostaPaginas
 from app.services.publicar import (
+    escolher_pagina_facebook,
     estado_contas,
     facebook_pronta,
     guardar_codigo,
     guardar_codigo_facebook,
     meta_pronta,
+    paginas_facebook,
     publicar_vencidos,
     state_facebook_valido,
     state_valido,
@@ -141,10 +143,29 @@ async def retorno_contas(
             if not state_facebook_valido(state):
                 return RedirectResponse("/?contas=cancelado")
             await guardar_codigo_facebook(session, code)
-        elif state_valido(state):
+            return RedirectResponse("/?contas=escolher")
+        if state_valido(state):
             await guardar_codigo(session, code)
         else:
             return RedirectResponse("/?contas=cancelado")
     except Exception:
         return RedirectResponse("/?contas=erro")
     return RedirectResponse("/?contas=ligado")
+
+
+@router.get("/contas/facebook/paginas", response_model=RespostaPaginas)
+async def get_paginas_facebook(session: AsyncSession = Depends(get_session)) -> RespostaPaginas:
+    paginas, escolhida = await paginas_facebook(session)
+    return RespostaPaginas(paginas=paginas, escolhida=escolhida)
+
+
+@router.post("/contas/facebook/escolher")
+async def post_pagina_facebook(
+    pedido: PedidoPagina,
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        nome = await escolher_pagina_facebook(session, pedido.pagina_id.strip())
+    except RuntimeError as erro:
+        raise HTTPException(status_code=400, detail=str(erro)) from erro
+    return {"nome": nome}

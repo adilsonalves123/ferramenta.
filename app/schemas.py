@@ -123,6 +123,20 @@ class RespostaAgenda(BaseModel):
     meta_pronta: bool
 
 
+class PaginaFacebook(BaseModel):
+    id: str
+    nome: str
+
+
+class RespostaPaginas(BaseModel):
+    paginas: list[PaginaFacebook]
+    escolhida: str = ""
+
+
+class PedidoPagina(BaseModel):
+    pagina_id: str = Field(min_length=2, max_length=40)
+
+
 class RadarResposta(BaseModel):
     cidade: str
     categoria: str

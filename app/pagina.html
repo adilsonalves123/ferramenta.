@@ -462,6 +462,7 @@
           <button class="atalho" type="button" id="ligar-facebook"><i class="fa-brands fa-facebook"></i><span id="estado-facebook">Facebook desligado</span></button>
         </div>
         <p class="nota conta-nota" id="nota-contas">O Facebook pede a Página para publicar o texto.</p>
+        <div class="atalhos" id="paginas-facebook" hidden></div>
         <p class="secao">Ferramentas</p>
         <div class="atalhos">
           <button class="atalho" type="button" data-acao="radar"><i class="fa-solid fa-location-dot"></i>Radar de clientes</button>
@@ -915,7 +916,9 @@
       document.getElementById("ligar-instagram").classList.toggle("ativo", dados.instagram.ligado);
       document.getElementById("ligar-facebook").classList.toggle("ativo", dados.facebook.ligado);
       const notaContas = document.getElementById("nota-contas");
-      if (notaContas) notaContas.textContent = dados.facebook.ligado ? "" : "O Facebook pede a Página para publicar o texto.";
+      if (notaContas && !document.getElementById("paginas-facebook").childElementCount) {
+        notaContas.textContent = dados.facebook.ligado ? "" : "O Facebook pede a Página para publicar o texto.";
+      }
     }
 
     function desenharSemana() {
@@ -1002,12 +1005,58 @@
       desenharSemana();
     });
 
+    async function mostrarPaginas() {
+      const lugar = document.getElementById("paginas-facebook");
+      const notaContas = document.getElementById("nota-contas");
+      const resposta = await fetch("/contas/facebook/paginas");
+      const dados = await resposta.json();
+      const paginas = dados.paginas || [];
+      lugar.innerHTML = "";
+      if (!paginas.length) {
+        lugar.hidden = true;
+        return;
+      }
+      lugar.hidden = false;
+      if (notaContas) notaContas.textContent = "Clique na Página que vai receber os posts.";
+      paginas.forEach((pagina) => {
+        const botao = document.createElement("button");
+        botao.type = "button";
+        botao.className = "atalho" + (dados.escolhida === pagina.id ? " ativo" : "");
+        botao.textContent = pagina.nome;
+        botao.addEventListener("click", () => escolherPagina(pagina.id, botao));
+        lugar.appendChild(botao);
+      });
+    }
+
+    async function escolherPagina(paginaId, botao) {
+      const notaContas = document.getElementById("nota-contas");
+      botao.disabled = true;
+      try {
+        const resposta = await fetch("/contas/facebook/escolher", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pagina_id: paginaId }),
+        });
+        const dados = await resposta.json();
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        if (notaContas) notaContas.textContent = "Página escolhida: " + (dados.nome || "Facebook") + ".";
+        await carregarAgenda();
+        await mostrarPaginas();
+      } catch (falha) {
+        if (notaContas) notaContas.textContent = falha.message || "Não consegui escolher essa Página.";
+        botao.disabled = false;
+      }
+    }
+
     const avisoConta = new URLSearchParams(location.search).get("contas");
     if (avisoConta === "ligado") {
       document.getElementById("nota-agenda").textContent = "Contas ligadas. O que estiver na fila sai no horário marcado.";
+    } else if (avisoConta === "escolher") {
+      document.getElementById("nota-agenda").textContent = "Clique na Página que vai receber os posts.";
     } else if (avisoConta === "erro" || avisoConta === "cancelado") {
       document.getElementById("nota-agenda").textContent = "A conta não ligou. Tente de novo.";
     }
+    mostrarPaginas().catch(() => {});
 
     document.getElementById("composer").addEventListener("submit", (evento) => {
       evento.preventDefault();
