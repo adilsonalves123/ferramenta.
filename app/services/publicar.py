@@ -223,14 +223,31 @@ def publicar_facebook_video(pagina_id: str, token: str, texto: str, video_url: s
     )
 
 
+def _esperar_midia(criacao: str, token: str, o_que: str) -> None:
+    for _ in range(12):
+        time.sleep(2)
+        consulta = urllib.parse.urlencode({"fields": "status_code,status", "access_token": token})
+        estado = _pedir(f"https://graph.instagram.com/{VERSAO}/{criacao}?{consulta}")
+        codigo = str(estado.get("status_code") or "")
+        if codigo == "FINISHED":
+            return
+        if codigo == "ERROR":
+            detalhe = str(estado.get("status") or "").lower()
+            if "ratio" in detalhe or "aspect" in detalhe:
+                raise RuntimeError("O Instagram não aceitou a proporção da foto. Anexe de novo.")
+            raise RuntimeError(f"O Instagram não aceitou {o_que}. Anexe de novo e clique em Criar agora.")
+    raise RuntimeError(f"O Instagram ainda está preparando {o_que}. Tente de novo em instantes.")
+
+
 def publicar_instagram(conta_id: str, token: str, texto: str, imagem_url: str) -> None:
     criado = _pedir(
         f"https://graph.instagram.com/{VERSAO}/{conta_id}/media",
         {"image_url": imagem_url, "caption": texto[:2200], "access_token": token},
     )
-    criacao = criado.get("id", "")
+    criacao = str(criado.get("id") or "")
     if not criacao:
         raise RuntimeError("O Instagram não preparou a imagem.")
+    _esperar_midia(criacao, token, "a foto")
     _pedir(
         f"https://graph.instagram.com/{VERSAO}/{conta_id}/media_publish",
         {"creation_id": criacao, "access_token": token},
@@ -250,17 +267,7 @@ def publicar_instagram_video(conta_id: str, token: str, texto: str, video_url: s
     criacao = str(criado.get("id") or "")
     if not criacao:
         raise RuntimeError("O Instagram não preparou o vídeo.")
-    for _ in range(12):
-        time.sleep(3)
-        consulta = urllib.parse.urlencode({"fields": "status_code", "access_token": token})
-        estado = _pedir(f"https://graph.instagram.com/{VERSAO}/{criacao}?{consulta}")
-        codigo = str(estado.get("status_code") or "")
-        if codigo == "FINISHED":
-            break
-        if codigo == "ERROR":
-            raise RuntimeError("O Instagram não aceitou o vídeo.")
-    else:
-        raise RuntimeError("O Instagram ainda está processando o vídeo. Tente de novo em instantes.")
+    _esperar_midia(criacao, token, "o vídeo")
     _pedir(
         f"https://graph.instagram.com/{VERSAO}/{conta_id}/media_publish",
         {"creation_id": criacao, "access_token": token},
@@ -398,7 +405,10 @@ async def publicar_agora(
     try:
         await asyncio.to_thread(_publicar_rede, rede, conta, texto, imagem_url, video_url)
     except Exception as erro:
-        return "erro", str(erro)[:300]
+        detalhe = str(erro)
+        if "Media ID is not available" in detalhe:
+            detalhe = "O Instagram não conseguiu usar essa foto. Anexe de novo e clique em Criar agora."
+        return "erro", detalhe[:300]
     return "publicado", ""
 
 

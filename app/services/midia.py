@@ -10,6 +10,44 @@ from app.services.openai_campanha import cliente_openai
 PASTA_MIDIA = Path(__file__).resolve().parent.parent.parent / "midia"
 
 
+def _par(valor: int) -> int:
+    return valor if valor % 2 == 0 else valor + 1
+
+
+def _jpeg_instagram(origem: Path, destino: Path) -> None:
+    import re
+
+    import imageio_ffmpeg
+
+    ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+    consulta = subprocess.run([ffmpeg, "-i", str(origem)], capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=20)
+    achado = None
+    for linha in (consulta.stderr or "").splitlines():
+        if "Video:" in linha:
+            achado = re.search(r"(\d+)x(\d+)", linha)
+            if achado:
+                break
+    if achado is None:
+        raise ValueError("A foto não pôde ser lida.")
+    largura, altura = int(achado.group(1)), int(achado.group(2))
+    if min(largura, altura) < 320:
+        fator = 320 / min(largura, altura)
+        largura = int(largura * fator)
+        altura = int(altura * fator)
+    proporcao = largura / altura
+    if proporcao < 0.8:
+        largura_final, altura_final = _par(int(altura * 0.8)), _par(altura)
+    elif proporcao > 1.91:
+        largura_final, altura_final = _par(largura), _par(int(largura / 1.91))
+    else:
+        largura_final, altura_final = _par(largura), _par(altura)
+    filtro = f"scale={largura}:{altura}:flags=lanczos,pad={largura_final}:{altura_final}:(ow-iw)/2:(oh-ih)/2:white"
+    comando = [ffmpeg, "-y", "-i", str(origem), "-vf", filtro, "-q:v", "3", str(destino)]
+    resultado = _executar_ffmpeg(comando)
+    if resultado.returncode != 0 or not destino.exists() or destino.stat().st_size < 100:
+        raise ValueError("A foto não pôde ser preparada para o Instagram.")
+
+
 def salvar_anexo(dados: bytes) -> tuple[str, str]:
     if dados.startswith(b"\xff\xd8\xff"):
         ext, tipo = ".jpg", "foto"
@@ -27,9 +65,17 @@ def salvar_anexo(dados: bytes) -> tuple[str, str]:
     if len(dados) > limite:
         raise ValueError("A foto precisa ter até 8 MB. O vídeo, até 25 MB.")
     ident, pasta = nova_pasta()
-    nome = f"anexo{ext}"
-    (pasta / nome).write_bytes(dados)
-    return f"/midia/{ident}/{nome}", tipo
+    if tipo == "video":
+        nome = f"anexo{ext}"
+        (pasta / nome).write_bytes(dados)
+        return f"/midia/{ident}/{nome}", tipo
+    origem = pasta / f"origem{ext}"
+    origem.write_bytes(dados)
+    try:
+        _jpeg_instagram(origem, pasta / "anexo.jpg")
+    finally:
+        origem.unlink(missing_ok=True)
+    return f"/midia/{ident}/anexo.jpg", "foto"
 
 
 def nova_pasta() -> tuple[str, Path]:
