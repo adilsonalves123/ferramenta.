@@ -743,7 +743,7 @@
       },
       video: {
         titulo: "Vídeo com voz",
-        ajuda: "Escreva o título e o que você quer. O chat sugere a cena e a fala. O vídeo só é montado quando você confirmar.",
+        ajuda: "Escreva o título e o que você quer. O chat escreve a história em três cenas. O vídeo só é montado quando você confirmar.",
         botao: "Continuar",
         espera: "Pensando na sugestão",
       },
@@ -901,12 +901,7 @@
         } else {
           corpo += `<p class="erro" style="display:block">O vídeo não veio.</p>`;
         }
-        corpo += `<article><h2>Fala</h2><ul>
-          <li><strong>Gancho.</strong> ${texto(roteiro.gancho)}</li>
-          <li><strong>Problema.</strong> ${texto(roteiro.problema)}</li>
-          <li><strong>Solução.</strong> ${texto(roteiro.solucao)}</li>
-          <li><strong>CTA.</strong> ${texto(roteiro.cta)}</li>
-        </ul></article>`;
+        corpo += `<article><h2>Roteiro</h2><p>${texto(dados.legenda_redes)}</p></article>`;
       }
       if (acao === "texto") {
         const anuncio = `${dados.titulo_anuncio}\n\n${dados.legenda_redes}`;
@@ -1267,6 +1262,8 @@
             solucao: sugestaoAtual.solucao,
             cta: sugestaoAtual.cta,
             legenda: sugestaoAtual.legenda,
+            roteiro: sugestaoAtual.roteiro || "",
+            cenas: sugestaoAtual.cenas || [],
             foto_base64: fotoCriacao,
           }),
         });

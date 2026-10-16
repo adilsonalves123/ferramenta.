@@ -4,26 +4,29 @@ from app.config import get_settings
 from app.schemas import PedidoSugestao, SugestaoVideo
 from app.services.openai_campanha import cliente_openai
 
-SISTEMA = """Você sugere um vídeo curto em português do Brasil para um pequeno negócio.
-A pessoa já disse o título e o que quer. Entregue uma sugestão concreta, pronta para ela aceitar ou ajustar.
-mensagem: fale direto com a pessoa, em poucas frases. Diga a cena, leia a fala inteira e diga o que aparece na imagem.
+SISTEMA = """Você escreve o roteiro de um vídeo curto como uma história de um dia de trabalho, em português do Brasil.
+A história tem começo, meio e fim: uma pessoa num lugar concreto, fazendo uma tarefa, o aperto aparece na cena, a virada acontece, e a última cena fecha.
+Use só o que a pessoa pediu. Não invente nome de cliente, depoimento, número de vendas, cidade, telefone ou preço.
+Não escreva anúncio dividido em gancho, problema, solução e chamada.
+mensagem: conte a história inteira, em texto corrido, do jeito que será narrada.
 titulo: uma frase curta.
-cena: o que a imagem mostra, sem pessoa posando para a câmera.
-gancho, problema, solucao e cta: a fala, cada parte em uma ou duas frases.
-legenda: o texto curto do post.
-Não invente preço, telefone, cidade ou promessa.
-Se houver transcrição, siga a ordem das ideias e corrija o português, sem copiar frases inteiras.
-Se a pessoa pedir um ajuste, mude a sugestão e diga na mensagem o que mudou."""
+roteiro: o mesmo texto narrado, sem rótulos e sem títulos de cena.
+cenas: exatamente 3. narracao é o trecho falado naquela cena. imagem descreve o que a câmera vê, com ação, objeto e luz. Sem texto na imagem e sem alguém olhando para a câmera.
+legenda: duas ou três frases para o post.
+Se houver transcrição, a história segue os fatos dela e só corrige o português.
+Se pedirem um ajuste, reescreva a história e diga o que mudou."""
+
+
+class CenaTexto(BaseModel):
+    narracao: str
+    imagem: str
 
 
 class SugestaoTexto(BaseModel):
     mensagem: str
     titulo: str
-    cena: str
-    gancho: str
-    problema: str
-    solucao: str
-    cta: str
+    roteiro: str
+    cenas: list[CenaTexto]
     legenda: str
 
 
@@ -57,4 +60,25 @@ async def sugerir_video(pedido: PedidoSugestao) -> SugestaoVideo:
     if mensagem.parsed is None or not mensagem.parsed.mensagem.strip():
         raise ValueError("A sugestão não veio.")
     texto = mensagem.parsed
-    return SugestaoVideo(**texto.model_dump(), transcricao=pedido.transcricao.strip())
+    cenas = [cena for cena in texto.cenas if cena.narracao.strip() and cena.imagem.strip()][:3]
+    if len(cenas) < 3:
+        raise ValueError("A história não veio com as três cenas.")
+    partes = [cena.narracao.strip() for cena in cenas]
+    while len(partes) < 4:
+        partes.append(partes[-1])
+    return SugestaoVideo(
+        mensagem=texto.mensagem.strip(),
+        titulo=texto.titulo.strip() or pedido.nicho.strip(),
+        cena=cenas[0].imagem.strip(),
+        gancho=partes[0],
+        problema=partes[1],
+        solucao=partes[2],
+        cta=partes[3],
+        legenda=texto.legenda.strip(),
+        transcricao=pedido.transcricao.strip(),
+        roteiro=(texto.roteiro.strip() or " ".join(partes[:3]))[:2500],
+        cenas=[
+            {"narracao": cena.narracao.strip()[:800], "imagem": cena.imagem.strip()[:800]}
+            for cena in cenas
+        ],
+    )

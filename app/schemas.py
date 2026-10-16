@@ -89,6 +89,11 @@ class PedidoSugestao(BaseModel):
     mensagens: list[MensagemCriacao] = Field(default_factory=list, max_length=12)
 
 
+class CenaHistoria(BaseModel):
+    narracao: str = Field(min_length=2, max_length=800)
+    imagem: str = Field(min_length=2, max_length=800)
+
+
 class SugestaoVideo(BaseModel):
     mensagem: str
     titulo: str
@@ -99,6 +104,8 @@ class SugestaoVideo(BaseModel):
     cta: str
     legenda: str
     transcricao: str = ""
+    roteiro: str = ""
+    cenas: list[CenaHistoria] = Field(default_factory=list)
 
 
 class PedidoVideoConfirmado(BaseModel):
@@ -114,6 +121,8 @@ class PedidoVideoConfirmado(BaseModel):
     cta: str = Field(min_length=2, max_length=500)
     legenda: str = Field(default="", max_length=1000)
     foto_base64: str = Field(default="", max_length=6_000_000)
+    roteiro: str = Field(default="", max_length=2500)
+    cenas: list[CenaHistoria] = Field(default_factory=list, max_length=4)
 
 
 class PedidoRadar(BaseModel):

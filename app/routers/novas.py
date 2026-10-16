@@ -15,7 +15,7 @@ from app.schemas import (
     SugestaoVideo,
 )
 from app.services.clonador import clonar_video, ouvir_video
-from app.services.midia import montar_midia
+from app.services.midia import _referencia, montar_historia, montar_midia
 from app.services.radar import mapear
 from app.services.sugestao import sugerir_video
 
@@ -118,29 +118,42 @@ async def post_sugerir_video(pedido: PedidoSugestao) -> SugestaoVideo:
 
 @router.post("/confirmar-video", response_model=CampanhaCompleta)
 async def post_confirmar_video(pedido: PedidoVideoConfirmado) -> CampanhaCompleta:
+    cenas = [(cena.narracao.strip(), cena.imagem.strip()) for cena in pedido.cenas if cena.narracao.strip() and cena.imagem.strip()]
+    fala = pedido.roteiro.strip() or " ".join(narracao for narracao, _ in cenas) or " ".join(
+        parte for parte in (pedido.gancho, pedido.problema, pedido.solucao, pedido.cta) if parte.strip()
+    )
+    partes = [narracao for narracao, _ in cenas] or [pedido.gancho, pedido.problema, pedido.solucao, pedido.cta]
+    while len(partes) < 4:
+        partes.append(partes[-1])
     gerada = CampanhaGerada(
         titulo_anuncio=pedido.titulo.strip(),
-        legenda_redes=pedido.legenda.strip(),
+        legenda_redes=fala.strip(),
         roteiro_video=RoteiroVideo(
-            gancho=pedido.gancho.strip(),
-            problema=pedido.problema.strip(),
-            solucao=pedido.solucao.strip(),
-            cta=pedido.cta.strip(),
+            gancho=partes[0].strip(),
+            problema=partes[1].strip(),
+            solucao=partes[2].strip(),
+            cta=partes[3].strip(),
         ),
         google_meu_negocio=GoogleMeuNegocio(nome_otimizado="", categoria="", descricao_seo=""),
     )
-    produto = f"{pedido.cena.strip()}. {pedido.produto.strip()}"[:200]
     try:
-        midia = await montar_midia(
-            PedidoCampanha(
-                nicho=pedido.nicho.strip(),
-                produto=produto,
-                acao="video",
-                foto_base64=pedido.foto_base64,
-            ),
-            gerada,
-            "video",
-        )
+        if cenas:
+            referencia, tipo = _referencia(
+                PedidoCampanha(nicho=pedido.nicho, produto=pedido.produto[:200], foto_base64=pedido.foto_base64)
+            )
+            midia = await montar_historia(pedido.nicho.strip(), cenas[:3], fala.strip(), referencia, tipo)
+        else:
+            produto = f"{pedido.cena.strip()}. {pedido.produto.strip()}"[:200]
+            midia = await montar_midia(
+                PedidoCampanha(
+                    nicho=pedido.nicho.strip(),
+                    produto=produto,
+                    acao="video",
+                    foto_base64=pedido.foto_base64,
+                ),
+                gerada,
+                "video",
+            )
     except Exception as erro:
         texto = str(erro)
         if "insufficient_quota" in texto or "credit_balance_exhausted" in texto:
