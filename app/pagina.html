@@ -418,40 +418,104 @@
     button.atalho[data-objetivo="gancho de venda"] i { color: #d97706; }
     button.atalho[data-objetivo="viral"] i { color: #e11d48; }
     .conta-nota { margin: 8px 10px 0; }
-    #painel-projetos { flex: 1; min-height: 0; overflow: auto; padding-bottom: 24px; }
-    #painel-projetos[hidden] { display: none; }
-    .grade-capas, .grade-salvos {
+    #adicionar-projeto { margin-top: 8px; }
+    .pagina-projetos {
+      width: min(1100px, calc(100% - 32px));
+      min-height: calc(100vh - 32px);
+      margin: 16px auto;
+      background: var(--papel);
+      border: 1px solid var(--linha);
+      border-radius: 16px;
+      box-shadow: var(--sombra);
+      overflow: hidden;
+    }
+    .pagina-projetos[hidden] { display: none; }
+    .topo-projetos {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 18px 28px;
+      border-bottom: 1px solid var(--linha);
+    }
+    .topo-projetos h1 { margin: 0; font-size: 22px; letter-spacing: -0.03em; }
+    .escolha-projetos {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      padding: 12px 20px 0;
+      gap: 22px;
+      padding: 48px 40px;
     }
-    button.capa, button.salvo {
+    button.porta {
+      min-height: 240px;
       border: 1px solid var(--linha);
+      border-radius: 20px;
       background: white;
-      border-radius: 12px;
-      overflow: hidden;
-      padding: 0;
       text-align: left;
+      padding: 28px;
       cursor: pointer;
       font: inherit;
       color: var(--tinta);
+      box-shadow: 0 10px 30px rgba(16, 24, 40, 0.05);
     }
-    button.capa img, button.salvo img, button.salvo video {
+    button.porta:first-child { background: linear-gradient(180deg, #fff, #eef2ff); }
+    button.porta:last-child { background: linear-gradient(180deg, #fff, #fff7ed); }
+    button.porta span { display: block; font-size: 28px; font-weight: 600; letter-spacing: -0.03em; }
+    button.porta small { display: block; margin-top: 10px; color: var(--mudo); font-size: 15px; line-height: 1.45; }
+    .vista-projetos { padding: 28px 40px 48px; }
+    .vista-projetos[hidden] { display: none; }
+    .grade-capas, .galeria {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 22px;
+    }
+    button.capa, article.peca {
+      border: 0;
+      background: white;
+      border-radius: 18px;
+      overflow: hidden;
+      padding: 0;
+      text-align: left;
+      font: inherit;
+      color: var(--tinta);
+      box-shadow: 0 12px 32px rgba(16, 24, 40, 0.08);
+    }
+    button.capa { cursor: pointer; }
+    button.capa img, .peca-midia img, .peca-midia video {
       width: 100%;
-      height: 110px;
+      height: 220px;
       object-fit: cover;
       display: block;
-      background: #e8eaef;
+      background: #eceff3;
     }
-    button.capa span, button.salvo strong {
+    button.capa span, .peca-texto strong {
       display: block;
-      padding: 8px 10px 10px;
-      font-size: 13px;
+      padding: 14px 16px 16px;
+      font-size: 16px;
       font-weight: 600;
     }
-    button.salvo small { display: block; padding: 0 10px 10px; color: var(--mudo); font-size: 12px; }
-    #adicionar-projeto { margin-top: 8px; }
+    .peca-midia {
+      height: 240px;
+      background: linear-gradient(160deg, #eef2ff, #fff7ed);
+    }
+    .peca-texto { padding: 14px 16px 16px; }
+    .peca-texto strong { padding: 0; }
+    .peca-texto small { display: block; margin-top: 4px; color: var(--mudo); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .peca-texto button {
+      margin-top: 12px;
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 8px;
+      border: 1px solid var(--linha);
+      background: white;
+      font: inherit;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .galeria-vazia { grid-column: 1 / -1; text-align: center; color: var(--mudo); padding: 64px 16px; font-size: 16px; }
+    @media (max-width: 800px) {
+      .escolha-projetos, .grade-capas, .galeria { grid-template-columns: 1fr; padding: 20px; }
+      .vista-projetos { padding: 20px; }
+    }
   </style>
 </head>
 <body>
@@ -514,12 +578,6 @@
           <textarea id="pedido" required minlength="2" placeholder="Descreva a publicação. Ex.: interação para donos de bar"></textarea>
           <button class="principal" type="submit" id="enviar-chat">Gerar</button>
         </form>
-        <div id="painel-projetos" hidden>
-          <div class="coluna-topo">Projetos</div>
-          <div class="grade-capas" id="capas-projetos"></div>
-          <p class="secao">Salvos</p>
-          <div class="grade-salvos" id="lista-projetos"></div>
-        </div>
       </section>
       <aside class="lado">
         <p class="secao">Prévia · <span class="canal-nome" id="canal-previa">Instagram</span></p>
@@ -538,7 +596,6 @@
             <p id="legenda-previa">A legenda aparece aqui, no formato do post, depois que você gerar.</p>
           </div>
           <button class="atalho" type="button" id="adicionar-projeto">Adicionar projeto</button>
-          <div class="atalhos" id="lista-adicionar" hidden></div>
         </div>
         <div class="cartao-agenda">
           <p class="secao">Agenda</p>
@@ -552,6 +609,23 @@
           <p class="nota" id="nota-agenda">Escolha o dia e o horário. O post sai sozinho nesse momento, depois que Instagram e Facebook estiverem ligados.</p>
         </div>
       </aside>
+    </section>
+
+    <section id="pagina-projetos" class="pagina-projetos" hidden>
+      <header class="topo-projetos">
+        <button class="voltar" type="button" id="voltar-projetos">Voltar</button>
+        <h1 id="titulo-projetos">Projetos</h1>
+      </header>
+      <div id="escolha-projetos" class="escolha-projetos">
+        <button class="porta" type="button" id="ir-mais-projetos"><span>Mais projetos</span><small>Abre os quadros para criar anúncio, foto ou vídeo.</small></button>
+        <button class="porta" type="button" id="ir-meus-projetos"><span>Meus projetos</span><small>A galeria do que você já gerou.</small></button>
+      </div>
+      <div id="mais-projetos" class="vista-projetos" hidden>
+        <div class="grade-capas" id="capas-projetos"></div>
+      </div>
+      <div id="meus-projetos" class="vista-projetos" hidden>
+        <div class="galeria" id="lista-projetos"></div>
+      </div>
     </section>
 
     <section id="tarefa" hidden>
@@ -702,6 +776,7 @@
       erro.hidden = true;
       resultado.hidden = true;
       spinner.hidden = true;
+      document.getElementById("pagina-projetos").hidden = true;
       menu.hidden = true;
       tarefa.hidden = false;
       atualizarTags();
@@ -869,8 +944,8 @@
         imagem.alt = projeto.titulo;
         lugar.replaceWith(imagem);
       }
-      document.getElementById("lista-adicionar").hidden = true;
       document.getElementById("nota-agenda").textContent = "Projeto na prévia. Escolha o dia e o horário.";
+      fecharPaginaProjetos();
     }
 
     async function listarProjetos() {
@@ -880,37 +955,65 @@
     }
 
     function cartaoSalvo(projeto) {
-      const botao = document.createElement("button");
-      botao.type = "button";
-      botao.className = "salvo";
-      if (projeto.imagem_url) {
+      const peca = document.createElement("article");
+      peca.className = "peca";
+      const midia = document.createElement("div");
+      midia.className = "peca-midia";
+      if (projeto.video_url) {
+        const video = document.createElement("video");
+        video.src = projeto.video_url;
+        video.controls = true;
+        midia.appendChild(video);
+      } else if (projeto.imagem_url) {
         const imagem = document.createElement("img");
         imagem.src = projeto.imagem_url;
         imagem.alt = "";
-        botao.appendChild(imagem);
+        midia.appendChild(imagem);
       }
+      const textoPeca = document.createElement("div");
+      textoPeca.className = "peca-texto";
       const nome = document.createElement("strong");
       nome.textContent = projeto.titulo;
       const tipo = document.createElement("small");
       tipo.textContent = projeto.tipo;
-      botao.append(nome, tipo);
-      botao.addEventListener("click", () => colocarNaPrevia(projeto));
-      return botao;
+      const usar = document.createElement("button");
+      usar.type = "button";
+      usar.textContent = "Usar na prévia";
+      usar.addEventListener("click", () => colocarNaPrevia(projeto));
+      textoPeca.append(nome, tipo, usar);
+      peca.append(midia, textoPeca);
+      return peca;
     }
 
-    async function mostrarProjetos() {
-      desenharCapas();
-      document.getElementById("fio").hidden = true;
-      document.getElementById("composer").hidden = true;
-      document.getElementById("topo-conversa").hidden = true;
-      document.getElementById("painel-projetos").hidden = false;
+    function vistaProjetos(qual) {
+      document.getElementById("escolha-projetos").hidden = qual !== "escolha";
+      document.getElementById("mais-projetos").hidden = qual !== "mais";
+      document.getElementById("meus-projetos").hidden = qual !== "meus";
+      const titulos = { escolha: "Projetos", mais: "Mais projetos", meus: "Meus projetos" };
+      document.getElementById("titulo-projetos").textContent = titulos[qual];
+    }
+
+    function fecharPaginaProjetos() {
+      document.getElementById("pagina-projetos").hidden = true;
+      document.getElementById("menu").hidden = false;
+    }
+
+    function abrirPaginaProjetos(qual) {
+      document.getElementById("menu").hidden = true;
+      document.getElementById("tarefa").hidden = true;
+      document.getElementById("pagina-projetos").hidden = false;
+      vistaProjetos(qual);
+    }
+
+    async function mostrarGaleria() {
+      abrirPaginaProjetos("meus");
       const lista = document.getElementById("lista-projetos");
       lista.innerHTML = "";
       const projetos = await listarProjetos();
       if (!projetos.length) {
         const vazio = document.createElement("p");
-        vazio.className = "nota";
-        vazio.textContent = "Nada gerado ainda. Escolha uma capa.";
+        vazio.className = "galeria-vazia";
+        vazio.textContent = "Nenhum projeto gerado ainda.";
         lista.appendChild(vazio);
         return;
       }
@@ -918,50 +1021,40 @@
     }
 
     document.getElementById("abrir-projetos").addEventListener("click", () => {
-      const painel = document.getElementById("painel-projetos");
-      if (!painel.hidden) {
-        painel.hidden = true;
-        document.getElementById("fio").hidden = false;
-        document.getElementById("composer").hidden = false;
-        document.getElementById("topo-conversa").hidden = false;
-        return;
-      }
-      mostrarProjetos().catch(() => {});
+      abrirPaginaProjetos("escolha");
     });
 
-    document.getElementById("adicionar-projeto").addEventListener("click", async () => {
-      const lista = document.getElementById("lista-adicionar");
-      if (!lista.hidden) {
-        lista.hidden = true;
+    document.getElementById("ir-mais-projetos").addEventListener("click", () => {
+      desenharCapas();
+      vistaProjetos("mais");
+    });
+
+    document.getElementById("ir-meus-projetos").addEventListener("click", () => {
+      mostrarGaleria().catch(() => {});
+    });
+
+    document.getElementById("voltar-projetos").addEventListener("click", () => {
+      const escolha = document.getElementById("escolha-projetos");
+      if (escolha.hidden) {
+        vistaProjetos("escolha");
         return;
       }
-      lista.innerHTML = "";
-      const projetos = await listarProjetos();
-      if (!projetos.length) {
-        const vazio = document.createElement("p");
-        vazio.className = "nota";
-        vazio.textContent = "Nenhum projeto salvo.";
-        lista.appendChild(vazio);
-      } else {
-        projetos.forEach((projeto) => {
-          const botao = document.createElement("button");
-          botao.type = "button";
-          botao.className = "atalho";
-          botao.textContent = projeto.titulo;
-          botao.addEventListener("click", () => colocarNaPrevia(projeto));
-          lista.appendChild(botao);
-        });
-      }
-      lista.hidden = false;
+      fecharPaginaProjetos();
+    });
+
+    document.getElementById("adicionar-projeto").addEventListener("click", () => {
+      mostrarGaleria().catch(() => {});
     });
 
     document.getElementById("voltar").addEventListener("click", () => {
       tarefa.hidden = true;
-      menu.hidden = false;
       if (veioDeProjetos) {
         veioDeProjetos = false;
-        mostrarProjetos();
+        desenharCapas();
+        abrirPaginaProjetos("mais");
+        return;
       }
+      menu.hidden = false;
     });
 
     document.querySelectorAll(".rede").forEach((botao) => {
