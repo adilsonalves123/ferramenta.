@@ -1,9 +1,10 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
@@ -43,6 +44,21 @@ def create_app() -> FastAPI:
     PASTA_QUADROS.mkdir(parents=True, exist_ok=True)
     app.mount("/midia", StaticFiles(directory=PASTA_MIDIA), name="midia")
     app.mount("/quadros", StaticFiles(directory=PASTA_QUADROS), name="quadros")
+
+    @app.exception_handler(RequestValidationError)
+    async def pedido_invalido(_request: Request, exc: RequestValidationError) -> JSONResponse:
+        erros = exc.errors()
+        primeiro = erros[0] if erros else {}
+        loc = primeiro.get("loc") or ()
+        campo = str(loc[-1]) if loc else ""
+        tipo = str(primeiro.get("type") or "")
+        if tipo == "string_too_long" and campo in {"produto", "produto_servico"}:
+            detalhe = "O texto de O que você quer ficou longo demais. Encurte e clique em Continuar de novo."
+        elif tipo == "string_too_short" and campo in {"nicho", "nicho_negocio", "produto", "produto_servico"}:
+            detalhe = "Escreva o título e o que você quer, com pelo menos algumas palavras."
+        else:
+            detalhe = "O pedido não passou. Confira o título e o que você quer."
+        return JSONResponse(status_code=422, content={"detail": detalhe})
 
     @app.get("/", response_class=HTMLResponse, include_in_schema=False)
     async def inicio() -> str:

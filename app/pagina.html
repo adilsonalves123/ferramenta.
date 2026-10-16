@@ -808,6 +808,14 @@
 
     function mensagemErro(dados) {
       if (typeof dados?.detail === "string") return dados.detail;
+      const item = Array.isArray(dados?.detail) ? dados.detail[0] : null;
+      const campo = Array.isArray(item?.loc) ? String(item.loc[item.loc.length - 1] || "") : "";
+      if (item?.type === "string_too_long" && (campo === "produto" || campo === "produto_servico")) {
+        return "O texto de O que você quer ficou longo demais. Encurte e clique em Continuar de novo.";
+      }
+      if (item?.type === "string_too_short" && (campo === "nicho" || campo === "produto" || campo === "nicho_negocio" || campo === "produto_servico")) {
+        return "Escreva o título e o que você quer, com pelo menos algumas palavras.";
+      }
       return "Não foi possível gerar agora.";
     }
 

@@ -83,7 +83,7 @@ class PedidoSugestao(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     nicho: str = Field(min_length=2, max_length=120, validation_alias=AliasChoices("nicho", "nicho_negocio"))
-    produto: str = Field(min_length=2, max_length=400, validation_alias=AliasChoices("produto", "produto_servico"))
+    produto: str = Field(min_length=2, max_length=4000, validation_alias=AliasChoices("produto", "produto_servico"))
     origem: Literal["video", "clonador"] = "video"
     transcricao: str = Field(default="", max_length=8000)
     mensagens: list[MensagemCriacao] = Field(default_factory=list, max_length=12)
@@ -118,7 +118,7 @@ class PedidoVideoConfirmado(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     nicho: str = Field(min_length=2, max_length=120, validation_alias=AliasChoices("nicho", "nicho_negocio"))
-    produto: str = Field(min_length=2, max_length=400, validation_alias=AliasChoices("produto", "produto_servico"))
+    produto: str = Field(min_length=2, max_length=4000, validation_alias=AliasChoices("produto", "produto_servico"))
     titulo: str = Field(min_length=2, max_length=200)
     cena: str = Field(min_length=2, max_length=500)
     gancho: str = Field(min_length=2, max_length=500)
