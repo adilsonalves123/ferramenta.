@@ -371,14 +371,31 @@ async def montar_historia(
                 referencia if indice == 0 else None,
                 tipo if indice == 0 else None,
                 "gpt-image-1",
-                "medium",
+                "low",
             )
             return destino
         except Exception as erro:
             avisos.append(_aviso(f"A cena {indice + 1} não saiu", erro))
             return None
 
-    prontas = await asyncio.gather(*(uma_cena(indice, descricao) for indice, (_, descricao) in enumerate(cenas)))
+    audio = pasta / "audio.mp3"
+    video = pasta / "video.mp4"
+
+    async def narrar() -> None:
+        await _audio(
+            fala,
+            audio,
+            "Narração de uma história curta em português do Brasil. Voz calma, próxima, como quem conta o que aconteceu. Sem tom de comercial.",
+        )
+
+    prontas, audio_resultado = await asyncio.gather(
+        asyncio.gather(*(uma_cena(indice, descricao) for indice, (_, descricao) in enumerate(cenas))),
+        narrar(),
+        return_exceptions=True,
+    )
+    if isinstance(prontas, Exception):
+        avisos.append(_aviso("As cenas não saíram", prontas))
+        prontas = []
     fotos = [foto for foto in prontas if foto is not None and foto.exists()]
     if not fotos:
         quadro = pasta / "cena-0.png"
@@ -387,17 +404,10 @@ async def montar_historia(
             fotos = [quadro]
         except Exception as erro:
             avisos.append(_aviso("A imagem do vídeo não saiu", erro))
-
-    audio = pasta / "audio.mp3"
-    video = pasta / "video.mp4"
-    try:
-        await _audio(
-            fala,
-            audio,
-            "Narração de uma história curta em português do Brasil. Voz calma, próxima, como quem conta o que aconteceu. Sem tom de comercial.",
-        )
-    except Exception as erro:
-        avisos.append(_aviso("O áudio não saiu", erro))
+    if isinstance(audio_resultado, Exception):
+        avisos.append(_aviso("O áudio não saiu", audio_resultado))
+        audio = None
+    elif not audio.exists():
         audio = None
 
     if audio is not None and fotos:

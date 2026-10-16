@@ -811,6 +811,18 @@
       return "Não foi possível gerar agora.";
     }
 
+    async function lerResposta(resposta) {
+      const bruto = await resposta.text();
+      if (!bruto.trim()) {
+        throw new Error("A resposta veio vazia. A montagem passou do tempo. Clique em Pode gerar de novo.");
+      }
+      try {
+        return JSON.parse(bruto);
+      } catch {
+        throw new Error("Não consegui ler a resposta do servidor.");
+      }
+    }
+
     const redesEscolhidas = new Set();
 
     function exigir(id, ativo) {
@@ -1257,7 +1269,7 @@
           mensagens: mensagensCriacao,
         }),
       });
-      const dados = await resposta.json();
+      const dados = await lerResposta(resposta);
       if (!resposta.ok) throw new Error(mensagemErro(dados));
       return dados;
     }
@@ -1319,7 +1331,7 @@
             foto_base64: fotoCriacao,
           }),
         });
-        const dados = await resposta.json();
+        const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         acao = "video";
         mostrarResultado(dados);
@@ -1420,7 +1432,7 @@
             body: JSON.stringify(corpo),
           });
         }
-        const dados = await resposta.json();
+        const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         mostrarResultado(dados);
       } catch (falha) {
@@ -1557,7 +1569,7 @@
 
     async function carregarAgenda() {
       const resposta = await fetch("/agenda");
-      const dados = await resposta.json();
+      const dados = await lerResposta(resposta);
       if (!resposta.ok) throw new Error(mensagemErro(dados));
       agendaItens = dados.itens || [];
       pintarContas(dados);
@@ -1599,7 +1611,7 @@
             acao: "texto",
           }),
         });
-        const dados = await resposta.json();
+        const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         postAtual = dados;
         mostrarPrevia(dados);
@@ -1630,7 +1642,7 @@
       const notaContas = document.getElementById("nota-contas");
       const alternar = document.getElementById("alternar-paginas");
       const resposta = await fetch("/contas/facebook/paginas");
-      const dados = await resposta.json();
+      const dados = await lerResposta(resposta);
       const paginas = dados.paginas || [];
       lugar.innerHTML = "";
       if (!paginas.length) {
@@ -1664,7 +1676,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pagina_id: paginaId }),
         });
-        const dados = await resposta.json();
+        const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         if (notaContas) notaContas.textContent = "Página escolhida: " + (dados.nome || "Facebook") + ".";
         await carregarAgenda();
@@ -1778,7 +1790,7 @@
             imagem_url: imagemProjeto,
           }),
         });
-        const dados = await resposta.json();
+        const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         await carregarAgenda();
         if (redePost === "Facebook") {
