@@ -55,7 +55,7 @@ def create_app() -> FastAPI:
         campo = str(loc[-1]) if loc else ""
         tipo = str(primeiro.get("type") or "")
         if tipo == "string_too_long" and campo in {"produto", "produto_servico"}:
-            detalhe = "O texto de O que você quer ficou longo demais. Encurte e clique em Continuar de novo."
+            detalhe = "O texto ficou longo demais. Encurte um pouco e tente de novo."
         elif tipo == "string_too_short" and campo in {"nicho", "nicho_negocio", "produto", "produto_servico"}:
             detalhe = "Escreva o título e o que você quer, com pelo menos algumas palavras."
         else:

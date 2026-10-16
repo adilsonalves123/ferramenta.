@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -15,6 +15,7 @@ from app.schemas import (
     RespostaPaginas,
     RespostaPublicacao,
 )
+from app.services.midia import salvar_anexo
 from app.services.publicar import (
     escolher_pagina_facebook,
     estado_contas,
@@ -73,6 +74,18 @@ def _estado(conta) -> EstadoRede:
     return EstadoRede(ligado=True, nome=conta.nome)
 
 
+@router.post("/anexo")
+async def post_anexo(arquivo: UploadFile = File()) -> dict[str, str]:
+    dados = await arquivo.read(25_000_001)
+    if len(dados) > 25_000_000:
+        raise HTTPException(status_code=422, detail="O vídeo precisa ter até 25 MB.")
+    try:
+        url, tipo = salvar_anexo(dados)
+    except ValueError as erro:
+        raise HTTPException(status_code=422, detail=str(erro)) from erro
+    return {"url": url, "tipo": tipo}
+
+
 @router.get("/agenda", response_model=RespostaAgenda)
 async def get_agenda(session: AsyncSession = Depends(get_session)) -> RespostaAgenda:
     await publicar_vencidos(session)
@@ -105,6 +118,7 @@ async def post_agenda(
             titulo=pedido.titulo.strip(),
             legenda=pedido.legenda.strip(),
             imagem_url=pedido.imagem_url.strip()[:500],
+            video_url=pedido.video_url.strip()[:500],
         )
         session.add(registro)
     else:
@@ -115,12 +129,13 @@ async def post_agenda(
         registro.status = "na_fila"
         registro.detalhe = ""
         registro.imagem_url = pedido.imagem_url.strip()[:500]
+        registro.video_url = pedido.video_url.strip()[:500]
     contas = await estado_contas(session)
     if registro.rede == "Facebook" and _estado(contas["facebook"]).ligado is False:
         registro.detalhe = "Falta ligar a conta."
-    elif registro.rede == "Instagram" and not registro.imagem_url:
+    elif registro.rede == "Instagram" and not registro.imagem_url and not registro.video_url:
         registro.status = "falta_imagem"
-        registro.detalhe = "Falta ligar a conta e a imagem do post." if not _estado(contas["instagram"]).ligado else "Falta a imagem do post."
+        registro.detalhe = "Falta ligar a conta e a foto ou o vídeo do post." if not _estado(contas["instagram"]).ligado else "Falta a foto ou o vídeo do post."
     elif registro.rede == "Instagram" and _estado(contas["instagram"]).ligado is False:
         registro.detalhe = "Falta ligar a conta."
     elif registro.rede not in ("Instagram", "Facebook"):
@@ -142,6 +157,7 @@ async def post_publicar_agora(
         pedido.titulo,
         pedido.legenda,
         pedido.imagem_url,
+        pedido.video_url,
     )
     return RespostaPublicacao(status=status, detalhe=detalhe)
 

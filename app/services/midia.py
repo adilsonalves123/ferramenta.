@@ -10,6 +10,28 @@ from app.services.openai_campanha import cliente_openai
 PASTA_MIDIA = Path(__file__).resolve().parent.parent.parent / "midia"
 
 
+def salvar_anexo(dados: bytes) -> tuple[str, str]:
+    if dados.startswith(b"\xff\xd8\xff"):
+        ext, tipo = ".jpg", "foto"
+    elif dados.startswith(b"\x89PNG\r\n\x1a\n"):
+        ext, tipo = ".png", "foto"
+    elif len(dados) > 12 and dados.startswith(b"RIFF") and dados[8:12] == b"WEBP":
+        ext, tipo = ".webp", "foto"
+    elif len(dados) > 12 and dados[4:8] == b"ftyp":
+        ext, tipo = ".mp4", "video"
+    elif dados.startswith(b"\x1a\x45\xdf\xa3"):
+        ext, tipo = ".webm", "video"
+    else:
+        raise ValueError("Envie uma foto JPG, PNG ou WebP, ou um vídeo MP4.")
+    limite = 25_000_000 if tipo == "video" else 8_000_000
+    if len(dados) > limite:
+        raise ValueError("A foto precisa ter até 8 MB. O vídeo, até 25 MB.")
+    ident, pasta = nova_pasta()
+    nome = f"anexo{ext}"
+    (pasta / nome).write_bytes(dados)
+    return f"/midia/{ident}/{nome}", tipo
+
+
 def nova_pasta() -> tuple[str, Path]:
     PASTA_MIDIA.mkdir(parents=True, exist_ok=True)
     ident = uuid.uuid4().hex

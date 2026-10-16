@@ -14,7 +14,7 @@ class PedidoCampanha(BaseModel):
     )
     produto: str = Field(
         min_length=2,
-        max_length=200,
+        max_length=4000,
         validation_alias=AliasChoices("produto", "produto_servico"),
         examples=["combo de cerveja gelada no happy hour"],
     )
@@ -183,6 +183,7 @@ class PedidoPublicarAgora(BaseModel):
     titulo: str = Field(min_length=1, max_length=300)
     legenda: str = Field(min_length=1)
     imagem_url: str = Field(default="", max_length=500)
+    video_url: str = Field(default="", max_length=500)
 
 
 class RespostaPublicacao(BaseModel):
@@ -197,6 +198,7 @@ class PedidoAgenda(BaseModel):
     titulo: str = Field(min_length=1, max_length=300)
     legenda: str = Field(min_length=1)
     imagem_url: str = Field(default="", max_length=500)
+    video_url: str = Field(default="", max_length=500)
 
     def hora_normalizada(self) -> str:
         partes = self.hora.strip().split(":")

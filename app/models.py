@@ -13,7 +13,7 @@ class Campanha(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     nicho: str = Field(max_length=120, index=True)
-    produto: str = Field(max_length=200)
+    produto: str = Field(sa_type=Text)
     titulo_anuncio: str = Field(sa_type=Text)
     legenda_redes: str = Field(sa_type=Text)
     gmn_nome: str = Field(sa_type=Text)
@@ -32,6 +32,7 @@ class Agendamento(SQLModel, table=True):
     titulo: str = Field(sa_type=Text)
     legenda: str = Field(sa_type=Text)
     imagem_url: str = Field(default="", max_length=500)
+    video_url: str = Field(default="", max_length=500)
     status: str = Field(default="na_fila", max_length=20)
     detalhe: str = Field(default="", sa_type=Text)
     criado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))

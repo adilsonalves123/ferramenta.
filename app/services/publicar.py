@@ -209,6 +209,20 @@ def publicar_facebook(pagina_id: str, token: str, texto: str) -> None:
     )
 
 
+def publicar_facebook_foto(pagina_id: str, token: str, texto: str, imagem_url: str) -> None:
+    _pedir(
+        f"https://graph.facebook.com/{VERSAO}/{pagina_id}/photos",
+        {"url": imagem_url, "caption": texto[:5000], "access_token": token},
+    )
+
+
+def publicar_facebook_video(pagina_id: str, token: str, texto: str, video_url: str) -> None:
+    _pedir(
+        f"https://graph.facebook.com/{VERSAO}/{pagina_id}/videos",
+        {"file_url": video_url, "description": texto[:5000], "access_token": token},
+    )
+
+
 def publicar_instagram(conta_id: str, token: str, texto: str, imagem_url: str) -> None:
     criado = _pedir(
         f"https://graph.instagram.com/{VERSAO}/{conta_id}/media",
@@ -221,6 +235,55 @@ def publicar_instagram(conta_id: str, token: str, texto: str, imagem_url: str) -
         f"https://graph.instagram.com/{VERSAO}/{conta_id}/media_publish",
         {"creation_id": criacao, "access_token": token},
     )
+
+
+def publicar_instagram_video(conta_id: str, token: str, texto: str, video_url: str) -> None:
+    criado = _pedir(
+        f"https://graph.instagram.com/{VERSAO}/{conta_id}/media",
+        {
+            "media_type": "REELS",
+            "video_url": video_url,
+            "caption": texto[:2200],
+            "access_token": token,
+        },
+    )
+    criacao = str(criado.get("id") or "")
+    if not criacao:
+        raise RuntimeError("O Instagram não preparou o vídeo.")
+    for _ in range(12):
+        time.sleep(3)
+        consulta = urllib.parse.urlencode({"fields": "status_code", "access_token": token})
+        estado = _pedir(f"https://graph.instagram.com/{VERSAO}/{criacao}?{consulta}")
+        codigo = str(estado.get("status_code") or "")
+        if codigo == "FINISHED":
+            break
+        if codigo == "ERROR":
+            raise RuntimeError("O Instagram não aceitou o vídeo.")
+    else:
+        raise RuntimeError("O Instagram ainda está processando o vídeo. Tente de novo em instantes.")
+    _pedir(
+        f"https://graph.instagram.com/{VERSAO}/{conta_id}/media_publish",
+        {"creation_id": criacao, "access_token": token},
+    )
+
+
+def _publicar_rede(rede: str, conta: ContaRede, texto: str, imagem_url: str, video_url: str) -> None:
+    video = video_url.strip()
+    imagem = imagem_url.strip()
+    if video and not video.lower().split("?", 1)[0].endswith(".mp4"):
+        raise RuntimeError("Para publicar o vídeo, envie um arquivo MP4.")
+    if rede == "Facebook":
+        if video:
+            publicar_facebook_video(conta.externo_id, conta.token, texto, endereco_publico(video))
+        elif imagem:
+            publicar_facebook_foto(conta.externo_id, conta.token, texto, endereco_publico(imagem))
+        else:
+            publicar_facebook(conta.externo_id, conta.token, texto)
+        return
+    if video:
+        publicar_instagram_video(conta.externo_id, conta.token, texto, endereco_publico(video))
+        return
+    publicar_instagram(conta.externo_id, conta.token, texto, endereco_publico(imagem))
 
 
 def momento(dia: str, hora: str) -> datetime:
@@ -322,26 +385,18 @@ async def publicar_agora(
     titulo: str,
     legenda: str,
     imagem_url: str,
+    video_url: str = "",
 ) -> tuple[str, str]:
     if rede not in REDES_PUBLICAVEIS:
         return "manual", "Essa rede ainda não publica sozinha."
-    if rede == "Instagram" and not imagem_url.strip():
-        return "falta_imagem", "O Instagram pede uma imagem para publicar."
+    if rede == "Instagram" and not imagem_url.strip() and not video_url.strip():
+        return "falta_imagem", "O Instagram pede uma foto ou um vídeo."
     conta = await _conta(session, rede.lower())
     if conta is None or not conta.token:
         return "falta_conta", "Falta ligar a conta."
     texto = f"{titulo.strip()}\n\n{legenda.strip()}".strip()
     try:
-        if rede == "Facebook":
-            await asyncio.to_thread(publicar_facebook, conta.externo_id, conta.token, texto)
-        else:
-            await asyncio.to_thread(
-                publicar_instagram,
-                conta.externo_id,
-                conta.token,
-                texto,
-                endereco_publico(imagem_url),
-            )
+        await asyncio.to_thread(_publicar_rede, rede, conta, texto, imagem_url, video_url)
     except Exception as erro:
         return "erro", str(erro)[:300]
     return "publicado", ""
@@ -359,9 +414,9 @@ async def publicar_vencidos(session: AsyncSession) -> None:
             item.detalhe = "Essa rede ainda não publica sozinha."
             mudou = True
             continue
-        if item.rede == "Instagram" and not item.imagem_url:
+        if item.rede == "Instagram" and not item.imagem_url and not item.video_url:
             item.status = "falta_imagem"
-            item.detalhe = "O Instagram pede uma imagem para publicar."
+            item.detalhe = "O Instagram pede uma foto ou um vídeo."
             mudou = True
             continue
         conta = await _conta(session, item.rede.lower())
@@ -371,16 +426,14 @@ async def publicar_vencidos(session: AsyncSession) -> None:
             continue
         texto = f"{item.titulo}\n\n{item.legenda}".strip()
         try:
-            if item.rede == "Facebook":
-                await asyncio.to_thread(publicar_facebook, conta.externo_id, conta.token, texto)
-            else:
-                await asyncio.to_thread(
-                    publicar_instagram,
-                    conta.externo_id,
-                    conta.token,
-                    texto,
-                    endereco_publico(item.imagem_url),
-                )
+            await asyncio.to_thread(
+                _publicar_rede,
+                item.rede,
+                conta,
+                texto,
+                item.imagem_url,
+                item.video_url,
+            )
             item.status = "publicado"
             item.detalhe = ""
         except Exception as erro:

@@ -3,6 +3,7 @@ from collections.abc import AsyncIterator
 from functools import lru_cache
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -54,6 +55,13 @@ async def criar_tabelas() -> None:
     del models
     async with get_engine().begin() as conexao:
         await conexao.run_sync(SQLModel.metadata.create_all)
+        await conexao.execute(
+            text(
+                "ALTER TABLE mkt_agendamentos "
+                "ADD COLUMN IF NOT EXISTS video_url VARCHAR(500) NOT NULL DEFAULT ''"
+            )
+        )
+        await conexao.execute(text("ALTER TABLE mkt_campanhas ALTER COLUMN produto TYPE TEXT"))
 
 
 async def fechar_engine() -> None:

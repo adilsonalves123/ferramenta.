@@ -153,6 +153,7 @@
     }
     form.composer {
       display: flex;
+      flex-wrap: wrap;
       align-items: flex-end;
       gap: 10px;
       margin: 12px 20px 20px;
@@ -162,7 +163,20 @@
       border-radius: 14px;
       box-shadow: var(--sombra);
     }
+    label.anexar {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      color: var(--mudo);
+      cursor: pointer;
+      flex: none;
+    }
+    label.anexar:hover { background: var(--fundo); color: var(--tinta); }
+    #anexo-nota { flex: 1 0 100%; margin: 0; }
     form.composer textarea {
+      flex: 1;
       min-width: 0;
       min-height: 72px;
       max-height: 160px;
@@ -662,12 +676,15 @@
         <div class="fio" id="fio">
           <div class="vazio-conversa" id="vazio-conversa">
             <h2>Descreva o post</h2>
-            <p>Escolha a marca, o tema e o canal. A prévia aparece ao lado.</p>
+            <p>Escolha a marca, o tema e o canal. Anexe uma foto ou um vídeo, se quiser. A prévia aparece ao lado.</p>
           </div>
         </div>
         <form class="composer" id="composer">
+          <label class="anexar" for="anexo-post" title="Foto ou vídeo"><i class="fa-regular fa-image"></i></label>
+          <input id="anexo-post" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" hidden />
           <textarea id="pedido" required minlength="2" placeholder="Descreva a publicação. Ex.: interação para donos de bar"></textarea>
           <button class="principal" type="submit" id="enviar-chat">Gerar</button>
+          <p class="nota" id="anexo-nota" hidden></p>
         </form>
       </section>
       <aside class="lado">
@@ -865,7 +882,7 @@
       const item = Array.isArray(dados?.detail) ? dados.detail[0] : null;
       const campo = Array.isArray(item?.loc) ? String(item.loc[item.loc.length - 1] || "") : "";
       if (item?.type === "string_too_long" && (campo === "produto" || campo === "produto_servico")) {
-        return "O texto de O que você quer ficou longo demais. Encurte e clique em Continuar de novo.";
+        return "O texto ficou longo demais. Encurte um pouco e tente de novo.";
       }
       if (item?.type === "string_too_short" && (campo === "nicho" || campo === "produto" || campo === "nicho_negocio" || campo === "produto_servico")) {
         return "Escreva o título e o que você quer, com pelo menos algumas palavras.";
@@ -1146,24 +1163,13 @@
     function colocarNaPrevia(projeto) {
       const legenda = projeto.legenda || projeto.titulo;
       postAtual = { titulo_anuncio: projeto.titulo, legenda_redes: legenda };
-      imagemProjeto = projeto.imagem_url || "";
+      imagemProjeto = projeto.video_url ? "" : (projeto.imagem_url || "");
+      videoProjeto = projeto.video_url || "";
       document.getElementById("legenda-previa").textContent = projeto.legenda
         ? projeto.titulo + "\n\n" + projeto.legenda
         : projeto.titulo;
-      const lugar = document.getElementById("foto-previa");
-      if (projeto.video_url) {
-        const video = document.createElement("video");
-        video.id = "foto-previa";
-        video.src = projeto.video_url;
-        video.controls = true;
-        lugar.replaceWith(video);
-      } else if (projeto.imagem_url) {
-        const imagem = document.createElement("img");
-        imagem.id = "foto-previa";
-        imagem.src = projeto.imagem_url;
-        imagem.alt = projeto.titulo;
-        lugar.replaceWith(imagem);
-      }
+      if (videoProjeto) colocarMidiaPrevia(videoProjeto, "video");
+      else if (imagemProjeto) colocarMidiaPrevia(imagemProjeto, "foto");
       document.getElementById("nota-agenda").textContent = "Projeto na prévia. Escolha o dia e o horário.";
       fecharPaginaProjetos();
     }
@@ -1537,6 +1543,7 @@
           mostrarResultado(fotoPronta);
           postAtual = fotoPronta;
           imagemProjeto = fotoPronta.foto_url || "";
+          videoProjeto = "";
           if (document.getElementById("legenda-previa")) mostrarPrevia(fotoPronta, imagemProjeto);
           return;
         }
@@ -1702,6 +1709,7 @@
     let redePost = "";
     let postAtual = null;
     let imagemProjeto = "";
+    let videoProjeto = "";
     let diaEscolhido = "";
     let agendaItens = [];
     let metaPronta = false;
@@ -1824,16 +1832,51 @@
       desenharSemana();
     }
 
+    function colocarMidiaPrevia(url, tipo) {
+      const lugar = document.getElementById("foto-previa");
+      if (!lugar) return;
+      if (!url) {
+        const vazio = document.createElement("div");
+        vazio.id = "foto-previa";
+        vazio.className = "vazio-foto";
+        vazio.innerHTML = '<i class="fa-regular fa-image"></i><span>A imagem aparece aqui</span>';
+        lugar.replaceWith(vazio);
+        return;
+      }
+      const midia = tipo === "video" ? document.createElement("video") : document.createElement("img");
+      midia.id = "foto-previa";
+      midia.src = url;
+      if (tipo === "video") {
+        midia.controls = true;
+        midia.muted = true;
+      } else {
+        midia.alt = "Mídia do post";
+      }
+      lugar.replaceWith(midia);
+    }
+
     function mostrarPrevia(dados, foto) {
       document.getElementById("legenda-previa").textContent = `${dados.titulo_anuncio}\n\n${dados.legenda_redes}`;
-      const lugar = document.getElementById("foto-previa");
-      if (foto) {
-        const imagem = document.createElement("img");
-        imagem.src = foto;
-        imagem.alt = "Imagem do post";
-        lugar.replaceWith(imagem);
-        imagem.id = "foto-previa";
+      if (foto) colocarMidiaPrevia(foto, "foto");
+    }
+
+    function textoDoPost() {
+      if (postAtual && (postAtual.titulo_anuncio || postAtual.legenda_redes)) {
+        return {
+          titulo: postAtual.titulo_anuncio || "Publicação",
+          legenda: postAtual.legenda_redes || postAtual.titulo_anuncio || "Publicação",
+        };
       }
+      const escrito = pedidoCampo.value.trim();
+      if (escrito.length >= 2) return { titulo: escrito.slice(0, 80), legenda: escrito };
+      if (imagemProjeto || videoProjeto) return { titulo: "Publicação", legenda: "Publicação" };
+      return null;
+    }
+
+    function marcarAnexo(mensagem) {
+      const nota = document.getElementById("anexo-nota");
+      nota.hidden = !mensagem;
+      nota.textContent = mensagem || "";
     }
 
     async function criarPost() {
@@ -2008,10 +2051,55 @@
       window.location.href = "/contas/iniciar?rede=facebook";
     });
 
+    document.getElementById("anexo-post").addEventListener("change", async () => {
+      const campo = document.getElementById("anexo-post");
+      const arquivo = campo.files[0];
+      const nota = document.getElementById("nota-agenda");
+      if (!arquivo) return;
+      const video = arquivo.type.startsWith("video/");
+      const foto = ["image/jpeg", "image/png", "image/webp"].includes(arquivo.type);
+      if (!foto && !video) {
+        campo.value = "";
+        nota.textContent = "Envie uma foto JPG, PNG ou WebP, ou um vídeo MP4.";
+        return;
+      }
+      if (arquivo.size > (video ? 25 : 8) * 1024 * 1024) {
+        campo.value = "";
+        nota.textContent = video ? "O vídeo precisa ter até 25 MB." : "A foto precisa ter até 8 MB.";
+        return;
+      }
+      colocarMidiaPrevia(URL.createObjectURL(arquivo), video ? "video" : "foto");
+      marcarAnexo(video ? "Enviando o vídeo" : "Enviando a foto");
+      try {
+        const form = new FormData();
+        form.append("arquivo", arquivo, arquivo.name);
+        const resposta = await fetch("/anexo", { method: "POST", body: form });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        if (dados.tipo === "video") {
+          videoProjeto = dados.url;
+          imagemProjeto = "";
+          marcarAnexo("Vídeo anexado.");
+        } else {
+          imagemProjeto = dados.url;
+          videoProjeto = "";
+          marcarAnexo("Foto anexada.");
+        }
+        colocarMidiaPrevia(dados.url, dados.tipo === "video" ? "video" : "foto");
+      } catch (falha) {
+        imagemProjeto = "";
+        videoProjeto = "";
+        colocarMidiaPrevia("", "foto");
+        marcarAnexo("");
+        nota.textContent = falha.message || "Não consegui anexar o arquivo.";
+      }
+    });
+
     document.getElementById("criar-agora").addEventListener("click", async () => {
       const nota = document.getElementById("nota-agenda");
-      if (!postAtual) {
-        nota.textContent = "Gere o post antes de publicar.";
+      const publicado = textoDoPost();
+      if (!publicado) {
+        nota.textContent = "Escreva o post ou anexe uma foto ou um vídeo.";
         return;
       }
       if (!redePost) {
@@ -2027,9 +2115,10 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             rede: redePost,
-            titulo: postAtual.titulo_anuncio,
-            legenda: postAtual.legenda_redes,
+            titulo: publicado.titulo,
+            legenda: publicado.legenda,
             imagem_url: imagemProjeto,
+            video_url: videoProjeto,
           }),
         });
         const dados = await lerResposta(resposta);
@@ -2049,8 +2138,9 @@
 
     document.getElementById("agendar").addEventListener("click", async () => {
       const nota = document.getElementById("nota-agenda");
-      if (!postAtual) {
-        nota.textContent = "Gere o post antes de colocar no dia.";
+      const publicado = textoDoPost();
+      if (!publicado) {
+        nota.textContent = "Escreva o post ou anexe uma foto ou um vídeo.";
         return;
       }
       if (!redePost) {
@@ -2072,9 +2162,10 @@
             dia: diaEscolhido,
             hora,
             rede: redePost,
-            titulo: postAtual.titulo_anuncio,
-            legenda: postAtual.legenda_redes,
+            titulo: publicado.titulo,
+            legenda: publicado.legenda,
             imagem_url: imagemProjeto,
+            video_url: videoProjeto,
           }),
         });
         const dados = await lerResposta(resposta);
@@ -2086,7 +2177,7 @@
             ? "Marcado às " + hora + ". Sai na Página depois desse horário, quando o site for aberto."
             : "Marcado às " + hora + ". Falta ligar o Facebook.";
         } else if (redePost === "Instagram") {
-          nota.textContent = "Marcado às " + hora + ". O Instagram publica sozinho quando a conta estiver ligada e o post tiver imagem.";
+          nota.textContent = "Marcado às " + hora + ". O Instagram publica sozinho quando a conta estiver ligada e o post tiver foto ou vídeo.";
         } else {
           nota.textContent = "Marcado às " + hora + ". Essa rede ainda não publica sozinha.";
         }
