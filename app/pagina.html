@@ -316,34 +316,48 @@
     button.principal:hover { background: #1e40af; }
     button.principal:disabled { opacity: 0.65; cursor: wait; }
     .miniatura-criacao {
-      width: 196px;
+      display: grid;
+      grid-template-columns: 96px 1fr;
+      gap: 12px;
+      align-items: center;
+      width: 100%;
+      margin: 0 0 12px;
+      padding: 8px;
       border: 1px solid var(--linha);
       border-radius: 14px;
-      overflow: hidden;
       background: white;
       box-shadow: var(--sombra);
     }
     .miniatura-criacao .quadro {
       position: relative;
-      aspect-ratio: 1;
+      width: 96px;
+      height: 96px;
+      border-radius: 10px;
+      overflow: hidden;
       background: linear-gradient(160deg, #312e81, #1e1b4b 55%, #0f172a);
     }
     .miniatura-criacao img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .miniatura-criacao strong {
       position: absolute;
-      left: 10px;
-      bottom: 10px;
-      padding: 4px 8px;
+      left: 8px;
+      bottom: 8px;
+      padding: 3px 7px;
       border-radius: 999px;
       background: rgba(15, 23, 42, 0.82);
       color: white;
-      font-size: 13px;
+      font-size: 12px;
+    }
+    .miniatura-criacao b {
+      display: block;
+      font-size: 28px;
+      letter-spacing: -0.04em;
+      line-height: 1;
     }
     .miniatura-criacao small {
       display: block;
-      padding: 8px 12px 10px;
+      margin-top: 6px;
       color: var(--mudo);
-      font-size: 12px;
+      font-size: 13px;
     }
     .opcoes-criacao { display: grid; gap: 8px; margin-top: 4px; }
     button.opcao-criacao {
@@ -762,6 +776,7 @@
       </form>
       <section id="chat-criacao" hidden>
         <div id="fio-criacao"></div>
+        <div id="lugar-miniatura"></div>
         <form id="composer-criacao">
           <textarea id="pedido-criacao" required minlength="2" placeholder="Peça um ajuste. Ex.: mais curto, fala da sexta"></textarea>
           <div class="botoes-criacao">
@@ -1338,17 +1353,18 @@
     let pulsoMiniatura = 0;
 
     function mostrarMiniatura(percent, etapa, imagem) {
-      const fioCriacao = document.getElementById("fio-criacao");
+      const lugar = document.getElementById("lugar-miniatura");
       let cartao = document.getElementById("miniatura-criacao");
       if (!cartao) {
         cartao = document.createElement("div");
         cartao.id = "miniatura-criacao";
         cartao.className = "miniatura-criacao";
-        cartao.innerHTML = '<div class="quadro"><strong></strong></div><small></small>';
-        fioCriacao.prepend(cartao);
+        cartao.innerHTML = '<div class="quadro"><strong></strong></div><div><b></b><small></small></div>';
+        lugar.appendChild(cartao);
       }
       cartao.dataset.percent = String(percent);
       cartao.querySelector("strong").textContent = `${percent}%`;
+      cartao.querySelector("b").textContent = `${percent}%`;
       cartao.querySelector("small").textContent = etapa;
       const quadro = cartao.querySelector(".quadro");
       let foto = quadro.querySelector("img");
@@ -1360,7 +1376,9 @@
         }
         if (foto.getAttribute("src") !== imagem) foto.src = imagem;
       }
-      fioCriacao.scrollTop = 0;
+      const botao = document.getElementById("confirmar-criacao");
+      if (botao && botao.disabled) botao.textContent = `${percent}%`;
+      cartao.scrollIntoView({ block: "nearest" });
     }
 
     function pulsarRoteiro() {
