@@ -645,11 +645,17 @@
           <label for="produto_servico">Produto ou serviço</label>
           <textarea id="produto_servico" name="produto_servico" required minlength="2" rows="3" placeholder="Ex.: combo de cerveja gelada no happy hour"></textarea>
         </div>
+        <div id="campos-foto" hidden>
+          <label for="foto_referencia">Foto do seu bar</label>
+          <input id="foto_referencia" name="foto_referencia" type="file" accept="image/jpeg,image/png,image/webp" />
+          <p class="nota">Opcional. Se enviar, a imagem usa essa foto como base e não inventa outro lugar.</p>
+        </div>
         <div id="campos-clonador" hidden>
           <label for="link_video">Link do vídeo</label>
           <input id="link_video" name="link_video" type="url" placeholder="https://www.instagram.com/reel/..." />
           <label for="arquivo_video">Ou envie o vídeo</label>
           <input id="arquivo_video" name="arquivo_video" type="file" accept="video/*" />
+          <p class="nota">Até 25 MB. Use isto se o YouTube bloquear o link.</p>
         </div>
         <div id="campos-radar" hidden>
           <label for="cidade">Cidade</label>
@@ -698,13 +704,13 @@
       },
       foto: {
         titulo: "Foto",
-        ajuda: "Gera só a imagem do personagem para o post.",
+        ajuda: "Gera a foto do produto no lugar. Se você enviar uma foto do bar, ela entra como base.",
         botao: "Gerar foto",
         espera: "Criando a foto",
       },
       video: {
         titulo: "Vídeo com voz",
-        ajuda: "Gera o vídeo com o personagem e a voz do roteiro. Pode levar cerca de um minuto.",
+        ajuda: "Monta o vídeo com a foto do lugar e a voz do roteiro. Se enviar uma foto do bar, ela entra como imagem. Pode levar cerca de um minuto.",
         botao: "Gerar vídeo",
         espera: "Montando o vídeo",
       },
@@ -715,8 +721,9 @@
       },
       clonador: {
         titulo: "Clonador de Vídeo Viral",
-        ajuda: "O link ou o nome do arquivo entra como referência. A IA reescreve um roteiro novo para o seu produto. Ela não assiste o vídeo.",
-        botao: "Reescrever roteiro",
+        ajuda: "Corrige o português e devolve um vídeo com outra voz. Cole o link do YouTube ou envie o arquivo. A imagem é nova e não copia o vídeo original.",
+        botao: "Gerar vídeo",
+        espera: "Montando o vídeo",
       },
       radar: {
         titulo: "Radar de Clientes B2B",
@@ -775,6 +782,8 @@
       camposBase.hidden = escolha === "radar";
       camposClonador.hidden = escolha !== "clonador";
       camposRadar.hidden = escolha !== "radar";
+      document.getElementById("campos-foto").hidden = escolha !== "foto" && escolha !== "video";
+      document.getElementById("foto_referencia").value = "";
       exigir("nicho_negocio", escolha !== "radar");
       exigir("produto_servico", escolha !== "radar");
       exigir("cidade", escolha === "radar");
@@ -794,7 +803,7 @@
         return { titulo: dados.cidade || "Radar", legenda: nomes || dados.aviso || "", imagem: "", video: "" };
       }
       if (acao === "clonador") {
-        return { titulo: dados.titulo || "Vídeo", legenda: dados.legenda || "", imagem: "", video: "" };
+        return { titulo: dados.titulo || "Vídeo", legenda: dados.legenda || "", imagem: dados.foto_url || "", video: dados.video_url || "" };
       }
       if (acao === "google") {
         const perfil = dados.google_meu_negocio || {};
@@ -833,10 +842,20 @@
       const aviso = dados.aviso_midia ? `<p class="erro" style="display:block">${texto(dados.aviso_midia)}</p>` : "";
       let corpo = aviso;
       if (acao === "foto" && dados.foto_url) {
-        corpo += `<article><h2>Foto</h2><img src="${texto(dados.foto_url)}" alt="Personagem do anúncio" /><a class="baixar" href="${texto(dados.foto_url)}" download>Baixar foto</a></article>`;
+        corpo += `<article><h2>Foto</h2><img src="${texto(dados.foto_url)}" alt="Foto do post" /><a class="baixar" href="${texto(dados.foto_url)}" download>Baixar foto</a></article>`;
       }
-      if (acao === "video" && dados.video_url) {
-        corpo += `<article><h2>Vídeo</h2><video src="${texto(dados.video_url)}" controls></video><a class="baixar" href="${texto(dados.video_url)}" download>Baixar vídeo</a></article>`;
+      if (acao === "video") {
+        if (dados.video_url) {
+          corpo += `<article><h2>Vídeo</h2><video src="${texto(dados.video_url)}" controls></video><a class="baixar" href="${texto(dados.video_url)}" download>Baixar vídeo</a></article>`;
+        } else {
+          corpo += `<p class="erro" style="display:block">O vídeo não veio.</p>`;
+        }
+        corpo += `<article><h2>Fala</h2><ul>
+          <li><strong>Gancho.</strong> ${texto(roteiro.gancho)}</li>
+          <li><strong>Problema.</strong> ${texto(roteiro.problema)}</li>
+          <li><strong>Solução.</strong> ${texto(roteiro.solucao)}</li>
+          <li><strong>CTA.</strong> ${texto(roteiro.cta)}</li>
+        </ul></article>`;
       }
       if (acao === "texto") {
         const anuncio = `${dados.titulo_anuncio}\n\n${dados.legenda_redes}`;
@@ -871,7 +890,10 @@
         </ul></article>`;
       }
       if (acao === "clonador") {
-        corpo += `<article><h2>Roteiro reescrito</h2>
+        if (dados.video_url) {
+          corpo += `<article><h2>Vídeo</h2><video src="${texto(dados.video_url)}" controls></video><a class="baixar" href="${texto(dados.video_url)}" download>Baixar vídeo</a></article>`;
+        }
+        corpo += `<article><h2>Fala reescrita</h2>
           <h3>Título</h3><p>${texto(dados.titulo)}</p>
           <p>Referência: ${texto(dados.referencia)}</p>
           <ul>
@@ -904,8 +926,6 @@
       { acao: "foto", nome: "Foto", imagem: "/quadros/foto.jpg" },
       { acao: "video", nome: "Vídeo", imagem: "/quadros/video.jpg" },
       { acao: "clonador", nome: "Clonar vídeo", imagem: "/quadros/clonador.jpg" },
-      { acao: "google", nome: "Google", imagem: "/quadros/google.jpg" },
-      { acao: "radar", nome: "Radar", imagem: "/quadros/radar.jpg" },
     ];
 
     function desenharCapas() {
@@ -1083,6 +1103,23 @@
       opcao.addEventListener("change", atualizarTags);
     });
 
+    async function lerFotoReferencia() {
+      const arquivo = document.getElementById("foto_referencia").files[0];
+      if (!arquivo) return "";
+      if (!["image/jpeg", "image/png", "image/webp"].includes(arquivo.type)) {
+        throw new Error("Envie a foto em JPG, PNG ou WebP.");
+      }
+      if (arquivo.size > 4 * 1024 * 1024) {
+        throw new Error("A foto precisa ter até 4 MB.");
+      }
+      const bytes = new Uint8Array(await arquivo.arrayBuffer());
+      let binario = "";
+      for (let i = 0; i < bytes.length; i += 0x8000) {
+        binario += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      }
+      return btoa(binario);
+    }
+
     formulario.addEventListener("submit", async (evento) => {
       evento.preventDefault();
       erro.hidden = true;
@@ -1096,11 +1133,14 @@
       }
       spinner.hidden = false;
       enviar.disabled = true;
+      const rotuloBotao = enviarTexto.textContent;
+      if (FERRAMENTAS[acao] && FERRAMENTAS[acao].espera) enviarTexto.textContent = FERRAMENTAS[acao].espera;
       let caminho = "/gerar-campanha";
       let corpo = {
         nicho_negocio: document.getElementById("nicho_negocio").value.trim(),
         produto_servico: document.getElementById("produto_servico").value.trim(),
         acao,
+        foto_base64: "",
       };
       if (acao === "clonador") {
         caminho = "/clonar-video";
@@ -1145,11 +1185,25 @@
         };
       }
       try {
-        const resposta = await fetch(caminho, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(corpo),
-        });
+        if (acao === "foto" || acao === "video") corpo.foto_base64 = await lerFotoReferencia();
+        let resposta;
+        if (acao === "clonador") {
+          if (arquivo && arquivo.size > 25 * 1024 * 1024) {
+            throw new Error("O vídeo precisa ter até 25 MB. Ou cole o link do YouTube.");
+          }
+          const form = new FormData();
+          form.append("nicho_negocio", corpo.nicho_negocio);
+          form.append("produto_servico", corpo.produto_servico);
+          form.append("link_video", link);
+          if (arquivo) form.append("arquivo_video", arquivo, arquivo.name);
+          resposta = await fetch("/clonar-video", { method: "POST", body: form });
+        } else {
+          resposta = await fetch(caminho, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(corpo),
+          });
+        }
         const dados = await resposta.json();
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         mostrarResultado(dados);
@@ -1159,6 +1213,7 @@
       } finally {
         spinner.hidden = true;
         enviar.disabled = false;
+        enviarTexto.textContent = (FERRAMENTAS[acao] && FERRAMENTAS[acao].botao) || rotuloBotao;
       }
     });
 

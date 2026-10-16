@@ -19,6 +19,7 @@ class PedidoCampanha(BaseModel):
         examples=["combo de cerveja gelada no happy hour"],
     )
     acao: Literal["texto", "foto", "video", "google"] = "texto"
+    foto_base64: str = Field(default="", max_length=6_000_000)
 
 
 class RoteiroVideo(BaseModel):
@@ -57,7 +58,7 @@ class PedidoClonador(BaseModel):
     nome_arquivo: str = Field(default="", max_length=200)
 
 
-class ClonagemGerada(BaseModel):
+class ClonagemTexto(BaseModel):
     titulo: str
     referencia: str
     gancho: str
@@ -65,6 +66,12 @@ class ClonagemGerada(BaseModel):
     desenvolvimento: str
     cta: str
     legenda: str
+
+
+class ClonagemGerada(ClonagemTexto):
+    foto_url: str | None = None
+    video_url: str | None = None
+    aviso_midia: str | None = None
 
 
 class PedidoRadar(BaseModel):

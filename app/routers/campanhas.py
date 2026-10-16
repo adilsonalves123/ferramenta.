@@ -38,6 +38,9 @@ async def post_gerar_campanha(
             detalhe = "Não foi possível gerar a campanha agora."
         raise HTTPException(status_code=502, detail=detalhe) from erro
 
+    vazio = {"foto_url": None, "audio_url": None, "video_url": None, "aviso_midia": None}
+    midia = await montar_midia(pedido, gerada, pedido.acao) if pedido.acao in ("foto", "video") else vazio
+
     campanha = Campanha(
         nicho=pedido.nicho.strip(),
         produto=pedido.produto.strip(),
@@ -64,7 +67,8 @@ async def post_gerar_campanha(
         await session.commit()
     except SQLAlchemyError as erro:
         await session.rollback()
-        raise HTTPException(status_code=503, detail="A campanha foi gerada, mas não entrou no banco.") from erro
-    vazio = {"foto_url": None, "audio_url": None, "video_url": None, "aviso_midia": None}
-    midia = await montar_midia(pedido, gerada, pedido.acao) if pedido.acao in ("foto", "video") else vazio
+        if not midia.get("video_url") and not midia.get("foto_url"):
+            raise HTTPException(status_code=503, detail="A campanha foi gerada, mas não entrou no banco.") from erro
+        aviso = midia.get("aviso_midia") or ""
+        midia["aviso_midia"] = (aviso + " Saiu, mas não entrou no banco.").strip()
     return CampanhaCompleta(**gerada.model_dump(), **midia)
