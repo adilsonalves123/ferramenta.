@@ -5,7 +5,16 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database import get_session
 from app.models import Agendamento
-from app.schemas import EstadoRede, ItemAgenda, PedidoAgenda, PedidoPagina, RespostaAgenda, RespostaPaginas
+from app.schemas import (
+    EstadoRede,
+    ItemAgenda,
+    PedidoAgenda,
+    PedidoPagina,
+    PedidoPublicarAgora,
+    RespostaAgenda,
+    RespostaPaginas,
+    RespostaPublicacao,
+)
 from app.services.publicar import (
     escolher_pagina_facebook,
     estado_contas,
@@ -14,6 +23,7 @@ from app.services.publicar import (
     guardar_codigo_facebook,
     meta_pronta,
     paginas_facebook,
+    publicar_agora,
     publicar_vencidos,
     state_facebook_valido,
     state_valido,
@@ -119,6 +129,21 @@ async def post_agenda(
     await session.commit()
     await session.refresh(registro)
     return _item(registro)
+
+
+@router.post("/publicar-agora", response_model=RespostaPublicacao)
+async def post_publicar_agora(
+    pedido: PedidoPublicarAgora,
+    session: AsyncSession = Depends(get_session),
+) -> RespostaPublicacao:
+    status, detalhe = await publicar_agora(
+        session,
+        pedido.rede.strip(),
+        pedido.titulo,
+        pedido.legenda,
+        pedido.imagem_url,
+    )
+    return RespostaPublicacao(status=status, detalhe=detalhe)
 
 
 @router.get("/contas/iniciar", response_model=None)

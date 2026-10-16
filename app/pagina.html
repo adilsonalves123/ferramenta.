@@ -470,7 +470,8 @@
     form.composer button.principal { width: auto; margin: 0; height: 36px; padding: 0 14px; flex: none; }
     .lado > .secao { margin: 2px 2px 8px; }
     .cartao-agenda .secao { margin: 0 0 4px; }
-    #agendar { margin-top: 12px; }
+    .botoes-agenda { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+    .botoes-agenda button.principal { margin-top: 0; }
     .marca-campos { min-width: 0; flex: 1; display: grid; gap: 2px; }
     .marca-campos input {
       width: 100%;
@@ -694,9 +695,12 @@
             <label for="hora-post">Horário</label>
             <input id="hora-post" type="time" value="09:00" required />
           </div>
-          <button class="principal" type="button" id="agendar">Agendar</button>
+          <div class="botoes-agenda">
+            <button class="principal" type="button" id="criar-agora">Criar agora</button>
+            <button class="principal" type="button" id="agendar">Agendar</button>
+          </div>
           <ul class="lista-agenda" id="lista-agenda"></ul>
-          <p class="nota" id="nota-agenda">Escolha o dia e o horário. O post sai sozinho nesse momento, depois que Instagram e Facebook estiverem ligados.</p>
+          <p class="nota" id="nota-agenda">Criar agora publica neste momento. Agendar guarda o dia e o horário. Os dois usam Instagram ou Facebook, com a conta ligada.</p>
         </div>
       </aside>
     </section>
@@ -1859,7 +1863,7 @@
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         postAtual = dados;
         mostrarPrevia(dados);
-        falar("assistente", "O post está na prévia ao lado. Escolha o dia e o horário para agendar.");
+        falar("assistente", "O post está na prévia ao lado. Crie agora ou escolha o dia para agendar.");
       } catch (falha) {
         falar("assistente", falha.message || "Não foi possível criar agora.");
       } finally {
@@ -2002,6 +2006,45 @@
     document.getElementById("ligar-instagram").addEventListener("click", ligarInstagram);
     document.getElementById("ligar-facebook").addEventListener("click", () => {
       window.location.href = "/contas/iniciar?rede=facebook";
+    });
+
+    document.getElementById("criar-agora").addEventListener("click", async () => {
+      const nota = document.getElementById("nota-agenda");
+      if (!postAtual) {
+        nota.textContent = "Gere o post antes de publicar.";
+        return;
+      }
+      if (!redePost) {
+        nota.textContent = "Escolha Instagram, Facebook, TikTok ou Google antes de publicar.";
+        return;
+      }
+      const botao = document.getElementById("criar-agora");
+      botao.disabled = true;
+      botao.textContent = "Publicando";
+      try {
+        const resposta = await fetch("/publicar-agora", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            rede: redePost,
+            titulo: postAtual.titulo_anuncio,
+            legenda: postAtual.legenda_redes,
+            imagem_url: imagemProjeto,
+          }),
+        });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        if (dados.status === "publicado") {
+          nota.textContent = redePost === "Facebook" ? "Saiu agora na Página do Facebook." : "Saiu agora no Instagram.";
+        } else {
+          nota.textContent = dados.detalhe || "Não consegui publicar agora.";
+        }
+      } catch (falha) {
+        nota.textContent = falha.message || "Não consegui publicar agora.";
+      } finally {
+        botao.disabled = false;
+        botao.textContent = "Criar agora";
+      }
     });
 
     document.getElementById("agendar").addEventListener("click", async () => {

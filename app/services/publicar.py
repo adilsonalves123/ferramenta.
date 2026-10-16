@@ -316,6 +316,37 @@ async def estado_contas(session: AsyncSession) -> dict[str, ContaRede | None]:
     }
 
 
+async def publicar_agora(
+    session: AsyncSession,
+    rede: str,
+    titulo: str,
+    legenda: str,
+    imagem_url: str,
+) -> tuple[str, str]:
+    if rede not in REDES_PUBLICAVEIS:
+        return "manual", "Essa rede ainda não publica sozinha."
+    if rede == "Instagram" and not imagem_url.strip():
+        return "falta_imagem", "O Instagram pede uma imagem para publicar."
+    conta = await _conta(session, rede.lower())
+    if conta is None or not conta.token:
+        return "falta_conta", "Falta ligar a conta."
+    texto = f"{titulo.strip()}\n\n{legenda.strip()}".strip()
+    try:
+        if rede == "Facebook":
+            await asyncio.to_thread(publicar_facebook, conta.externo_id, conta.token, texto)
+        else:
+            await asyncio.to_thread(
+                publicar_instagram,
+                conta.externo_id,
+                conta.token,
+                texto,
+                endereco_publico(imagem_url),
+            )
+    except Exception as erro:
+        return "erro", str(erro)[:300]
+    return "publicado", ""
+
+
 async def publicar_vencidos(session: AsyncSession) -> None:
     agora_local = datetime.now(ZONA)
     resultado = await session.exec(select(Agendamento).where(Agendamento.status == "na_fila"))
