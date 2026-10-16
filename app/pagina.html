@@ -832,6 +832,7 @@
     }
 
     async function acompanharVideo(ident) {
+      let sumicos = 0;
       while (true) {
         await new Promise((resolver) => window.setTimeout(resolver, 3000));
         let consulta;
@@ -848,7 +849,12 @@
         } catch {
           continue;
         }
-        if (consulta.status === 404) throw new Error(mensagemErro(pronto));
+        if (consulta.status === 404) {
+          sumicos += 1;
+          if (sumicos < 8) continue;
+          throw new Error("A montagem parou porque o servidor reiniciou. Clique em Pode gerar de novo.");
+        }
+        sumicos = 0;
         if (pronto.status === "erro") throw new Error(pronto.detail || "Não foi possível montar o vídeo agora.");
         if (pronto.status === "pronto") return pronto;
       }

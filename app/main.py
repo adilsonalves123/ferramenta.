@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.database import criar_tabelas, fechar_engine
+from app.services.fila_video import retomar
 from app.routers.agenda import router as router_agenda
 from app.routers.campanhas import router
 from app.routers.novas import router as router_novas
@@ -22,6 +23,7 @@ PASTA_QUADROS = Path(__file__).resolve().parent.parent / "quadros"
 @asynccontextmanager
 async def vida(app: FastAPI):
     await criar_tabelas()
+    await retomar()
     yield
     await fechar_engine()
 

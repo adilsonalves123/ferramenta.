@@ -1,7 +1,6 @@
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from app.schemas import (
-    CampanhaCompleta,
     CampanhaGerada,
     ClonagemGerada,
     GoogleMeuNegocio,
@@ -17,7 +16,7 @@ from app.schemas import (
 from app.services.clonador import clonar_video, ouvir_video
 from app.services.fila_video import abrir as abrir_fila
 from app.services.fila_video import ler as ler_fila
-from app.services.midia import _referencia, montar_historia, montar_midia
+from app.services.midia import montar_midia
 from app.services.radar import mapear
 from app.services.sugestao import sugerir_video
 
@@ -127,42 +126,23 @@ async def post_confirmar_video(pedido: PedidoVideoConfirmado) -> dict:
     partes = [narracao for narracao, _ in cenas] or [pedido.gancho, pedido.problema, pedido.solucao, pedido.cta]
     while len(partes) < 4:
         partes.append(partes[-1])
-    gerada = CampanhaGerada(
-        titulo_anuncio=pedido.titulo.strip(),
-        legenda_redes=fala.strip(),
-        roteiro_video=RoteiroVideo(
-            gancho=partes[0].strip(),
-            problema=partes[1].strip(),
-            solucao=partes[2].strip(),
-            cta=partes[3].strip(),
-        ),
-        google_meu_negocio=GoogleMeuNegocio(nome_otimizado="", categoria="", descricao_seo=""),
+    ident = await abrir_fila(
+        {
+            "nicho": pedido.nicho.strip(),
+            "produto": f"{pedido.cena.strip()}. {pedido.produto.strip()}"[:200],
+            "titulo": pedido.titulo.strip(),
+            "fala": fala.strip(),
+            "partes": [parte.strip() for parte in partes],
+            "cenas": [[narracao, imagem] for narracao, imagem in cenas[:3]],
+            "foto_base64": pedido.foto_base64,
+        }
     )
-    referencia, tipo = _referencia(
-        PedidoCampanha(nicho=pedido.nicho, produto=pedido.produto[:200], foto_base64=pedido.foto_base64)
-    )
-    nicho = pedido.nicho.strip()
-    produto = f"{pedido.cena.strip()}. {pedido.produto.strip()}"[:200]
-    foto_base64 = pedido.foto_base64
-
-    async def montar() -> dict:
-        if cenas:
-            midia = await montar_historia(nicho, cenas[:3], fala.strip(), referencia, tipo)
-        else:
-            midia = await montar_midia(
-                PedidoCampanha(nicho=nicho, produto=produto, acao="video", foto_base64=foto_base64),
-                gerada,
-                "video",
-            )
-        return CampanhaCompleta(**gerada.model_dump(), **midia).model_dump()
-
-    ident = abrir_fila(montar)
     return {"id": ident, "status": "montando", "detail": ""}
 
 
 @router.get("/video-trabalho/{ident}")
 async def get_video_trabalho(ident: str) -> dict:
-    item = ler_fila(ident)
+    item = await ler_fila(ident)
     if item is None:
         raise HTTPException(status_code=404, detail="Esse vídeo não está mais na fila.")
     return item

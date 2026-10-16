@@ -60,6 +60,18 @@ class ContaRede(SQLModel, table=True):
     atualizado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
 
 
+class VideoTrabalho(SQLModel, table=True):
+    __tablename__ = "mkt_video_trabalhos"
+
+    id: str = Field(primary_key=True, max_length=32)
+    status: str = Field(default="montando", max_length=20, index=True)
+    tentativas: int = Field(default=0)
+    pedido: str = Field(default="", sa_type=Text)
+    resultado: str = Field(default="", sa_type=Text)
+    detalhe: str = Field(default="", sa_type=Text)
+    criado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
+
+
 class Roteiro(SQLModel, table=True):
     __tablename__ = "mkt_roteiros"
 
