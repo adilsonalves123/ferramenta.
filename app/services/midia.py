@@ -89,7 +89,7 @@ async def _foto(
     modelo: str,
     qualidade: str,
 ) -> None:
-    cliente = cliente_openai().with_options(timeout=45)
+    cliente = cliente_openai().with_options(timeout=180)
     pedido = {
         "model": modelo,
         "prompt": prompt,
@@ -209,13 +209,9 @@ def _video(foto: Path, audio: Path, destino: Path) -> None:
         "+faststart",
         str(destino),
     ]
-    try:
-        resultado = subprocess.run(comando, capture_output=True, text=True, timeout=90)
-    except subprocess.TimeoutExpired as erro:
-        raise RuntimeError("A montagem do vídeo passou do tempo.") from erro
+    resultado = subprocess.run(comando, capture_output=True, text=True)
     if resultado.returncode != 0 or not destino.exists() or destino.stat().st_size < 1000:
-        detalhe = (resultado.stderr or "").strip().splitlines()
-        raise RuntimeError(detalhe[-1][:180] if detalhe else "O vídeo não foi montado.")
+        raise RuntimeError("O vídeo não foi montado.")
 
 
 async def montar_midia(
@@ -265,7 +261,7 @@ async def montar_midia(
         avisos.append(_aviso("A foto não saiu", foto_erro))
         if video is not None and foto is not None:
             try:
-                _quadro(foto)
+                await asyncio.to_thread(_quadro, foto)
             except Exception as falha_quadro:
                 avisos.append(_aviso("A imagem do vídeo não saiu", falha_quadro))
                 foto = None
@@ -278,7 +274,7 @@ async def montar_midia(
 
     if video is not None and audio is not None and foto is not None and audio.exists() and foto.exists():
         try:
-            _video(foto, audio, video)
+            await asyncio.to_thread(_video, foto, audio, video)
         except Exception as erro:
             avisos.append(_aviso("O vídeo não foi montado", erro))
             video = None
@@ -335,13 +331,9 @@ def _video_cenas(fotos: list[Path], audio: Path, destino: Path) -> None:
         "+faststart",
         str(destino),
     ]
-    try:
-        resultado = subprocess.run(comando, capture_output=True, text=True, timeout=90)
-    except subprocess.TimeoutExpired as erro:
-        raise RuntimeError("A montagem do vídeo passou do tempo.") from erro
+    resultado = subprocess.run(comando, capture_output=True, text=True)
     if resultado.returncode != 0 or not destino.exists() or destino.stat().st_size < 1000:
-        detalhe = (resultado.stderr or "").strip().splitlines()
-        raise RuntimeError(detalhe[-1][:180] if detalhe else "O vídeo não foi montado.")
+        raise RuntimeError("O vídeo não foi montado.")
 
 
 async def montar_historia(
@@ -400,7 +392,7 @@ async def montar_historia(
     if not fotos:
         quadro = pasta / "cena-0.png"
         try:
-            _quadro(quadro)
+            await asyncio.to_thread(_quadro, quadro)
             fotos = [quadro]
         except Exception as erro:
             avisos.append(_aviso("A imagem do vídeo não saiu", erro))
@@ -413,9 +405,9 @@ async def montar_historia(
     if audio is not None and fotos:
         try:
             if len(fotos) == 1:
-                _video(fotos[0], audio, video)
+                await asyncio.to_thread(_video, fotos[0], audio, video)
             else:
-                _video_cenas(fotos, audio, video)
+                await asyncio.to_thread(_video_cenas, fotos, audio, video)
         except Exception as erro:
             avisos.append(_aviso("O vídeo não foi montado", erro))
             video = None

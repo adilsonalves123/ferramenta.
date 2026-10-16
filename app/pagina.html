@@ -822,12 +822,35 @@
     async function lerResposta(resposta) {
       const bruto = await resposta.text();
       if (!bruto.trim()) {
-        throw new Error("A resposta veio vazia. A montagem passou do tempo. Clique em Pode gerar de novo.");
+        throw new Error("O servidor não respondeu. Clique em Pode gerar de novo.");
       }
       try {
         return JSON.parse(bruto);
       } catch {
         throw new Error("Não consegui ler a resposta do servidor.");
+      }
+    }
+
+    async function acompanharVideo(ident) {
+      while (true) {
+        await new Promise((resolver) => window.setTimeout(resolver, 3000));
+        let consulta;
+        try {
+          consulta = await fetch("/video-trabalho/" + ident);
+        } catch {
+          continue;
+        }
+        const bruto = await consulta.text();
+        if (!bruto.trim()) continue;
+        let pronto;
+        try {
+          pronto = JSON.parse(bruto);
+        } catch {
+          continue;
+        }
+        if (consulta.status === 404) throw new Error(mensagemErro(pronto));
+        if (pronto.status === "erro") throw new Error(pronto.detail || "Não foi possível montar o vídeo agora.");
+        if (pronto.status === "pronto") return pronto;
       }
     }
 
@@ -1343,17 +1366,7 @@
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         let pronto = dados;
         if (dados.status === "montando" && dados.id) {
-          for (let tentativa = 0; tentativa < 40; tentativa += 1) {
-            await new Promise((resolver) => window.setTimeout(resolver, 3000));
-            const consulta = await fetch("/video-trabalho/" + dados.id);
-            pronto = await lerResposta(consulta);
-            if (!consulta.ok) throw new Error(mensagemErro(pronto));
-            if (pronto.status === "erro") throw new Error(pronto.detail || "Não foi possível montar o vídeo agora.");
-            if (pronto.status === "pronto") break;
-          }
-          if (pronto.status !== "pronto") {
-            throw new Error("A montagem ainda está andando. Espere um minuto e clique em Pode gerar de novo.");
-          }
+          pronto = await acompanharVideo(dados.id);
         }
         acao = "video";
         mostrarResultado(pronto);
