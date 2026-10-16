@@ -99,9 +99,10 @@ async def _foto(
     }
     if referencia:
         nome = "referencia.jpg" if tipo == "image/jpeg" else "referencia.webp" if tipo == "image/webp" else "referencia.png"
+        extra = {} if modelo.endswith("mini") else {"input_fidelity": "high"}
         imagem = await cliente.images.edit(
             image=(nome, referencia, tipo or "image/png"),
-            input_fidelity="high",
+            **extra,
             **pedido,
         )
     else:
@@ -181,15 +182,17 @@ def _video(foto: Path, audio: Path, destino: Path) -> None:
         "-loop",
         "1",
         "-framerate",
-        "25",
+        "1",
+        "-t",
+        duracao,
         "-i",
         str(foto),
         "-i",
         str(audio),
-        "-t",
-        duracao,
         "-c:v",
         "libx264",
+        "-preset",
+        "ultrafast",
         "-tune",
         "stillimage",
         "-c:a",
@@ -198,6 +201,7 @@ def _video(foto: Path, audio: Path, destino: Path) -> None:
         "128k",
         "-pix_fmt",
         "yuv420p",
+        "-shortest",
         "-movflags",
         "+faststart",
         str(destino),
