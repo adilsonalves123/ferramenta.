@@ -48,6 +48,31 @@ def _jpeg_instagram(origem: Path, destino: Path) -> None:
         raise ValueError("A foto não pôde ser preparada para o Instagram.")
 
 
+def _jpeg_story(origem: Path, destino: Path) -> None:
+    import imageio_ffmpeg
+
+    ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+    filtro = "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black"
+    comando = [ffmpeg, "-y", "-i", str(origem), "-vf", filtro, "-q:v", "3", str(destino)]
+    resultado = _executar_ffmpeg(comando)
+    if resultado.returncode != 0 or not destino.exists() or destino.stat().st_size < 100:
+        raise ValueError("A foto do Story não pôde ser preparada.")
+
+
+def arquivo_story(caminho: str) -> str:
+    if not caminho.startswith("/midia/"):
+        return caminho
+    partes = caminho.strip("/").split("/")
+    if len(partes) < 3:
+        return caminho
+    origem = PASTA_MIDIA / partes[1] / partes[2]
+    destino = PASTA_MIDIA / partes[1] / "story.jpg"
+    if not origem.exists():
+        return caminho
+    _jpeg_story(origem, destino)
+    return f"/midia/{partes[1]}/story.jpg"
+
+
 def salvar_anexo(dados: bytes) -> tuple[str, str]:
     if dados.startswith(b"\xff\xd8\xff"):
         ext, tipo = ".jpg", "foto"

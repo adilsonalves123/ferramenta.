@@ -68,6 +68,7 @@ def _item(registro: Agendamento) -> ItemAgenda:
         dia=registro.dia,
         hora=registro.hora,
         rede=registro.rede,
+        formato=registro.formato or "feed",
         titulo=registro.titulo,
         status=registro.status,
         detalhe=registro.detalhe,
@@ -126,6 +127,7 @@ async def post_agenda(
             legenda=pedido.legenda.strip(),
             imagem_url=pedido.imagem_url.strip()[:500],
             video_url=pedido.video_url.strip()[:500],
+            formato=pedido.formato if pedido.formato in {"feed", "story", "ambos"} else "feed",
         )
         session.add(registro)
     else:
@@ -141,15 +143,23 @@ async def post_agenda(
         registro.tentativas = 0
         registro.ok_instagram = False
         registro.ok_facebook = False
+        registro.formato = pedido.formato if pedido.formato in {"feed", "story", "ambos"} else "feed"
+        registro.feito = ""
+    formato = registro.formato or "feed"
+    precisa_foto = formato in {"story", "ambos"} or registro.rede in {"Instagram", "Ambos"}
     contas = await estado_contas(session)
-    if registro.rede == "Facebook" and _estado(contas["facebook"]).ligado is False:
-        registro.detalhe = "Falta ligar a conta."
-    elif registro.rede == "Instagram" and not registro.imagem_url and not registro.video_url:
+    if precisa_foto and not registro.imagem_url and not registro.video_url:
         registro.status = "falta_imagem"
-        registro.detalhe = "Falta ligar a conta e a foto ou o vídeo do post." if not _estado(contas["instagram"]).ligado else "Falta a foto ou o vídeo do post."
+        registro.detalhe = "Falta a foto."
+    elif registro.rede == "Facebook" and _estado(contas["facebook"]).ligado is False:
+        registro.detalhe = "Falta ligar a conta."
     elif registro.rede == "Instagram" and _estado(contas["instagram"]).ligado is False:
         registro.detalhe = "Falta ligar a conta."
-    elif registro.rede not in ("Instagram", "Facebook"):
+    elif registro.rede == "Ambos" and (
+        _estado(contas["instagram"]).ligado is False or _estado(contas["facebook"]).ligado is False
+    ):
+        registro.detalhe = "Falta ligar o Instagram ou o Facebook."
+    elif registro.rede not in ("Instagram", "Facebook", "Ambos"):
         registro.status = "manual"
         registro.detalhe = "Essa rede ainda não publica sozinha."
     await session.commit()
@@ -169,6 +179,7 @@ async def post_publicar_agora(
         pedido.legenda,
         pedido.imagem_url,
         pedido.video_url,
+        pedido.formato,
     )
     return RespostaPublicacao(status=status, detalhe=detalhe)
 
@@ -211,7 +222,12 @@ async def post_semana(
     except ValueError as erro:
         raise HTTPException(status_code=422, detail=str(erro)) from erro
     try:
-        criados, aviso = await montar_dias(session, pares)
+        criados, aviso = await montar_dias(
+            session,
+            pares,
+            pedido.rede if pedido.rede in {"Instagram", "Facebook", "Ambos"} else "Ambos",
+            pedido.formato if pedido.formato in {"feed", "story", "ambos"} else "feed",
+        )
     except ValueError as erro:
         raise HTTPException(status_code=422, detail=str(erro)) from erro
     return RespostaSemana(

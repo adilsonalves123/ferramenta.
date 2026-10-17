@@ -37,6 +37,8 @@ class Agendamento(SQLModel, table=True):
     tentativas: int = Field(default=0)
     ok_instagram: bool = Field(default=False)
     ok_facebook: bool = Field(default=False)
+    formato: str = Field(default="feed", max_length=20)
+    feito: str = Field(default="", max_length=80)
     status: str = Field(default="na_fila", max_length=20)
     detalhe: str = Field(default="", sa_type=Text)
     criado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))

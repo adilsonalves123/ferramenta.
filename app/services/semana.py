@@ -93,7 +93,12 @@ def _data_dia(dia: str):
     return datetime(ano, mes, dia_mes, tzinfo=ZONA).date()
 
 
-async def montar_dias(session: AsyncSession, pedidos: list[tuple[str, str]]) -> tuple[list[Agendamento], str]:
+async def montar_dias(
+    session: AsyncSession,
+    pedidos: list[tuple[str, str]],
+    rede: str = "Ambos",
+    formato: str = "feed",
+) -> tuple[list[Agendamento], str]:
     if not pedidos:
         raise ValueError("Marque pelo menos um dia.")
     if len(pedidos) > 14:
@@ -130,7 +135,8 @@ async def montar_dias(session: AsyncSession, pedidos: list[tuple[str, str]]) -> 
         registro = Agendamento(
             dia=dia,
             hora=hora,
-            rede="Ambos",
+            rede=rede,
+            formato=formato,
             titulo=post.titulo.strip()[:300],
             legenda=post.legenda.strip(),
             cena=post.cena.strip()[:800],

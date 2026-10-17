@@ -230,7 +230,43 @@
     }
     .post-acoes i:nth-child(2) { color: #4f46e5; }
     .post-acoes i:nth-child(3) { color: #0ea5e9; }
-    .semana { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 8px; }
+    .post.modo-story {
+      background: #0f172a;
+      color: white;
+      border-radius: 18px;
+    }
+    .post.modo-story .post-conta strong,
+    .post.modo-story .post-conta span { color: white; }
+    .post.modo-story img,
+    .post.modo-story video,
+    .post.modo-story .vazio-foto { height: 460px; }
+    .post.modo-story .post-acoes { display: none; }
+    .post.modo-story p { color: white; }
+    .previa-abre {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      margin: 2px 2px 8px;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      font: inherit;
+      text-align: left;
+      padding: 0;
+    }
+    #painel-formato { margin: 0 0 8px; }
+    .semana-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .semana-nav button {
+      border: 0;
+      background: transparent;
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+      color: var(--tinta);
+      padding: 0 6px;
+    }
+    .semana-nav span { font-size: 12px; color: var(--mudo); }
     button.dia {
       display: flex;
       flex-direction: column;
@@ -269,16 +305,7 @@
       cursor: pointer;
       padding: 0;
     }
-    .dias-escolha { display: grid; gap: 6px; margin-top: 8px; }
-    .dia-escolha {
-      display: grid;
-      grid-template-columns: 18px 1fr 108px;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-    }
-    .dia-escolha input[type="time"] { width: 108px; padding: 6px 8px; }
-    .dia-escolha.ocupado { color: var(--mudo); }
+    .cartao-agenda .grupo { margin-top: 12px; }
     h1 { font-size: 22px; letter-spacing: -0.02em; margin: 8px 0 6px; }
     p.ajuda { color: var(--mudo); margin: 0 0 8px; line-height: 1.45; }
     @media (max-width: 980px) {
@@ -713,7 +740,14 @@
         </form>
       </section>
       <aside class="lado">
-        <p class="secao">Prévia · <span class="canal-nome" id="canal-previa">Instagram</span></p>
+        <button class="secao previa-abre" type="button" id="abrir-previa">
+          Prévia · <span class="canal-nome" id="canal-previa">Feed</span>
+          <i class="fa-solid fa-chevron-down" id="seta-previa"></i>
+        </button>
+        <div class="atalhos" id="painel-formato" hidden>
+          <button class="chip ativo" type="button" data-vista="feed">Feed</button>
+          <button class="chip" type="button" data-vista="story">Story</button>
+        </div>
         <div class="cartao-previa">
           <div class="post" id="previa">
             <div class="post-topo">
@@ -732,22 +766,39 @@
         </div>
         <div class="cartao-agenda">
           <p class="secao">Agenda</p>
+          <div class="semana-nav">
+            <button type="button" id="semana-antes" aria-label="Semana anterior">‹</button>
+            <span id="semana-rotulo"></span>
+            <button type="button" id="semana-depois" aria-label="Próxima semana">›</button>
+          </div>
           <div class="semana" id="semana"></div>
           <div class="hora-linha">
             <label for="hora-post">Horário</label>
             <input id="hora-post" type="time" value="09:00" required />
           </div>
+          <div class="grupo">
+            <p class="secao">Rede</p>
+            <div class="atalhos" id="redes-agenda">
+              <button class="chip" type="button" data-rede-agenda="Instagram"><i class="fa-brands fa-instagram"></i>Instagram</button>
+              <button class="chip" type="button" data-rede-agenda="Facebook"><i class="fa-brands fa-facebook"></i>Facebook</button>
+              <button class="chip ativo" type="button" data-rede-agenda="Ambos">Ambos</button>
+            </div>
+          </div>
+          <div class="grupo">
+            <p class="secao">Formato</p>
+            <div class="atalhos" id="formatos-agenda">
+              <button class="chip ativo" type="button" data-formato-agenda="feed">Feed</button>
+              <button class="chip" type="button" data-formato-agenda="story">Story</button>
+              <button class="chip" type="button" data-formato-agenda="ambos">Ambos</button>
+            </div>
+          </div>
           <div class="botoes-agenda">
             <button class="principal" type="button" id="criar-agora">Criar agora</button>
             <button class="principal" type="button" id="agendar">Agendar</button>
-          </div>
-          <p class="secao escolha-titulo">Dias</p>
-          <div class="dias-escolha" id="dias-escolha"></div>
-          <div class="botoes-agenda">
-            <button class="principal" type="button" id="montar-semana">Criar os dias marcados</button>
+            <button class="principal" type="button" id="montar-semana">Criar este dia</button>
           </div>
           <ul class="lista-agenda" id="lista-agenda"></ul>
-          <p class="nota" id="nota-agenda">Marque os dias e o horário de cada um. O texto sai do Prompt, com uma foto diferente. Cancelar tira o post da fila.</p>
+          <p class="nota" id="nota-agenda">Escolha o dia no calendário, o horário, a rede e Feed, Story ou os dois. Cancelar tira o post da fila.</p>
         </div>
       </aside>
     </section>
@@ -758,7 +809,7 @@
         <h1>Prompt</h1>
       </header>
       <form id="form-ficha" class="ficha-corpo">
-        <p class="nota">Escreva aqui o que o sistema deve lembrar. Fica gravado no servidor. Criar os dias marcados usa só este texto.</p>
+        <p class="nota">Escreva aqui o que o sistema deve lembrar. Fica gravado no servidor. Criar este dia usa só este texto.</p>
         <textarea id="texto-ficha" required minlength="20"></textarea>
         <button class="principal" type="submit" id="salvar-ficha">Salvar prompt</button>
         <p class="nota" id="nota-ficha"></p>
@@ -1754,7 +1805,9 @@
     let imagemProjeto = "";
     let videoProjeto = "";
     let diaEscolhido = "";
-    const diasMarcados = new Map();
+    let semanaOffset = 0;
+    let redeAgenda = "Ambos";
+    let formatoAgenda = "feed";
     let agendaItens = [];
     let metaPronta = false;
 
@@ -1810,6 +1863,12 @@
       return rede === "Ambos" ? "Instagram e Facebook" : rede;
     }
 
+    function nomeFormato(formato) {
+      if (formato === "story") return "Story";
+      if (formato === "ambos") return "Feed e Story";
+      return "Feed";
+    }
+
     function desenharLista() {
       const lista = document.getElementById("lista-agenda");
       const inicio = diaIso(new Date());
@@ -1827,7 +1886,7 @@
       visiveis.forEach((item) => {
         const linha = document.createElement("li");
         const titulo = document.createElement("strong");
-        titulo.textContent = `${item.dia.slice(8)} · ${item.hora} · ${nomeRede(item.rede)} · ${item.titulo}`;
+        titulo.textContent = `${item.dia.slice(8)} · ${item.hora} · ${nomeRede(item.rede)} · ${nomeFormato(item.formato)} · ${item.titulo}`;
         const estado = document.createElement("span");
         estado.textContent = textoStatus(item);
         linha.append(titulo, estado);
@@ -1861,10 +1920,21 @@
       const semana = document.getElementById("semana");
       semana.innerHTML = "";
       const nomes = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+      const meses = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
       if (!diaEscolhido) diaEscolhido = diaIso(new Date());
+      const inicio = new Date();
+      inicio.setDate(inicio.getDate() + semanaOffset * 7);
+      const fim = new Date(inicio);
+      fim.setDate(inicio.getDate() + 6);
+      const rotulo = inicio.getMonth() === fim.getMonth()
+        ? `${inicio.getDate()}–${fim.getDate()} ${meses[fim.getMonth()]}`
+        : `${inicio.getDate()} ${meses[inicio.getMonth()]}–${fim.getDate()} ${meses[fim.getMonth()]}`;
+      document.getElementById("semana-rotulo").textContent = rotulo;
+      document.getElementById("semana-antes").disabled = semanaOffset === 0;
+      document.getElementById("semana-depois").disabled = semanaOffset >= 2;
       for (let i = 0; i < 7; i += 1) {
-        const data = new Date();
-        data.setDate(data.getDate() + i);
+        const data = new Date(inicio);
+        data.setDate(inicio.getDate() + i);
         const iso = diaIso(data);
         const botao = document.createElement("button");
         botao.type = "button";
@@ -1878,44 +1948,6 @@
         semana.appendChild(botao);
       }
       desenharLista();
-      desenharEscolha();
-    }
-
-    function desenharEscolha() {
-      const caixa = document.getElementById("dias-escolha");
-      caixa.innerHTML = "";
-      const nomes = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
-      const horaPadrao = document.getElementById("hora-post").value || "09:00";
-      for (let i = 0; i < 14; i += 1) {
-        const data = new Date();
-        data.setDate(data.getDate() + i);
-        const iso = diaIso(data);
-        const ocupado = agendaItens.some((item) => item.dia === iso);
-        if (ocupado) diasMarcados.delete(iso);
-        const linha = document.createElement("label");
-        linha.className = "dia-escolha" + (ocupado ? " ocupado" : "");
-        const check = document.createElement("input");
-        check.type = "checkbox";
-        check.disabled = ocupado;
-        check.checked = !ocupado && diasMarcados.has(iso);
-        const nome = document.createElement("span");
-        nome.textContent = ocupado
-          ? `${nomes[data.getDay()]} ${data.getDate()} · já tem post`
-          : `${nomes[data.getDay()]} ${data.getDate()}`;
-        const hora = document.createElement("input");
-        hora.type = "time";
-        hora.value = diasMarcados.get(iso) || horaPadrao;
-        hora.disabled = ocupado;
-        check.addEventListener("change", () => {
-          if (check.checked) diasMarcados.set(iso, hora.value || horaPadrao);
-          else diasMarcados.delete(iso);
-        });
-        hora.addEventListener("change", () => {
-          if (check.checked) diasMarcados.set(iso, hora.value || horaPadrao);
-        });
-        linha.append(check, nome, hora);
-        caixa.appendChild(linha);
-      }
     }
 
     async function cancelarPost(id) {
@@ -2153,8 +2185,51 @@
         redePost = botao.dataset.redePost;
         document.querySelectorAll("[data-rede-post]").forEach((item) => item.classList.remove("ativo"));
         botao.classList.add("ativo");
-        document.getElementById("canal-previa").textContent = redePost;
       });
+    });
+
+    document.getElementById("abrir-previa").addEventListener("click", () => {
+      const painel = document.getElementById("painel-formato");
+      painel.hidden = !painel.hidden;
+      document.getElementById("seta-previa").className = painel.hidden ? "fa-solid fa-chevron-down" : "fa-solid fa-chevron-up";
+    });
+    document.querySelectorAll("[data-vista]").forEach((botao) => {
+      botao.addEventListener("click", () => {
+        document.querySelectorAll("[data-vista]").forEach((item) => item.classList.remove("ativo"));
+        botao.classList.add("ativo");
+        const story = botao.dataset.vista === "story";
+        document.getElementById("previa").classList.toggle("modo-story", story);
+        document.getElementById("canal-previa").textContent = story ? "Story" : "Feed";
+      });
+    });
+    document.querySelectorAll("[data-rede-agenda]").forEach((botao) => {
+      botao.addEventListener("click", () => {
+        redeAgenda = botao.dataset.redeAgenda;
+        document.querySelectorAll("[data-rede-agenda]").forEach((item) => item.classList.remove("ativo"));
+        botao.classList.add("ativo");
+      });
+    });
+    document.querySelectorAll("[data-formato-agenda]").forEach((botao) => {
+      botao.addEventListener("click", () => {
+        formatoAgenda = botao.dataset.formatoAgenda;
+        document.querySelectorAll("[data-formato-agenda]").forEach((item) => item.classList.remove("ativo"));
+        botao.classList.add("ativo");
+        if (formatoAgenda === "feed" || formatoAgenda === "story") {
+          document.querySelectorAll("[data-vista]").forEach((item) => item.classList.toggle("ativo", item.dataset.vista === formatoAgenda));
+          document.getElementById("previa").classList.toggle("modo-story", formatoAgenda === "story");
+          document.getElementById("canal-previa").textContent = formatoAgenda === "story" ? "Story" : "Feed";
+        }
+      });
+    });
+    document.getElementById("semana-antes").addEventListener("click", () => {
+      if (semanaOffset === 0) return;
+      semanaOffset -= 1;
+      desenharSemana();
+    });
+    document.getElementById("semana-depois").addEventListener("click", () => {
+      if (semanaOffset >= 2) return;
+      semanaOffset += 1;
+      desenharSemana();
     });
 
     function ligarInstagram() {
@@ -2220,8 +2295,8 @@
         nota.textContent = "Escreva o post ou anexe uma foto ou um vídeo.";
         return;
       }
-      if (!redePost) {
-        nota.textContent = "Escolha Instagram, Facebook, TikTok ou Google antes de publicar.";
+      if (!redeAgenda) {
+        nota.textContent = "Escolha Instagram, Facebook ou Ambos.";
         return;
       }
       const botao = document.getElementById("criar-agora");
@@ -2232,7 +2307,8 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            rede: redePost,
+            rede: redeAgenda,
+            formato: formatoAgenda,
             titulo: publicado.titulo,
             legenda: publicado.legenda,
             imagem_url: imagemProjeto,
@@ -2242,7 +2318,7 @@
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         if (dados.status === "publicado") {
-          nota.textContent = redePost === "Facebook" ? "Saiu agora na Página do Facebook." : "Saiu agora no Instagram.";
+          nota.textContent = "Saiu agora. " + nomeRede(redeAgenda) + ", " + nomeFormato(formatoAgenda) + ".";
         } else {
           nota.textContent = dados.detalhe || "Não consegui publicar agora.";
         }
@@ -2261,8 +2337,8 @@
         nota.textContent = "Escreva o post ou anexe uma foto ou um vídeo.";
         return;
       }
-      if (!redePost) {
-        nota.textContent = "Escolha Instagram, Facebook, TikTok ou Google antes de agendar.";
+      if (!redeAgenda) {
+        nota.textContent = "Escolha Instagram, Facebook ou Ambos.";
         return;
       }
       const hora = document.getElementById("hora-post").value;
@@ -2279,7 +2355,8 @@
           body: JSON.stringify({
             dia: diaEscolhido,
             hora,
-            rede: redePost,
+            rede: redeAgenda,
+            formato: formatoAgenda,
             titulo: publicado.titulo,
             legenda: publicado.legenda,
             imagem_url: imagemProjeto,
@@ -2289,16 +2366,7 @@
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         await carregarAgenda();
-        if (redePost === "Facebook") {
-          const facebookLigado = document.getElementById("estado-facebook").textContent.startsWith("Facebook ·");
-          nota.textContent = facebookLigado
-            ? "Marcado às " + hora + ". Sai na Página depois desse horário."
-            : "Marcado às " + hora + ". Falta ligar o Facebook.";
-        } else if (redePost === "Instagram") {
-          nota.textContent = "Marcado às " + hora + ". O Instagram publica sozinho quando a conta estiver ligada e o post tiver foto ou vídeo.";
-        } else {
-          nota.textContent = "Marcado às " + hora + ". Essa rede ainda não publica sozinha.";
-        }
+        nota.textContent = "Marcado às " + hora + ". " + nomeRede(redeAgenda) + ", " + nomeFormato(formatoAgenda) + ".";
       } catch (falha) {
         nota.textContent = falha.message || "Não consegui guardar o horário.";
       } finally {
@@ -2345,33 +2413,37 @@
     });
     document.getElementById("montar-semana").addEventListener("click", async () => {
       const nota = document.getElementById("nota-agenda");
-      const dias = [];
-      diasMarcados.forEach((hora, dia) => {
-        if (hora) dias.push({ dia, hora });
-      });
-      if (!dias.length) {
-        nota.textContent = "Marque os dias e o horário de cada um.";
+      const hora = document.getElementById("hora-post").value;
+      if (!diaEscolhido) {
+        nota.textContent = "Escolha o dia no calendário.";
+        return;
+      }
+      if (!hora) {
+        nota.textContent = "Escolha o horário.";
         return;
       }
       const botao = document.getElementById("montar-semana");
       botao.disabled = true;
-      botao.textContent = "Criando os posts";
+      botao.textContent = "Criando o post";
       try {
         const resposta = await fetch("/semana", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dias }),
+          body: JSON.stringify({
+            dias: [{ dia: diaEscolhido, hora }],
+            rede: redeAgenda,
+            formato: formatoAgenda,
+          }),
         });
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
-        diasMarcados.clear();
         await carregarAgenda();
-        nota.textContent = dados.aviso || "Os dias entraram na fila. Cada foto sai perto do horário marcado.";
+        nota.textContent = dados.aviso || "O dia entrou na fila. A foto sai perto do horário.";
       } catch (falha) {
-        nota.textContent = falha.message || "Não consegui criar esses dias.";
+        nota.textContent = falha.message || "Não consegui criar esse dia.";
       } finally {
         botao.disabled = false;
-        botao.textContent = "Criar os dias marcados";
+        botao.textContent = "Criar este dia";
       }
     });
   </script>

@@ -73,6 +73,12 @@ async def criar_tabelas() -> None:
         await conexao.execute(
             text("ALTER TABLE mkt_agendamentos ADD COLUMN IF NOT EXISTS ok_facebook BOOLEAN NOT NULL DEFAULT FALSE")
         )
+        await conexao.execute(
+            text("ALTER TABLE mkt_agendamentos ADD COLUMN IF NOT EXISTS formato VARCHAR(20) NOT NULL DEFAULT 'feed'")
+        )
+        await conexao.execute(
+            text("ALTER TABLE mkt_agendamentos ADD COLUMN IF NOT EXISTS feito VARCHAR(80) NOT NULL DEFAULT ''")
+        )
 
 
 async def fechar_engine() -> None:

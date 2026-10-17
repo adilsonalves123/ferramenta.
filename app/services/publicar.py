@@ -293,6 +293,78 @@ def _publicar_rede(rede: str, conta: ContaRede, texto: str, imagem_url: str, vid
     publicar_instagram(conta.externo_id, conta.token, texto, endereco_publico(imagem))
 
 
+def publicar_instagram_story(conta_id: str, token: str, imagem_url: str) -> None:
+    criado = _pedir(
+        f"https://graph.instagram.com/{VERSAO}/{conta_id}/media",
+        {"media_type": "STORIES", "image_url": imagem_url, "access_token": token},
+    )
+    criacao = str(criado.get("id") or "")
+    if not criacao:
+        raise RuntimeError("O Instagram não preparou o Story.")
+    _esperar_midia(criacao, token, "o Story")
+    _pedir(
+        f"https://graph.instagram.com/{VERSAO}/{conta_id}/media_publish",
+        {"creation_id": criacao, "access_token": token},
+    )
+
+
+def publicar_instagram_story_video(conta_id: str, token: str, video_url: str) -> None:
+    criado = _pedir(
+        f"https://graph.instagram.com/{VERSAO}/{conta_id}/media",
+        {"media_type": "STORIES", "video_url": video_url, "access_token": token},
+    )
+    criacao = str(criado.get("id") or "")
+    if not criacao:
+        raise RuntimeError("O Instagram não preparou o Story.")
+    _esperar_midia(criacao, token, "o Story")
+    _pedir(
+        f"https://graph.instagram.com/{VERSAO}/{conta_id}/media_publish",
+        {"creation_id": criacao, "access_token": token},
+    )
+
+
+def publicar_facebook_story(pagina_id: str, token: str, imagem_url: str) -> None:
+    foto = _pedir(
+        f"https://graph.facebook.com/{VERSAO}/{pagina_id}/photos",
+        {"url": imagem_url, "published": "false", "access_token": token},
+    )
+    photo_id = str(foto.get("id") or "")
+    if not photo_id:
+        raise RuntimeError("O Facebook não preparou a foto do Story.")
+    _pedir(
+        f"https://graph.facebook.com/{VERSAO}/{pagina_id}/photo_stories",
+        {"photo_id": photo_id, "access_token": token},
+    )
+
+
+def alvos_de(rede: str, formato: str) -> list[str]:
+    redes = ["Instagram", "Facebook"] if rede == "Ambos" else [rede]
+    formatos = ["feed", "story"] if formato == "ambos" else [formato]
+    return [f"{nome}:{tipo}" for nome in redes for tipo in formatos]
+
+
+def _publicar_alvo(alvo: str, conta: ContaRede, texto: str, imagem_url: str, video_url: str) -> None:
+    from app.services.midia import arquivo_story
+
+    rede, formato = alvo.split(":", 1)
+    video = video_url.strip()
+    imagem = imagem_url.strip()
+    if formato == "story":
+        if not imagem and not video:
+            raise RuntimeError("O Story pede uma foto.")
+        if rede == "Facebook":
+            if video and not imagem:
+                raise RuntimeError("O Story do Facebook sai com foto.")
+            publicar_facebook_story(conta.externo_id, conta.token, endereco_publico(arquivo_story(imagem)))
+            return
+        if video and video.lower().split("?", 1)[0].endswith(".mp4"):
+            publicar_instagram_story_video(conta.externo_id, conta.token, endereco_publico(video))
+            return
+        publicar_instagram_story(conta.externo_id, conta.token, endereco_publico(arquivo_story(imagem)))
+        return
+    _publicar_rede(rede, conta, texto, imagem, video)
+
+
 def momento(dia: str, hora: str) -> datetime:
     ano, mes, dia_mes = (int(parte) for parte in dia.split("-"))
     horas, minutos = (int(parte) for parte in hora.split(":"))
@@ -393,22 +465,29 @@ async def publicar_agora(
     legenda: str,
     imagem_url: str,
     video_url: str = "",
+    formato: str = "feed",
 ) -> tuple[str, str]:
+    formato = formato if formato in {"feed", "story", "ambos"} else "feed"
     if rede not in REDES_PUBLICAVEIS:
         return "manual", "Essa rede ainda não publica sozinha."
-    if rede == "Instagram" and not imagem_url.strip() and not video_url.strip():
-        return "falta_imagem", "O Instagram pede uma foto ou um vídeo."
-    conta = await _conta(session, rede.lower())
-    if conta is None or not conta.token:
-        return "falta_conta", "Falta ligar a conta."
+    alvos = alvos_de(rede, formato)
+    precisa_midia = any(alvo.endswith(":story") or alvo.startswith("Instagram:") for alvo in alvos)
+    if precisa_midia and not imagem_url.strip() and not video_url.strip():
+        return "falta_imagem", "Esse formato pede uma foto ou um vídeo."
     texto = f"{titulo.strip()}\n\n{legenda.strip()}".strip()
-    try:
-        await asyncio.to_thread(_publicar_rede, rede, conta, texto, imagem_url, video_url)
-    except Exception as erro:
-        detalhe = str(erro)
-        if "Media ID is not available" in detalhe:
-            detalhe = "O Instagram não conseguiu usar essa foto. Anexe de novo e clique em Criar agora."
-        return "erro", detalhe[:300]
+    erros: list[str] = []
+    for alvo in alvos:
+        nome = alvo.split(":", 1)[0]
+        conta = await _conta(session, nome.lower())
+        if conta is None or not conta.token:
+            erros.append(f"Falta ligar o {nome}.")
+            continue
+        try:
+            await asyncio.to_thread(_publicar_alvo, alvo, conta, texto, imagem_url, video_url)
+        except Exception as erro:
+            erros.append(_erro_foto(erro)[:180])
+    if erros:
+        return "erro", " ".join(erros)[:300]
     return "publicado", ""
 
 
@@ -449,44 +528,63 @@ async def preparar_fotos(session: AsyncSession) -> None:
         return
 
 
-async def _publicar_ambos(session: AsyncSession, item: Agendamento) -> None:
+def _feitos(item: Agendamento) -> set[str]:
+    feitos = {parte for parte in (item.feito or "").split(",") if parte}
+    formato = (item.formato or "feed").strip().lower()
+    if formato in {"feed", "ambos"}:
+        if item.ok_instagram:
+            feitos.add("Instagram:feed")
+        if item.ok_facebook:
+            feitos.add("Facebook:feed")
+    return feitos
+
+
+async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
+    formato = (item.formato or "feed").strip().lower()
+    if formato not in {"feed", "story", "ambos"}:
+        formato = "feed"
+    if item.rede not in REDES_PUBLICAVEIS:
+        item.status = "manual"
+        item.detalhe = "Essa rede ainda não publica sozinha."
+        return
+    alvos = alvos_de(item.rede, formato)
+    precisa_midia = any(alvo.endswith(":story") or alvo.startswith("Instagram:") for alvo in alvos)
+    if precisa_midia and not item.imagem_url and not item.video_url:
+        if (item.cena or "").strip():
+            return
+        item.status = "falta_imagem"
+        item.detalhe = "Falta a foto."
+        return
+    feitos = _feitos(item)
     texto = f"{item.titulo}\n\n{item.legenda}".strip()
     erros: list[str] = []
-    if not item.ok_instagram:
-        conta = await _conta(session, "instagram")
+    for alvo in alvos:
+        if alvo in feitos:
+            continue
+        nome = alvo.split(":", 1)[0]
+        conta = await _conta(session, nome.lower())
         if conta is None or not conta.token:
-            erros.append("Falta ligar o Instagram.")
-        else:
-            try:
-                await asyncio.to_thread(
-                    _publicar_rede,
-                    "Instagram",
-                    conta,
-                    texto,
-                    item.imagem_url,
-                    item.video_url,
-                )
+            erros.append(f"Falta ligar o {nome}.")
+            continue
+        try:
+            await asyncio.to_thread(
+                _publicar_alvo,
+                alvo,
+                conta,
+                texto,
+                item.imagem_url,
+                item.video_url,
+            )
+            feitos.add(alvo)
+            item.feito = ",".join(sorted(feitos))[:80]
+            if alvo == "Instagram:feed":
                 item.ok_instagram = True
-            except Exception as erro:
-                erros.append(_erro_foto(erro)[:180])
-    if not item.ok_facebook:
-        conta = await _conta(session, "facebook")
-        if conta is None or not conta.token:
-            erros.append("Falta ligar o Facebook.")
-        else:
-            try:
-                await asyncio.to_thread(
-                    _publicar_rede,
-                    "Facebook",
-                    conta,
-                    texto,
-                    item.imagem_url,
-                    item.video_url,
-                )
+            if alvo == "Facebook:feed":
                 item.ok_facebook = True
-            except Exception as erro:
-                erros.append(_erro_foto(erro)[:180])
-    if item.ok_instagram and item.ok_facebook:
+            await session.commit()
+        except Exception as erro:
+            erros.append(_erro_foto(erro)[:180])
+    if all(alvo in feitos for alvo in alvos):
         item.status = "publicado"
         item.detalhe = ""
     else:
@@ -500,42 +598,9 @@ async def publicar_vencidos(session: AsyncSession) -> None:
     for item in resultado.all():
         if momento(item.dia, item.hora) > agora_local:
             continue
-        if item.rede == "Ambos":
-            if not item.imagem_url and not item.video_url:
-                continue
-            await _publicar_ambos(session, item)
+        antes = (item.status, item.detalhe, item.feito, item.ok_instagram, item.ok_facebook)
+        await _publicar_item(session, item)
+        if (item.status, item.detalhe, item.feito, item.ok_instagram, item.ok_facebook) != antes:
             mudou = True
-            continue
-        if item.rede not in REDES_PUBLICAVEIS:
-            item.status = "manual"
-            item.detalhe = "Essa rede ainda não publica sozinha."
-            mudou = True
-            continue
-        if item.rede == "Instagram" and not item.imagem_url and not item.video_url:
-            item.status = "falta_imagem"
-            item.detalhe = "O Instagram pede uma foto ou um vídeo."
-            mudou = True
-            continue
-        conta = await _conta(session, item.rede.lower())
-        if conta is None or not conta.token:
-            item.detalhe = "Falta ligar a conta."
-            mudou = True
-            continue
-        texto = f"{item.titulo}\n\n{item.legenda}".strip()
-        try:
-            await asyncio.to_thread(
-                _publicar_rede,
-                item.rede,
-                conta,
-                texto,
-                item.imagem_url,
-                item.video_url,
-            )
-            item.status = "publicado"
-            item.detalhe = ""
-        except Exception as erro:
-            item.status = "erro"
-            item.detalhe = _erro_foto(erro)
-        mudou = True
     if mudou:
         await session.commit()

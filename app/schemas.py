@@ -180,6 +180,7 @@ class ItemProjeto(BaseModel):
 
 class PedidoPublicarAgora(BaseModel):
     rede: str = Field(min_length=2, max_length=20)
+    formato: str = "feed"
     titulo: str = Field(min_length=1, max_length=300)
     legenda: str = Field(min_length=1)
     imagem_url: str = Field(default="", max_length=500)
@@ -227,12 +228,15 @@ class DiaPedido(BaseModel):
 
 class PedidoSemana(BaseModel):
     dias: list[DiaPedido] = Field(min_length=1, max_length=14)
+    rede: str = "Ambos"
+    formato: str = "feed"
 
 
 class PedidoAgenda(BaseModel):
     dia: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     hora: str = "09:00"
     rede: str = Field(min_length=2, max_length=20)
+    formato: str = "feed"
     titulo: str = Field(min_length=1, max_length=300)
     legenda: str = Field(min_length=1)
     imagem_url: str = Field(default="", max_length=500)
@@ -253,6 +257,7 @@ class ItemAgenda(BaseModel):
     dia: str
     hora: str
     rede: str
+    formato: str = "feed"
     titulo: str
     status: str
     detalhe: str
