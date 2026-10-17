@@ -16,7 +16,7 @@ from app.models import Agendamento, ContaRede, agora
 
 VERSAO = "v22.0"
 ZONA = timezone(timedelta(hours=-3))
-REDES_PUBLICAVEIS = {"Instagram", "Facebook"}
+REDES_PUBLICAVEIS = {"Instagram", "Facebook", "Ambos"}
 
 
 def meta_pronta() -> bool:
@@ -412,12 +412,99 @@ async def publicar_agora(
     return "publicado", ""
 
 
+def _erro_foto(erro: Exception) -> str:
+    detalhe = str(erro).replace("\n", " ")
+    if "insufficient_quota" in detalhe or "credit_balance" in detalhe:
+        return "A conta da OpenAI está sem créditos."
+    if "api_key" in detalhe.lower() or "sk-" in detalhe:
+        return "A foto não saiu agora."
+    if "Media ID is not available" in detalhe:
+        return "O Instagram não conseguiu usar essa foto."
+    return detalhe[:300]
+
+
+async def preparar_fotos(session: AsyncSession) -> None:
+    from app.services.midia import foto_da_cena
+
+    agora_local = datetime.now(ZONA)
+    resultado = await session.exec(select(Agendamento).where(Agendamento.status == "na_fila"))
+    for item in resultado.all():
+        if momento(item.dia, item.hora) > agora_local:
+            continue
+        if item.imagem_url or item.video_url or not (item.cena or "").strip():
+            continue
+        if item.tentativas >= 3:
+            item.status = "erro"
+            item.detalhe = "A foto não saiu depois de 3 tentativas. O texto não foi publicado."
+            await session.commit()
+            return
+        item.tentativas += 1
+        await session.commit()
+        try:
+            item.imagem_url = (await foto_da_cena(item.cena))[:500]
+            item.detalhe = ""
+        except Exception as erro:
+            item.detalhe = _erro_foto(erro)
+        await session.commit()
+        return
+
+
+async def _publicar_ambos(session: AsyncSession, item: Agendamento) -> None:
+    texto = f"{item.titulo}\n\n{item.legenda}".strip()
+    erros: list[str] = []
+    if not item.ok_instagram:
+        conta = await _conta(session, "instagram")
+        if conta is None or not conta.token:
+            erros.append("Falta ligar o Instagram.")
+        else:
+            try:
+                await asyncio.to_thread(
+                    _publicar_rede,
+                    "Instagram",
+                    conta,
+                    texto,
+                    item.imagem_url,
+                    item.video_url,
+                )
+                item.ok_instagram = True
+            except Exception as erro:
+                erros.append(_erro_foto(erro)[:180])
+    if not item.ok_facebook:
+        conta = await _conta(session, "facebook")
+        if conta is None or not conta.token:
+            erros.append("Falta ligar o Facebook.")
+        else:
+            try:
+                await asyncio.to_thread(
+                    _publicar_rede,
+                    "Facebook",
+                    conta,
+                    texto,
+                    item.imagem_url,
+                    item.video_url,
+                )
+                item.ok_facebook = True
+            except Exception as erro:
+                erros.append(_erro_foto(erro)[:180])
+    if item.ok_instagram and item.ok_facebook:
+        item.status = "publicado"
+        item.detalhe = ""
+    else:
+        item.detalhe = " ".join(erros)[:300]
+
+
 async def publicar_vencidos(session: AsyncSession) -> None:
     agora_local = datetime.now(ZONA)
     resultado = await session.exec(select(Agendamento).where(Agendamento.status == "na_fila"))
     mudou = False
     for item in resultado.all():
         if momento(item.dia, item.hora) > agora_local:
+            continue
+        if item.rede == "Ambos":
+            if not item.imagem_url and not item.video_url:
+                continue
+            await _publicar_ambos(session, item)
+            mudou = True
             continue
         if item.rede not in REDES_PUBLICAVEIS:
             item.status = "manual"
@@ -448,7 +535,7 @@ async def publicar_vencidos(session: AsyncSession) -> None:
             item.detalhe = ""
         except Exception as erro:
             item.status = "erro"
-            item.detalhe = str(erro)[:300]
+            item.detalhe = _erro_foto(erro)
         mudou = True
     if mudou:
         await session.commit()

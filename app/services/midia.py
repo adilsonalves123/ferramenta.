@@ -392,6 +392,26 @@ async def montar_midia(
     }
 
 
+async def foto_da_cena(cena: str) -> str:
+    pedido = PedidoCampanha(
+        nicho="bares, adegas e restaurantes",
+        produto=(cena.strip()[:200] or "o movimento do bar"),
+        acao="foto",
+        brief_foto=cena.strip()[:800],
+    )
+    midia = await montar_midia(pedido, None, "foto")
+    url = midia.get("foto_url") or ""
+    if not url:
+        raise RuntimeError(midia.get("aviso_midia") or "A foto não saiu.")
+    partes = url.strip("/").split("/")
+    if len(partes) < 2:
+        raise RuntimeError("A foto não saiu.")
+    ident = partes[1]
+    destino = PASTA_MIDIA / ident / "anexo.jpg"
+    await asyncio.to_thread(_jpeg_instagram, PASTA_MIDIA / ident / "foto.png", destino)
+    return f"/midia/{ident}/anexo.jpg"
+
+
 def _video_cenas(fotos: list[Path], audio: Path, destino: Path) -> None:
     import imageio_ffmpeg
 

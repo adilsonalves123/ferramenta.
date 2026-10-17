@@ -9,11 +9,16 @@ from app.schemas import (
     EstadoRede,
     ItemAgenda,
     PedidoAgenda,
+    PedidoFicha,
     PedidoPagina,
     PedidoPublicarAgora,
+    PedidoSemana,
     RespostaAgenda,
+    RespostaFicha,
     RespostaPaginas,
     RespostaPublicacao,
+    RespostaSemana,
+    PosteSemana,
 )
 from app.services.midia import salvar_anexo
 from app.services.publicar import (
@@ -31,6 +36,7 @@ from app.services.publicar import (
     url_oauth,
     url_oauth_facebook,
 )
+from app.services.semana import guardar_ficha, montar_semana, texto_ficha
 
 router = APIRouter()
 
@@ -65,6 +71,7 @@ def _item(registro: Agendamento) -> ItemAgenda:
         titulo=registro.titulo,
         status=registro.status,
         detalhe=registro.detalhe,
+        aguarda_foto=bool((registro.cena or "").strip()) and not registro.imagem_url and not registro.video_url,
     )
 
 
@@ -130,6 +137,10 @@ async def post_agenda(
         registro.detalhe = ""
         registro.imagem_url = pedido.imagem_url.strip()[:500]
         registro.video_url = pedido.video_url.strip()[:500]
+        registro.cena = ""
+        registro.tentativas = 0
+        registro.ok_instagram = False
+        registro.ok_facebook = False
     contas = await estado_contas(session)
     if registro.rede == "Facebook" and _estado(contas["facebook"]).ligado is False:
         registro.detalhe = "Falta ligar a conta."
@@ -160,6 +171,41 @@ async def post_publicar_agora(
         pedido.video_url,
     )
     return RespostaPublicacao(status=status, detalhe=detalhe)
+
+
+@router.get("/ficha", response_model=RespostaFicha)
+async def get_ficha(session: AsyncSession = Depends(get_session)) -> RespostaFicha:
+    return RespostaFicha(texto=await texto_ficha(session))
+
+
+@router.put("/ficha", response_model=RespostaFicha)
+async def put_ficha(
+    pedido: PedidoFicha,
+    session: AsyncSession = Depends(get_session),
+) -> RespostaFicha:
+    return RespostaFicha(texto=await guardar_ficha(session, pedido.texto))
+
+
+@router.post("/semana", response_model=RespostaSemana)
+async def post_semana(
+    pedido: PedidoSemana,
+    session: AsyncSession = Depends(get_session),
+) -> RespostaSemana:
+    try:
+        hora = pedido.hora_normalizada()
+    except ValueError as erro:
+        raise HTTPException(status_code=422, detail=str(erro)) from erro
+    try:
+        criados, aviso = await montar_semana(session, hora)
+    except ValueError as erro:
+        raise HTTPException(status_code=422, detail=str(erro)) from erro
+    return RespostaSemana(
+        itens=[
+            PosteSemana(dia=item.dia, hora=item.hora, titulo=item.titulo, legenda=item.legenda)
+            for item in criados
+        ],
+        aviso=aviso,
+    )
 
 
 @router.get("/contas/iniciar", response_model=None)

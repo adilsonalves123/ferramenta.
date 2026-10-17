@@ -486,6 +486,9 @@
     .cartao-agenda .secao { margin: 0 0 4px; }
     .botoes-agenda { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
     .botoes-agenda button.principal { margin-top: 0; }
+    #montar-semana { grid-column: 1 / -1; }
+    .ficha-corpo { padding: 24px 28px 40px; max-width: 760px; display: flex; flex-direction: column; gap: 12px; }
+    .ficha-corpo textarea { min-height: 320px; resize: vertical; }
     .marca-campos { min-width: 0; flex: 1; display: grid; gap: 2px; }
     .marca-campos input {
       width: 100%;
@@ -669,6 +672,7 @@
         <p class="secao">Ferramentas</p>
         <div class="atalhos">
           <button class="atalho" type="button" id="abrir-projetos"><i class="fa-solid fa-folder-open"></i>Projetos</button>
+          <button class="atalho" type="button" id="abrir-ficha"><i class="fa-solid fa-book"></i>Ficha</button>
         </div>
       </aside>
       <section class="conversa">
@@ -715,11 +719,25 @@
           <div class="botoes-agenda">
             <button class="principal" type="button" id="criar-agora">Criar agora</button>
             <button class="principal" type="button" id="agendar">Agendar</button>
+            <button class="principal" type="button" id="montar-semana">Montar a semana</button>
           </div>
           <ul class="lista-agenda" id="lista-agenda"></ul>
-          <p class="nota" id="nota-agenda">Criar agora publica neste momento. Agendar guarda o dia e o horário. Os dois usam Instagram ou Facebook, com a conta ligada.</p>
+          <p class="nota" id="nota-agenda">Montar a semana cria de segunda a sábado, com texto e uma foto diferente em cada dia. A foto sai perto do horário, no Instagram e no Facebook.</p>
         </div>
       </aside>
+    </section>
+
+    <section id="pagina-ficha" class="pagina-projetos" hidden>
+      <header class="topo-projetos">
+        <button class="voltar" type="button" id="voltar-ficha">Voltar</button>
+        <h1>Ficha do negócio</h1>
+      </header>
+      <form id="form-ficha" class="ficha-corpo">
+        <p class="nota">Essa ficha é a memória dos posts. A semana usa só o que está escrito aqui.</p>
+        <textarea id="texto-ficha" required minlength="20"></textarea>
+        <button class="principal" type="submit" id="salvar-ficha">Salvar ficha</button>
+        <p class="nota" id="nota-ficha"></p>
+      </form>
     </section>
 
     <section id="pagina-projetos" class="pagina-projetos" hidden>
@@ -1758,14 +1776,19 @@
       if (item.status === "erro") return item.detalhe || "Não publicou.";
       if (item.status === "manual") return "Guardado. Essa rede ainda não publica sozinha.";
       if (item.detalhe) return "Na fila das " + item.hora + ". " + item.detalhe;
+      if (item.aguarda_foto) return "Sai às " + item.hora + ". A foto é criada perto desse horário.";
       return "Sai às " + item.hora + ".";
+    }
+
+    function nomeRede(rede) {
+      return rede === "Ambos" ? "Instagram e Facebook" : rede;
     }
 
     function desenharLista() {
       const lista = document.getElementById("lista-agenda");
       const inicio = diaIso(new Date());
       const fimData = new Date();
-      fimData.setDate(fimData.getDate() + 6);
+      fimData.setDate(fimData.getDate() + 13);
       const fim = diaIso(fimData);
       const visiveis = agendaItens.filter((item) => item.dia >= inicio && item.dia <= fim);
       lista.innerHTML = "";
@@ -1778,7 +1801,7 @@
       visiveis.forEach((item) => {
         const linha = document.createElement("li");
         const titulo = document.createElement("strong");
-        titulo.textContent = `${item.dia.slice(8)} · ${item.hora} · ${item.rede} · ${item.titulo}`;
+        titulo.textContent = `${item.dia.slice(8)} · ${item.hora} · ${nomeRede(item.rede)} · ${item.titulo}`;
         const estado = document.createElement("span");
         estado.textContent = textoStatus(item);
         linha.append(titulo, estado);
@@ -1889,6 +1912,16 @@
       }
       pedidoCampo.value = "";
       const marca = lerMarca();
+      let memoria = "";
+      try {
+        const ficha = await fetch("/ficha");
+        const dadosFicha = await lerResposta(ficha);
+        if (ficha.ok) memoria = (dadosFicha.texto || "").trim();
+      } catch (falha) {
+        memoria = "";
+      }
+      const base = `${marca.produto}. Pedido: ${textoPedido}. Objetivo: ${objetivo || "publicação"}. Tema: ${tema || "livre"}. Público: ${marca.publico}. Rede: ${redePost}.`;
+      const produto = (memoria ? `${base} Ficha: ${memoria}` : base).slice(0, 4000);
       falar("assistente", "Estou montando o post de " + marca.nome + " para " + marca.publico + ", no " + redePost + ".");
       const botao = document.getElementById("enviar-chat");
       botao.disabled = true;
@@ -1898,7 +1931,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             nicho_negocio: marca.nicho,
-            produto_servico: `${marca.produto}. Pedido: ${textoPedido}. Objetivo: ${objetivo || "publicação"}. Tema: ${tema || "livre"}. Público: ${marca.publico}. Rede: ${redePost}.`,
+            produto_servico: produto,
             acao: "texto",
           }),
         });
@@ -2174,7 +2207,7 @@
         if (redePost === "Facebook") {
           const facebookLigado = document.getElementById("estado-facebook").textContent.startsWith("Facebook ·");
           nota.textContent = facebookLigado
-            ? "Marcado às " + hora + ". Sai na Página depois desse horário, quando o site for aberto."
+            ? "Marcado às " + hora + ". Sai na Página depois desse horário."
             : "Marcado às " + hora + ". Falta ligar o Facebook.";
         } else if (redePost === "Instagram") {
           nota.textContent = "Marcado às " + hora + ". O Instagram publica sozinho quando a conta estiver ligada e o post tiver foto ou vídeo.";
@@ -2185,6 +2218,71 @@
         nota.textContent = falha.message || "Não consegui guardar o horário.";
       } finally {
         botao.disabled = false;
+      }
+    });
+
+    document.getElementById("abrir-ficha").addEventListener("click", async () => {
+      document.getElementById("pagina-ficha").hidden = false;
+      const nota = document.getElementById("nota-ficha");
+      nota.textContent = "";
+      try {
+        const resposta = await fetch("/ficha");
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        document.getElementById("texto-ficha").value = dados.texto || "";
+      } catch (falha) {
+        nota.textContent = falha.message || "Não consegui abrir a ficha.";
+      }
+    });
+    document.getElementById("voltar-ficha").addEventListener("click", () => {
+      document.getElementById("pagina-ficha").hidden = true;
+    });
+    document.getElementById("form-ficha").addEventListener("submit", async (evento) => {
+      evento.preventDefault();
+      const nota = document.getElementById("nota-ficha");
+      const texto = document.getElementById("texto-ficha").value.trim();
+      const botao = document.getElementById("salvar-ficha");
+      botao.disabled = true;
+      try {
+        const resposta = await fetch("/ficha", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ texto }),
+        });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        nota.textContent = "Ficha salva.";
+      } catch (falha) {
+        nota.textContent = falha.message || "Não consegui salvar a ficha.";
+      } finally {
+        botao.disabled = false;
+      }
+    });
+    document.getElementById("montar-semana").addEventListener("click", async () => {
+      const nota = document.getElementById("nota-agenda");
+      const hora = document.getElementById("hora-post").value;
+      if (!hora) {
+        nota.textContent = "Escolha o horário.";
+        return;
+      }
+      const botao = document.getElementById("montar-semana");
+      botao.disabled = true;
+      botao.textContent = "Montando a semana";
+      try {
+        const resposta = await fetch("/semana", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hora }),
+        });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        await carregarAgenda();
+        nota.textContent = dados.aviso || "A semana está na fila. Cada foto sai perto do horário.";
+      } catch (falha) {
+        nota.textContent = falha.message || "Não consegui montar a semana.";
+      } finally {
+        botao.disabled = false;
+        botao.textContent = "Montar a semana";
       }
     });
   </script>

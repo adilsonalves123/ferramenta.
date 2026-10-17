@@ -191,6 +191,39 @@ class RespostaPublicacao(BaseModel):
     detalhe: str = ""
 
 
+class PedidoFicha(BaseModel):
+    texto: str = Field(min_length=20, max_length=8000)
+
+
+class RespostaFicha(BaseModel):
+    texto: str
+
+
+class PosteSemana(BaseModel):
+    dia: str
+    hora: str
+    titulo: str
+    legenda: str
+
+
+class RespostaSemana(BaseModel):
+    itens: list[PosteSemana]
+    aviso: str = ""
+
+
+class PedidoSemana(BaseModel):
+    hora: str = "09:00"
+
+    def hora_normalizada(self) -> str:
+        partes = self.hora.strip().split(":")
+        if len(partes) < 2 or not partes[0].isdigit() or not partes[1].isdigit():
+            raise ValueError("Escolha um horário válido.")
+        horas, minutos = int(partes[0]), int(partes[1])
+        if not (0 <= horas <= 23 and 0 <= minutos <= 59):
+            raise ValueError("Escolha um horário válido.")
+        return f"{horas:02d}:{minutos:02d}"
+
+
 class PedidoAgenda(BaseModel):
     dia: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     hora: str = "09:00"
@@ -218,6 +251,7 @@ class ItemAgenda(BaseModel):
     titulo: str
     status: str
     detalhe: str
+    aguarda_foto: bool = False
 
 
 class EstadoRede(BaseModel):

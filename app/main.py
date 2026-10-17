@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -8,8 +9,9 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
-from app.database import criar_tabelas, fechar_engine
+from app.database import criar_tabelas, fechar_engine, get_sessionmaker
 from app.services.fila_video import retomar
+from app.services.publicar import preparar_fotos, publicar_vencidos
 from app.routers.agenda import router as router_agenda
 from app.routers.campanhas import router
 from app.routers.novas import router as router_novas
@@ -20,11 +22,31 @@ PAGINA = Path(__file__).with_name("pagina.html")
 PASTA_QUADROS = Path(__file__).resolve().parent.parent / "quadros"
 
 
+async def vigia() -> None:
+    await asyncio.sleep(45)
+    while True:
+        try:
+            async with get_sessionmaker()() as session:
+                await preparar_fotos(session)
+                await publicar_vencidos(session)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            pass
+        await asyncio.sleep(90)
+
+
 @asynccontextmanager
 async def vida(app: FastAPI):
     await criar_tabelas()
     await retomar()
+    tarefa = asyncio.create_task(vigia())
     yield
+    tarefa.cancel()
+    try:
+        await tarefa
+    except asyncio.CancelledError:
+        pass
     await fechar_engine()
 
 

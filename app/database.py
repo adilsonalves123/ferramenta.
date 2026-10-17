@@ -62,6 +62,17 @@ async def criar_tabelas() -> None:
             )
         )
         await conexao.execute(text("ALTER TABLE mkt_campanhas ALTER COLUMN produto TYPE TEXT"))
+        await conexao.execute(text("ALTER TABLE mkt_agendamentos ALTER COLUMN rede TYPE VARCHAR(40)"))
+        await conexao.execute(text("ALTER TABLE mkt_agendamentos ADD COLUMN IF NOT EXISTS cena TEXT NOT NULL DEFAULT ''"))
+        await conexao.execute(
+            text("ALTER TABLE mkt_agendamentos ADD COLUMN IF NOT EXISTS tentativas INTEGER NOT NULL DEFAULT 0")
+        )
+        await conexao.execute(
+            text("ALTER TABLE mkt_agendamentos ADD COLUMN IF NOT EXISTS ok_instagram BOOLEAN NOT NULL DEFAULT FALSE")
+        )
+        await conexao.execute(
+            text("ALTER TABLE mkt_agendamentos ADD COLUMN IF NOT EXISTS ok_facebook BOOLEAN NOT NULL DEFAULT FALSE")
+        )
 
 
 async def fechar_engine() -> None:
