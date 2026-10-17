@@ -711,14 +711,6 @@
             <input id="publico-marca" value="Donos de bar no Brasil" aria-label="Público" />
           </div>
         </div>
-        <p class="secao">Tema</p>
-        <div class="atalhos" id="temas">
-          <button class="atalho" type="button" data-tema="bastidores"><span class="ponto tema-bastidores"></span>Bastidores</button>
-          <button class="atalho" type="button" data-tema="oferta"><span class="ponto tema-oferta"></span>Oferta</button>
-          <button class="atalho" type="button" data-tema="dica"><span class="ponto tema-dica"></span>Dica</button>
-          <button class="atalho" type="button" data-tema="história"><span class="ponto tema-historia"></span>História</button>
-          <button class="atalho" type="button" data-tema="prova"><span class="ponto tema-prova"></span>Prova</button>
-        </div>
         <p class="secao">Objetivo</p>
         <div class="atalhos" id="objetivos">
           <button class="atalho" type="button" data-objetivo="interação"><i class="fa-regular fa-comment"></i>Interação</button>
@@ -816,13 +808,23 @@
               <button class="chip" type="button" data-formato-agenda="ambos">Ambos</button>
             </div>
           </div>
+          <div class="grupo">
+            <p class="secao">Tema</p>
+            <div class="atalhos" id="temas">
+              <button class="atalho" type="button" data-tema="bastidores"><span class="ponto tema-bastidores"></span>Bastidores</button>
+              <button class="atalho" type="button" data-tema="oferta"><span class="ponto tema-oferta"></span>Oferta</button>
+              <button class="atalho" type="button" data-tema="dica"><span class="ponto tema-dica"></span>Dica</button>
+              <button class="atalho" type="button" data-tema="história"><span class="ponto tema-historia"></span>História</button>
+              <button class="atalho" type="button" data-tema="prova"><span class="ponto tema-prova"></span>Prova</button>
+            </div>
+          </div>
           <div class="botoes-agenda">
             <button class="principal" type="button" id="criar-agora">Criar agora</button>
             <button class="principal" type="button" id="agendar">Agendar</button>
             <button class="principal" type="button" id="montar-semana">Criar este dia</button>
           </div>
           <ul class="lista-agenda" id="lista-agenda"></ul>
-          <p class="nota" id="nota-agenda">Escolha o dia no calendário, o horário, a rede e Feed, Story ou os dois. Cancelar tira o post da fila.</p>
+          <p class="nota" id="nota-agenda">Escolha o dia, o horário, a rede, o formato e o tema. Cancelar tira o post da fila.</p>
         </div>
       </aside>
     </section>
@@ -1910,7 +1912,8 @@
       visiveis.forEach((item) => {
         const linha = document.createElement("li");
         const titulo = document.createElement("strong");
-        titulo.textContent = `${item.dia.slice(8)} · ${item.hora} · ${nomeRede(item.rede)} · ${nomeFormato(item.formato)} · ${item.titulo}`;
+        const temaItem = item.tema ? ` · ${item.tema.charAt(0).toUpperCase()}${item.tema.slice(1)}` : "";
+        titulo.textContent = `${item.dia.slice(8)} · ${item.hora} · ${nomeRede(item.rede)} · ${nomeFormato(item.formato)}${temaItem} · ${item.titulo}`;
         const estado = document.createElement("span");
         estado.textContent = textoStatus(item);
         linha.append(titulo, estado);
@@ -2388,6 +2391,7 @@
             hora,
             rede: redeAgenda,
             formato: formatoAgenda,
+            tema,
             titulo: publicado.titulo,
             legenda: publicado.legenda,
             imagem_url: imagemProjeto,
@@ -2464,6 +2468,7 @@
             dias: [{ dia: diaEscolhido, hora }],
             rede: redeAgenda,
             formato: formatoAgenda,
+            tema,
           }),
         });
         const dados = await lerResposta(resposta);

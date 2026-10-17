@@ -79,6 +79,9 @@ async def criar_tabelas() -> None:
         await conexao.execute(
             text("ALTER TABLE mkt_agendamentos ADD COLUMN IF NOT EXISTS feito VARCHAR(80) NOT NULL DEFAULT ''")
         )
+        await conexao.execute(
+            text("ALTER TABLE mkt_agendamentos ADD COLUMN IF NOT EXISTS tema VARCHAR(30) NOT NULL DEFAULT ''")
+        )
 
 
 async def fechar_engine() -> None:

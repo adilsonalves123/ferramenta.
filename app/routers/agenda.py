@@ -69,6 +69,7 @@ def _item(registro: Agendamento) -> ItemAgenda:
         hora=registro.hora,
         rede=registro.rede,
         formato=registro.formato or "feed",
+        tema=registro.tema or "",
         titulo=registro.titulo,
         status=registro.status,
         detalhe=registro.detalhe,
@@ -128,6 +129,7 @@ async def post_agenda(
             imagem_url=pedido.imagem_url.strip()[:500],
             video_url=pedido.video_url.strip()[:500],
             formato=pedido.formato if pedido.formato in {"feed", "story", "ambos"} else "feed",
+            tema=pedido.tema.strip()[:30],
         )
         session.add(registro)
     else:
@@ -145,6 +147,7 @@ async def post_agenda(
         registro.ok_facebook = False
         registro.formato = pedido.formato if pedido.formato in {"feed", "story", "ambos"} else "feed"
         registro.feito = ""
+        registro.tema = pedido.tema.strip()[:30]
     formato = registro.formato or "feed"
     precisa_foto = formato in {"story", "ambos"} or registro.rede in {"Instagram", "Ambos"}
     contas = await estado_contas(session)
@@ -227,6 +230,7 @@ async def post_semana(
             pares,
             pedido.rede if pedido.rede in {"Instagram", "Facebook", "Ambos"} else "Ambos",
             pedido.formato if pedido.formato in {"feed", "story", "ambos"} else "feed",
+            pedido.tema.strip()[:30],
         )
     except ValueError as erro:
         raise HTTPException(status_code=422, detail=str(erro)) from erro

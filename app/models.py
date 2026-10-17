@@ -38,6 +38,7 @@ class Agendamento(SQLModel, table=True):
     ok_instagram: bool = Field(default=False)
     ok_facebook: bool = Field(default=False)
     formato: str = Field(default="feed", max_length=20)
+    tema: str = Field(default="", max_length=30)
     feito: str = Field(default="", max_length=80)
     status: str = Field(default="na_fila", max_length=20)
     detalhe: str = Field(default="", sa_type=Text)

@@ -58,7 +58,18 @@ async def guardar_ficha(session: AsyncSession, texto: str) -> str:
     return registro.texto
 
 
-async def escrever_semana(ficha: str, quantidade: int) -> list[PosteGerado]:
+TEMAS = {
+    "bastidores": "Bastidores: mostra a rotina real do bar, como o dono organiza o dia.",
+    "oferta": "Oferta: chama para conhecer o sistema, sem inventar preço nem desconto.",
+    "dica": "Dica: ensina algo útil ao dono de bar sobre caixa, estoque, mesas ou fiado.",
+    "história": "História: conta uma situação comum de bar, com começo, problema e solução.",
+    "prova": "Prova: mostra o resultado de usar o sistema, sem inventar números nem depoimentos.",
+}
+
+
+async def escrever_semana(ficha: str, quantidade: int, tema: str = "") -> list[PosteGerado]:
+    guia = TEMAS.get(tema.strip().lower(), "")
+    pedido_tema = f"\nTema de todas as publicações: {guia}" if guia else ""
     resposta = await cliente_openai().with_options(timeout=90).chat.completions.parse(
         model=get_settings().openai_model,
         messages=[
@@ -67,7 +78,7 @@ async def escrever_semana(ficha: str, quantidade: int) -> list[PosteGerado]:
                 "role": "user",
                 "content": (
                     f"Ficha do negócio:\n{ficha.strip()[:6000]}\n\n"
-                    f"Crie exatamente {quantidade} publicações diferentes, nesta ordem."
+                    f"Crie exatamente {quantidade} publicações diferentes, nesta ordem.{pedido_tema}"
                 ),
             },
         ],
@@ -98,6 +109,7 @@ async def montar_dias(
     pedidos: list[tuple[str, str]],
     rede: str = "Ambos",
     formato: str = "feed",
+    tema: str = "",
 ) -> tuple[list[Agendamento], str]:
     if not pedidos:
         raise ValueError("Marque pelo menos um dia.")
@@ -124,7 +136,7 @@ async def montar_dias(
     if guardada.first() is None:
         ficha = await guardar_ficha(session, ficha)
     try:
-        posts = await escrever_semana(ficha, len(pedidos))
+        posts = await escrever_semana(ficha, len(pedidos), tema)
     except APIError as erro:
         detalhe = str(erro)
         if "insufficient_quota" in detalhe or "credit_balance" in detalhe:
@@ -137,6 +149,7 @@ async def montar_dias(
             hora=hora,
             rede=rede,
             formato=formato,
+            tema=tema,
             titulo=post.titulo.strip()[:300],
             legenda=post.legenda.strip(),
             cena=post.cena.strip()[:800],
