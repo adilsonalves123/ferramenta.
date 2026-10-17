@@ -258,6 +258,27 @@
     .lista-agenda li { font-size: 12px; line-height: 1.35; }
     .lista-agenda strong { font-weight: 600; }
     .lista-agenda span { display: block; color: var(--mudo); }
+    .lista-agenda button.cancelar {
+      margin-top: 4px;
+      border: 0;
+      background: transparent;
+      color: #e11d48;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0;
+    }
+    .dias-escolha { display: grid; gap: 6px; margin-top: 8px; }
+    .dia-escolha {
+      display: grid;
+      grid-template-columns: 18px 1fr 108px;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .dia-escolha input[type="time"] { width: 108px; padding: 6px 8px; }
+    .dia-escolha.ocupado { color: var(--mudo); }
     h1 { font-size: 22px; letter-spacing: -0.02em; margin: 8px 0 6px; }
     p.ajuda { color: var(--mudo); margin: 0 0 8px; line-height: 1.45; }
     @media (max-width: 980px) {
@@ -672,7 +693,7 @@
         <p class="secao">Ferramentas</p>
         <div class="atalhos">
           <button class="atalho" type="button" id="abrir-projetos"><i class="fa-solid fa-folder-open"></i>Projetos</button>
-          <button class="atalho" type="button" id="abrir-ficha"><i class="fa-solid fa-book"></i>Ficha</button>
+          <button class="atalho" type="button" id="abrir-ficha"><i class="fa-solid fa-book"></i>Prompt</button>
         </div>
       </aside>
       <section class="conversa">
@@ -719,10 +740,14 @@
           <div class="botoes-agenda">
             <button class="principal" type="button" id="criar-agora">Criar agora</button>
             <button class="principal" type="button" id="agendar">Agendar</button>
-            <button class="principal" type="button" id="montar-semana">Montar a semana</button>
+          </div>
+          <p class="secao escolha-titulo">Dias</p>
+          <div class="dias-escolha" id="dias-escolha"></div>
+          <div class="botoes-agenda">
+            <button class="principal" type="button" id="montar-semana">Criar os dias marcados</button>
           </div>
           <ul class="lista-agenda" id="lista-agenda"></ul>
-          <p class="nota" id="nota-agenda">Montar a semana cria de segunda a sábado, com texto e uma foto diferente em cada dia. A foto sai perto do horário, no Instagram e no Facebook.</p>
+          <p class="nota" id="nota-agenda">Marque os dias e o horário de cada um. O texto sai do Prompt, com uma foto diferente. Cancelar tira o post da fila.</p>
         </div>
       </aside>
     </section>
@@ -730,12 +755,12 @@
     <section id="pagina-ficha" class="pagina-projetos" hidden>
       <header class="topo-projetos">
         <button class="voltar" type="button" id="voltar-ficha">Voltar</button>
-        <h1>Ficha do negócio</h1>
+        <h1>Prompt</h1>
       </header>
       <form id="form-ficha" class="ficha-corpo">
-        <p class="nota">Essa ficha é a memória dos posts. A semana usa só o que está escrito aqui.</p>
+        <p class="nota">Escreva aqui o que o sistema deve lembrar. Fica gravado no servidor. Criar os dias marcados usa só este texto.</p>
         <textarea id="texto-ficha" required minlength="20"></textarea>
-        <button class="principal" type="submit" id="salvar-ficha">Salvar ficha</button>
+        <button class="principal" type="submit" id="salvar-ficha">Salvar prompt</button>
         <p class="nota" id="nota-ficha"></p>
       </form>
     </section>
@@ -1729,6 +1754,7 @@
     let imagemProjeto = "";
     let videoProjeto = "";
     let diaEscolhido = "";
+    const diasMarcados = new Map();
     let agendaItens = [];
     let metaPronta = false;
 
@@ -1794,7 +1820,7 @@
       lista.innerHTML = "";
       if (!visiveis.length) {
         const vazio = document.createElement("li");
-        vazio.innerHTML = "<span>Nenhum horário nesta semana.</span>";
+        vazio.innerHTML = "<span>Nenhum post na fila.</span>";
         lista.appendChild(vazio);
         return;
       }
@@ -1805,6 +1831,14 @@
         const estado = document.createElement("span");
         estado.textContent = textoStatus(item);
         linha.append(titulo, estado);
+        if (item.status !== "publicado") {
+          const cancelar = document.createElement("button");
+          cancelar.type = "button";
+          cancelar.className = "cancelar";
+          cancelar.textContent = "Cancelar";
+          cancelar.addEventListener("click", () => cancelarPost(item.id));
+          linha.append(cancelar);
+        }
         lista.appendChild(linha);
       });
     }
@@ -1844,6 +1878,57 @@
         semana.appendChild(botao);
       }
       desenharLista();
+      desenharEscolha();
+    }
+
+    function desenharEscolha() {
+      const caixa = document.getElementById("dias-escolha");
+      caixa.innerHTML = "";
+      const nomes = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+      const horaPadrao = document.getElementById("hora-post").value || "09:00";
+      for (let i = 0; i < 14; i += 1) {
+        const data = new Date();
+        data.setDate(data.getDate() + i);
+        const iso = diaIso(data);
+        const ocupado = agendaItens.some((item) => item.dia === iso);
+        if (ocupado) diasMarcados.delete(iso);
+        const linha = document.createElement("label");
+        linha.className = "dia-escolha" + (ocupado ? " ocupado" : "");
+        const check = document.createElement("input");
+        check.type = "checkbox";
+        check.disabled = ocupado;
+        check.checked = !ocupado && diasMarcados.has(iso);
+        const nome = document.createElement("span");
+        nome.textContent = ocupado
+          ? `${nomes[data.getDay()]} ${data.getDate()} · já tem post`
+          : `${nomes[data.getDay()]} ${data.getDate()}`;
+        const hora = document.createElement("input");
+        hora.type = "time";
+        hora.value = diasMarcados.get(iso) || horaPadrao;
+        hora.disabled = ocupado;
+        check.addEventListener("change", () => {
+          if (check.checked) diasMarcados.set(iso, hora.value || horaPadrao);
+          else diasMarcados.delete(iso);
+        });
+        hora.addEventListener("change", () => {
+          if (check.checked) diasMarcados.set(iso, hora.value || horaPadrao);
+        });
+        linha.append(check, nome, hora);
+        caixa.appendChild(linha);
+      }
+    }
+
+    async function cancelarPost(id) {
+      const nota = document.getElementById("nota-agenda");
+      try {
+        const resposta = await fetch("/agenda/" + id, { method: "DELETE" });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        await carregarAgenda();
+        nota.textContent = "Post cancelado.";
+      } catch (falha) {
+        nota.textContent = falha.message || "Não consegui cancelar.";
+      }
     }
 
     async function carregarAgenda() {
@@ -2251,38 +2336,42 @@
         });
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
-        nota.textContent = "Ficha salva.";
+        nota.textContent = "Prompt salvo.";
       } catch (falha) {
-        nota.textContent = falha.message || "Não consegui salvar a ficha.";
+        nota.textContent = falha.message || "Não consegui salvar o prompt.";
       } finally {
         botao.disabled = false;
       }
     });
     document.getElementById("montar-semana").addEventListener("click", async () => {
       const nota = document.getElementById("nota-agenda");
-      const hora = document.getElementById("hora-post").value;
-      if (!hora) {
-        nota.textContent = "Escolha o horário.";
+      const dias = [];
+      diasMarcados.forEach((hora, dia) => {
+        if (hora) dias.push({ dia, hora });
+      });
+      if (!dias.length) {
+        nota.textContent = "Marque os dias e o horário de cada um.";
         return;
       }
       const botao = document.getElementById("montar-semana");
       botao.disabled = true;
-      botao.textContent = "Montando a semana";
+      botao.textContent = "Criando os posts";
       try {
         const resposta = await fetch("/semana", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ hora }),
+          body: JSON.stringify({ dias }),
         });
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
+        diasMarcados.clear();
         await carregarAgenda();
-        nota.textContent = dados.aviso || "A semana está na fila. Cada foto sai perto do horário.";
+        nota.textContent = dados.aviso || "Os dias entraram na fila. Cada foto sai perto do horário marcado.";
       } catch (falha) {
-        nota.textContent = falha.message || "Não consegui montar a semana.";
+        nota.textContent = falha.message || "Não consegui criar esses dias.";
       } finally {
         botao.disabled = false;
-        botao.textContent = "Montar a semana";
+        botao.textContent = "Criar os dias marcados";
       }
     });
   </script>

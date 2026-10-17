@@ -211,7 +211,8 @@ class RespostaSemana(BaseModel):
     aviso: str = ""
 
 
-class PedidoSemana(BaseModel):
+class DiaPedido(BaseModel):
+    dia: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     hora: str = "09:00"
 
     def hora_normalizada(self) -> str:
@@ -222,6 +223,10 @@ class PedidoSemana(BaseModel):
         if not (0 <= horas <= 23 and 0 <= minutos <= 59):
             raise ValueError("Escolha um horário válido.")
         return f"{horas:02d}:{minutos:02d}"
+
+
+class PedidoSemana(BaseModel):
+    dias: list[DiaPedido] = Field(min_length=1, max_length=14)
 
 
 class PedidoAgenda(BaseModel):

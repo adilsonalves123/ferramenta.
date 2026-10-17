@@ -36,7 +36,7 @@ from app.services.publicar import (
     url_oauth,
     url_oauth_facebook,
 )
-from app.services.semana import guardar_ficha, montar_semana, texto_ficha
+from app.services.semana import guardar_ficha, montar_dias, texto_ficha
 
 router = APIRouter()
 
@@ -186,17 +186,32 @@ async def put_ficha(
     return RespostaFicha(texto=await guardar_ficha(session, pedido.texto))
 
 
+@router.delete("/agenda/{item_id}")
+async def delete_agenda(item_id: int, session: AsyncSession = Depends(get_session)) -> dict[str, bool]:
+    resultado = await session.exec(select(Agendamento).where(Agendamento.id == item_id))
+    registro = resultado.first()
+    if registro is None:
+        raise HTTPException(status_code=404, detail="Esse post não está na fila.")
+    if registro.status == "publicado":
+        raise HTTPException(status_code=422, detail="Esse post já saiu.")
+    await session.delete(registro)
+    await session.commit()
+    return {"ok": True}
+
+
 @router.post("/semana", response_model=RespostaSemana)
 async def post_semana(
     pedido: PedidoSemana,
     session: AsyncSession = Depends(get_session),
 ) -> RespostaSemana:
+    pares: list[tuple[str, str]] = []
     try:
-        hora = pedido.hora_normalizada()
+        for dia in pedido.dias:
+            pares.append((dia.dia, dia.hora_normalizada()))
     except ValueError as erro:
         raise HTTPException(status_code=422, detail=str(erro)) from erro
     try:
-        criados, aviso = await montar_semana(session, hora)
+        criados, aviso = await montar_dias(session, pares)
     except ValueError as erro:
         raise HTTPException(status_code=422, detail=str(erro)) from erro
     return RespostaSemana(

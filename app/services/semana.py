@@ -58,30 +58,6 @@ async def guardar_ficha(session: AsyncSession, texto: str) -> str:
     return registro.texto
 
 
-def proximos_dias(hora: str) -> list[str]:
-    agora_local = datetime.now(ZONA)
-    horas, minutos = (int(parte) for parte in hora.split(":", 1))
-    cursor = agora_local.date()
-    if (agora_local.hour, agora_local.minute) >= (horas, minutos):
-        cursor += timedelta(days=1)
-    dias: list[str] = []
-    limite = cursor + timedelta(days=21)
-    while cursor < limite and len(dias) < 6:
-        if cursor.weekday() != 6:
-            dias.append(cursor.isoformat())
-        cursor += timedelta(days=1)
-    return dias
-
-
-async def dias_livres(session: AsyncSession, hora: str) -> list[str]:
-    candidatos = proximos_dias(hora)
-    if not candidatos:
-        return []
-    resultado = await session.exec(select(Agendamento).where(col(Agendamento.dia).in_(candidatos)))
-    ocupados = {item.dia for item in resultado.all()}
-    return [dia for dia in candidatos if dia not in ocupados]
-
-
 async def escrever_semana(ficha: str, quantidade: int) -> list[PosteGerado]:
     resposta = await cliente_openai().with_options(timeout=90).chat.completions.parse(
         model=get_settings().openai_model,
@@ -112,23 +88,45 @@ async def escrever_semana(ficha: str, quantidade: int) -> list[PosteGerado]:
     return posts[:quantidade]
 
 
-async def montar_semana(session: AsyncSession, hora: str) -> tuple[list[Agendamento], str]:
+def _data_dia(dia: str):
+    ano, mes, dia_mes = (int(parte) for parte in dia.split("-"))
+    return datetime(ano, mes, dia_mes, tzinfo=ZONA).date()
+
+
+async def montar_dias(session: AsyncSession, pedidos: list[tuple[str, str]]) -> tuple[list[Agendamento], str]:
+    if not pedidos:
+        raise ValueError("Marque pelo menos um dia.")
+    if len(pedidos) > 14:
+        raise ValueError("Marque no máximo 14 dias.")
+    dias = [dia for dia, _hora in pedidos]
+    if len(dias) != len(set(dias)):
+        raise ValueError("Esse dia foi marcado duas vezes.")
+    agora_local = datetime.now(ZONA)
+    limite = agora_local.date() + timedelta(days=21)
+    from app.services.publicar import momento
+
+    for dia, hora in pedidos:
+        data = _data_dia(dia)
+        if data < agora_local.date() or data > limite:
+            raise ValueError("Escolha um dia dos próximos 21 dias.")
+        if momento(dia, hora) <= agora_local:
+            raise ValueError("Um desses horários já passou.")
+    resultado = await session.exec(select(Agendamento).where(col(Agendamento.dia).in_(dias)))
+    if resultado.first() is not None:
+        raise ValueError("Um desses dias já tem publicação. Cancele primeiro.")
     ficha = await texto_ficha(session)
-    resultado = await session.exec(select(Ficha).order_by(Ficha.id))
-    if resultado.first() is None:
+    guardada = await session.exec(select(Ficha).order_by(Ficha.id))
+    if guardada.first() is None:
         ficha = await guardar_ficha(session, ficha)
-    livres = await dias_livres(session, hora)
-    if not livres:
-        raise ValueError("Os próximos dias já têm publicação.")
     try:
-        posts = await escrever_semana(ficha, len(livres))
+        posts = await escrever_semana(ficha, len(pedidos))
     except APIError as erro:
         detalhe = str(erro)
         if "insufficient_quota" in detalhe or "credit_balance" in detalhe:
             raise ValueError("A conta da OpenAI está sem créditos.") from erro
-        raise ValueError("A semana não pôde ser escrita agora.") from erro
+        raise ValueError("Os posts não puderam ser escritos agora.") from erro
     criados: list[Agendamento] = []
-    for dia, post in zip(livres, posts, strict=False):
+    for (dia, hora), post in zip(pedidos, posts, strict=False):
         registro = Agendamento(
             dia=dia,
             hora=hora,
@@ -143,7 +141,7 @@ async def montar_semana(session: AsyncSession, hora: str) -> tuple[list[Agendame
     await session.commit()
     for registro in criados:
         await session.refresh(registro)
-    aviso = "A foto de cada dia é criada perto do horário. O mesmo post sai no Instagram e no Facebook."
-    if len(criados) < len(livres):
-        aviso = "Parte da semana entrou na fila. " + aviso
+    aviso = "A foto de cada dia é criada perto do horário marcado. O mesmo post sai no Instagram e no Facebook."
+    if len(criados) < len(pedidos):
+        aviso = "Parte dos dias entrou na fila. " + aviso
     return criados, aviso
