@@ -12,7 +12,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import get_settings
-from app.models import Agendamento, ContaRede, agora
+from app.models import Agendamento, ContaRede, Ficha, agora
 
 VERSAO = "v22.0"
 ZONA = timezone(timedelta(hours=-3))
@@ -56,61 +56,54 @@ def _pedir(url: str, dados: dict | None = None) -> dict:
         raise RuntimeError(mensagem[:300]) from erro
 
 
-def criar_state() -> str:
+def _assinar(prefixo: str, marca_id: int, segredo: str) -> str:
     expira = int(time.time()) + 600
-    corpo = f"contas.{expira}"
-    segredo = get_settings().instagram_app_secret.encode()
-    assinatura = hmac.new(segredo, corpo.encode(), hashlib.sha256).hexdigest()[:24]
+    corpo = f"{prefixo}.{marca_id}.{expira}"
+    assinatura = hmac.new(segredo.encode(), corpo.encode(), hashlib.sha256).hexdigest()[:24]
     return f"{corpo}.{assinatura}"
 
 
-def state_valido(state: str) -> bool:
+def _marca_do_state(state: str, prefixo: str, segredo: str) -> int | None:
     partes = state.split(".")
-    if len(partes) != 3:
-        return False
-    corpo = f"{partes[0]}.{partes[1]}"
+    if len(partes) != 4 or partes[0] != prefixo:
+        return None
     try:
-        expira = int(partes[1])
+        marca_id = int(partes[1])
+        expira = int(partes[2])
     except ValueError:
-        return False
-    if expira < int(time.time()):
-        return False
-    segredo = get_settings().instagram_app_secret.encode()
-    assinatura = hmac.new(segredo, corpo.encode(), hashlib.sha256).hexdigest()[:24]
-    return hmac.compare_digest(assinatura, partes[2])
+        return None
+    if marca_id <= 0 or expira < int(time.time()):
+        return None
+    corpo = f"{partes[0]}.{partes[1]}.{partes[2]}"
+    assinatura = hmac.new(segredo.encode(), corpo.encode(), hashlib.sha256).hexdigest()[:24]
+    if not hmac.compare_digest(assinatura, partes[3]):
+        return None
+    return marca_id
 
 
-def criar_state_facebook() -> str:
-    expira = int(time.time()) + 600
-    corpo = f"facebook.{expira}"
-    segredo = get_settings().meta_app_secret.encode()
-    assinatura = hmac.new(segredo, corpo.encode(), hashlib.sha256).hexdigest()[:24]
-    return f"{corpo}.{assinatura}"
+def criar_state(marca_id: int) -> str:
+    return _assinar("contas", marca_id, get_settings().instagram_app_secret)
 
 
-def state_facebook_valido(state: str) -> bool:
-    partes = state.split(".")
-    if len(partes) != 3 or partes[0] != "facebook":
-        return False
-    corpo = f"{partes[0]}.{partes[1]}"
-    try:
-        expira = int(partes[1])
-    except ValueError:
-        return False
-    if expira < int(time.time()):
-        return False
-    segredo = get_settings().meta_app_secret.encode()
-    assinatura = hmac.new(segredo, corpo.encode(), hashlib.sha256).hexdigest()[:24]
-    return hmac.compare_digest(assinatura, partes[2])
+def marca_do_state(state: str) -> int | None:
+    return _marca_do_state(state, "contas", get_settings().instagram_app_secret)
 
 
-def url_oauth_facebook() -> str:
+def criar_state_facebook(marca_id: int) -> str:
+    return _assinar("facebook", marca_id, get_settings().meta_app_secret)
+
+
+def marca_do_state_facebook(state: str) -> int | None:
+    return _marca_do_state(state, "facebook", get_settings().meta_app_secret)
+
+
+def url_oauth_facebook(marca_id: int) -> str:
     ajustes = get_settings()
     query = urllib.parse.urlencode(
         {
             "client_id": ajustes.meta_app_id,
             "redirect_uri": url_retorno(),
-            "state": criar_state_facebook(),
+            "state": criar_state_facebook(marca_id),
             "scope": "pages_show_list,pages_manage_posts,business_management",
             "response_type": "code",
         }
@@ -118,13 +111,13 @@ def url_oauth_facebook() -> str:
     return f"https://www.facebook.com/{VERSAO}/dialog/oauth?{query}"
 
 
-def url_oauth() -> str:
+def url_oauth(marca_id: int) -> str:
     ajustes = get_settings()
     query = urllib.parse.urlencode(
         {
             "client_id": ajustes.instagram_app_id,
             "redirect_uri": url_retorno(),
-            "state": criar_state(),
+            "state": criar_state(marca_id),
             "scope": "instagram_business_basic,instagram_business_content_publish",
             "response_type": "code",
         }
@@ -371,15 +364,29 @@ def momento(dia: str, hora: str) -> datetime:
     return datetime(ano, mes, dia_mes, horas, minutos, tzinfo=ZONA)
 
 
-async def _conta(session: AsyncSession, rede: str) -> ContaRede | None:
-    resultado = await session.exec(select(ContaRede).where(ContaRede.rede == rede))
+async def marca_efetiva(session: AsyncSession, marca_id: int) -> int:
+    if marca_id > 0:
+        return marca_id
+    resultado = await session.exec(select(Ficha).order_by(Ficha.id))
+    primeira = resultado.first()
+    return primeira.id if primeira and primeira.id else 0
+
+
+async def _conta(session: AsyncSession, rede: str, marca_id: int) -> ContaRede | None:
+    if marca_id <= 0:
+        return None
+    resultado = await session.exec(
+        select(ContaRede).where(ContaRede.rede == rede, ContaRede.marca_id == marca_id)
+    )
     return resultado.first()
 
 
-async def definir_conta(session: AsyncSession, rede: str, nome: str, externo_id: str, token: str) -> None:
-    conta = await _conta(session, rede)
+async def definir_conta(
+    session: AsyncSession, marca_id: int, rede: str, nome: str, externo_id: str, token: str
+) -> None:
+    conta = await _conta(session, rede, marca_id)
     if conta is None:
-        session.add(ContaRede(rede=rede, nome=nome, externo_id=externo_id, token=token))
+        session.add(ContaRede(marca_id=marca_id, rede=rede, nome=nome, externo_id=externo_id, token=token))
         return
     conta.nome = nome
     conta.externo_id = externo_id
@@ -387,8 +394,8 @@ async def definir_conta(session: AsyncSession, rede: str, nome: str, externo_id:
     conta.atualizado_em = agora()
 
 
-async def apagar_conta(session: AsyncSession, rede: str) -> None:
-    conta = await _conta(session, rede)
+async def apagar_conta(session: AsyncSession, rede: str, marca_id: int) -> None:
+    conta = await _conta(session, rede, marca_id)
     if conta is not None:
         await session.delete(conta)
 
@@ -399,17 +406,17 @@ def perfil_instagram(token: str) -> tuple[str, str]:
     return str(dados.get("user_id") or ""), str(dados.get("username") or "Instagram")
 
 
-async def guardar_codigo_facebook(session: AsyncSession, codigo: str) -> None:
+async def guardar_codigo_facebook(session: AsyncSession, codigo: str, marca_id: int) -> None:
     token = await asyncio.to_thread(trocar_codigo_facebook, codigo)
     if not token:
         raise RuntimeError("O Facebook não devolveu o acesso.")
-    await definir_conta(session, "facebook_acesso", "", "", token)
+    await definir_conta(session, marca_id, "facebook_acesso", "", "", token)
     await session.commit()
 
 
-async def paginas_facebook(session: AsyncSession) -> tuple[list[dict[str, str]], str]:
-    acesso = await _conta(session, "facebook_acesso")
-    escolhida = await _conta(session, "facebook")
+async def paginas_facebook(session: AsyncSession, marca_id: int) -> tuple[list[dict[str, str]], str]:
+    acesso = await _conta(session, "facebook_acesso", marca_id)
+    escolhida = await _conta(session, "facebook", marca_id)
     escolhida_id = escolhida.externo_id if escolhida and escolhida.token else ""
     if acesso is None or not acesso.token:
         return [], escolhida_id
@@ -420,8 +427,8 @@ async def paginas_facebook(session: AsyncSession) -> tuple[list[dict[str, str]],
     return paginas, escolhida_id
 
 
-async def escolher_pagina_facebook(session: AsyncSession, pagina_id: str) -> str:
-    acesso = await _conta(session, "facebook_acesso")
+async def escolher_pagina_facebook(session: AsyncSession, pagina_id: str, marca_id: int) -> str:
+    acesso = await _conta(session, "facebook_acesso", marca_id)
     if acesso is None or not acesso.token:
         raise RuntimeError("Ligue o Facebook de novo para ver as Páginas.")
     paginas = await asyncio.to_thread(listar_paginas, acesso.token)
@@ -432,12 +439,12 @@ async def escolher_pagina_facebook(session: AsyncSession, pagina_id: str) -> str
     token_pagina = str(pagina.get("access_token") or "")
     if not token_pagina:
         raise RuntimeError("O Facebook não entregou a Página.")
-    await definir_conta(session, "facebook", nome, pagina_id, token_pagina)
+    await definir_conta(session, marca_id, "facebook", nome, pagina_id, token_pagina)
     await session.commit()
     return nome
 
 
-async def guardar_codigo(session: AsyncSession, codigo: str) -> None:
+async def guardar_codigo(session: AsyncSession, codigo: str, marca_id: int) -> None:
     token, usuario = await asyncio.to_thread(trocar_codigo, codigo)
     try:
         usuario_perfil, nome = await asyncio.to_thread(perfil_instagram, token)
@@ -447,15 +454,31 @@ async def guardar_codigo(session: AsyncSession, codigo: str) -> None:
         nome = "Instagram"
     if not usuario:
         raise RuntimeError("O Instagram não informou a conta.")
-    await definir_conta(session, "instagram", nome, usuario, token)
+    await definir_conta(session, marca_id, "instagram", nome, usuario, token)
     await session.commit()
 
 
-async def estado_contas(session: AsyncSession) -> dict[str, ContaRede | None]:
+async def estado_contas(session: AsyncSession, marca_id: int) -> dict[str, ContaRede | None]:
     return {
-        "instagram": await _conta(session, "instagram"),
-        "facebook": await _conta(session, "facebook"),
+        "instagram": await _conta(session, "instagram", marca_id),
+        "facebook": await _conta(session, "facebook", marca_id),
     }
+
+
+def falta_conta(rede: str) -> str:
+    return f"Falta ligar o {rede} desta marca."
+
+
+async def contas_faltando(session: AsyncSession, alvos: list[str], marca_id: int) -> list[str]:
+    faltam: list[str] = []
+    for alvo in alvos:
+        nome = alvo.split(":", 1)[0]
+        if nome in faltam:
+            continue
+        conta = await _conta(session, nome.lower(), marca_id)
+        if conta is None or not conta.token:
+            faltam.append(nome)
+    return faltam
 
 
 async def publicar_agora(
@@ -466,6 +489,7 @@ async def publicar_agora(
     imagem_url: str,
     video_url: str = "",
     formato: str = "feed",
+    marca_id: int = 0,
 ) -> tuple[str, str]:
     formato = formato if formato in {"feed", "story", "ambos"} else "feed"
     if rede not in REDES_PUBLICAVEIS:
@@ -474,13 +498,17 @@ async def publicar_agora(
     precisa_midia = any(alvo.endswith(":story") or alvo.startswith("Instagram:") for alvo in alvos)
     if precisa_midia and not imagem_url.strip() and not video_url.strip():
         return "falta_imagem", "Esse formato pede uma foto ou um vídeo."
+    marca = await marca_efetiva(session, marca_id)
+    faltam = await contas_faltando(session, alvos, marca)
+    if faltam:
+        return "falta_conta", " ".join(falta_conta(nome) for nome in faltam)
     texto = f"{titulo.strip()}\n\n{legenda.strip()}".strip()
     erros: list[str] = []
     for alvo in alvos:
         nome = alvo.split(":", 1)[0]
-        conta = await _conta(session, nome.lower())
+        conta = await _conta(session, nome.lower(), marca)
         if conta is None or not conta.token:
-            erros.append(f"Falta ligar o {nome}.")
+            erros.append(falta_conta(nome))
             continue
         try:
             await asyncio.to_thread(_publicar_alvo, alvo, conta, texto, imagem_url, video_url)
@@ -512,6 +540,16 @@ async def preparar_fotos(session: AsyncSession) -> None:
             continue
         if item.imagem_url or item.video_url or not (item.cena or "").strip():
             continue
+        if item.rede in REDES_PUBLICAVEIS:
+            formato = (item.formato or "feed").strip().lower()
+            alvos = alvos_de(item.rede, formato if formato in {"feed", "story", "ambos"} else "feed")
+            faltam = await contas_faltando(session, alvos, await marca_efetiva(session, item.marca_id))
+            if faltam:
+                aviso = " ".join(falta_conta(nome) for nome in faltam)
+                if item.detalhe != aviso:
+                    item.detalhe = aviso
+                    await session.commit()
+                continue
         if item.tentativas >= 3:
             item.status = "erro"
             item.detalhe = "A foto não saiu depois de 3 tentativas. O texto não foi publicado."
@@ -556,15 +594,16 @@ async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
         item.detalhe = "Falta a foto."
         return
     feitos = _feitos(item)
+    marca = await marca_efetiva(session, item.marca_id)
     texto = f"{item.titulo}\n\n{item.legenda}".strip()
     erros: list[str] = []
     for alvo in alvos:
         if alvo in feitos:
             continue
         nome = alvo.split(":", 1)[0]
-        conta = await _conta(session, nome.lower())
+        conta = await _conta(session, nome.lower(), marca)
         if conta is None or not conta.token:
-            erros.append(f"Falta ligar o {nome}.")
+            erros.append(falta_conta(nome))
             continue
         try:
             await asyncio.to_thread(

@@ -560,22 +560,51 @@
     #montar-semana { grid-column: 1 / -1; }
     .ficha-corpo { padding: 24px 28px 40px; max-width: 760px; display: flex; flex-direction: column; gap: 12px; }
     .ficha-corpo textarea { min-height: 320px; resize: vertical; }
-    .marca-campos { min-width: 0; flex: 1; display: grid; gap: 2px; }
-    .marca-campos input {
+    .marca-campos { min-width: 0; flex: 1; display: grid; gap: 2px; text-align: left; }
+    .marca-campos strong { font-size: 14px; font-weight: 600; color: var(--tinta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .marca-campos span { font-size: 12px; color: var(--mudo); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    button.escolher-marca {
       width: 100%;
       border: 1px solid transparent;
+      border-radius: 10px;
       background: transparent;
-      padding: 3px 6px;
-      border-radius: 6px;
-      font-size: 12px;
-      color: var(--mudo);
+      font: inherit;
+      cursor: pointer;
+      padding: 6px 8px;
+      margin-bottom: 8px;
     }
-    .marca-campos input:first-of-type { font-size: 14px; font-weight: 600; color: var(--tinta); }
-    .marca-campos input:focus {
+    button.escolher-marca:hover { background: #eef0f3; }
+    button.escolher-marca i { color: var(--mudo); font-size: 11px; }
+    .lista-marcas {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin: -4px 0 12px;
+      padding: 6px;
+      border: 1px solid var(--linha);
+      border-radius: 10px;
       background: white;
-      border-color: #c7d2fe;
-      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
     }
+    .lista-marcas[hidden] { display: none; }
+    .lista-marcas button {
+      border: 0;
+      background: transparent;
+      border-radius: 8px;
+      padding: 8px 10px;
+      text-align: left;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--tinta);
+    }
+    .lista-marcas button:hover { background: #eef0f3; }
+    .lista-marcas button.ativo { background: #eef2ff; color: var(--azul); font-weight: 600; }
+    .lista-marcas button.nova { color: var(--azul); }
+    .ficha-corpo label { font-size: 13px; font-weight: 600; margin: 4px 0 0; }
+    .ficha-corpo input, .ficha-corpo select { padding: 9px 10px; }
+    .ficha-botoes { display: flex; gap: 8px; flex-wrap: wrap; }
+    .ficha-botoes button { width: auto; margin: 0; padding: 0 16px; height: 38px; }
+    button.apagar-marca { border: 1px solid var(--linha); background: white; color: #e11d48; border-radius: 10px; font: inherit; cursor: pointer; }
     .ponto { width: 8px; height: 8px; border-radius: 50%; flex: none; }
     .tema-bastidores { background: #7c3aed; }
     .tema-oferta { background: #ea580c; }
@@ -704,13 +733,15 @@
         <div class="topo-marca"><span>Marca</span><strong id="nome-topo">Risca Aí</strong></div>
       </header>
       <aside class="painel">
-        <div class="marca">
+        <button class="marca escolher-marca" type="button" id="escolher-marca" aria-label="Escolher marca">
           <div class="avatar" id="avatar-marca">R</div>
           <div class="marca-campos">
-            <input id="nome-marca" value="Risca Aí" aria-label="Marca" />
-            <input id="publico-marca" value="Donos de bar no Brasil" aria-label="Público" />
+            <strong id="nome-marca">Risca Aí</strong>
+            <span id="publico-marca">Donos de bar no Brasil</span>
           </div>
-        </div>
+          <i class="fa-solid fa-chevron-down" id="seta-marca"></i>
+        </button>
+        <div class="lista-marcas" id="lista-marcas" hidden></div>
         <p class="secao">Objetivo</p>
         <div class="atalhos" id="objetivos">
           <button class="atalho" type="button" data-objetivo="interação"><i class="fa-regular fa-comment"></i>Interação</button>
@@ -724,7 +755,7 @@
           <button class="chip" type="button" data-rede-post="TikTok"><i class="fa-brands fa-tiktok"></i>TikTok</button>
           <button class="chip" type="button" data-rede-post="Google"><i class="fa-brands fa-google"></i>Google</button>
         </div>
-        <p class="secao">Contas</p>
+        <p class="secao" id="titulo-contas">Contas</p>
         <div class="atalhos">
           <button class="atalho" type="button" id="ligar-instagram"><i class="fa-brands fa-instagram"></i><span id="estado-instagram">Instagram desligado</span></button>
           <button class="atalho" type="button" id="ligar-facebook"><i class="fa-brands fa-facebook"></i><span id="estado-facebook">Facebook desligado</span></button>
@@ -835,9 +866,19 @@
         <h1>Prompt</h1>
       </header>
       <form id="form-ficha" class="ficha-corpo">
-        <p class="nota">Escreva aqui o que o sistema deve lembrar. Fica gravado no servidor. Criar este dia usa só este texto.</p>
-        <textarea id="texto-ficha" required minlength="20"></textarea>
-        <button class="principal" type="submit" id="salvar-ficha">Salvar prompt</button>
+        <p class="nota">Cada marca tem o seu prompt. Fica tudo gravado no servidor. Criar este dia usa o prompt da marca escolhida.</p>
+        <label for="ficha-escolha">Marca</label>
+        <select id="ficha-escolha"></select>
+        <label for="ficha-nome">Nome da marca</label>
+        <input id="ficha-nome" required minlength="2" maxlength="120" placeholder="Ex.: Risca Aí" />
+        <label for="ficha-publico">Público</label>
+        <input id="ficha-publico" maxlength="200" placeholder="Ex.: Donos de bar no Brasil" />
+        <label for="texto-ficha">Prompt</label>
+        <textarea id="texto-ficha" required minlength="20" placeholder="O que o sistema deve lembrar dessa marca: o que vende, para quem, o que não pode inventar e quais fotos combinam."></textarea>
+        <div class="ficha-botoes">
+          <button class="principal" type="submit" id="salvar-ficha">Salvar marca</button>
+          <button class="apagar-marca" type="button" id="apagar-marca">Apagar marca</button>
+        </div>
         <p class="nota" id="nota-ficha"></p>
       </form>
     </section>
@@ -1822,8 +1863,8 @@
 
     const fio = document.getElementById("fio");
     const pedidoCampo = document.getElementById("pedido");
-    const campoMarca = document.getElementById("nome-marca");
-    const campoPublico = document.getElementById("publico-marca");
+    let marcas = [];
+    let marcaAtual = { id: 0, nome: "Risca Aí", publico: "Donos de bar no Brasil", texto: "" };
     let objetivo = "";
     let tema = "";
     let redePost = "";
@@ -1838,15 +1879,9 @@
     let metaPronta = false;
 
     function lerMarca() {
-      const nome = campoMarca.value.trim() || "Risca Aí";
-      const publico = campoPublico.value.trim() || "Donos de bar no Brasil";
-      const risca = nome.toLowerCase().includes("risca");
-      return {
-        nome,
-        publico,
-        nicho: risca ? "sistema para bares, petiscarias e restaurantes" : nome,
-        produto: risca ? "Risca Aí, aplicativo de venda, estoque, caixa e mesas para o dono do bar" : nome,
-      };
+      const nome = (marcaAtual.nome || "").trim() || "Risca Aí";
+      const publico = (marcaAtual.publico || "").trim() || "o público da marca";
+      return { id: marcaAtual.id, nome, publico, nicho: nome, produto: nome, texto: marcaAtual.texto || "" };
     }
 
     function atualizarMarcaVisual() {
@@ -1854,9 +1889,60 @@
       const letra = marca.nome.slice(0, 1).toUpperCase();
       document.getElementById("nome-topo").textContent = marca.nome;
       document.getElementById("nome-previa").textContent = marca.nome;
+      document.getElementById("nome-marca").textContent = marca.nome;
+      document.getElementById("publico-marca").textContent = marca.publico;
       document.getElementById("avatar-marca").textContent = letra;
       document.getElementById("avatar-previa").textContent = letra;
-      localStorage.setItem("ferramenta-marca", JSON.stringify({ nome: marca.nome, publico: marca.publico, tema }));
+      localStorage.setItem("ferramenta-marca", JSON.stringify({ marca_id: marca.id, tema }));
+    }
+
+    function nomeDaMarca(id) {
+      const achada = marcas.find((item) => item.id === id);
+      return achada ? achada.nome : "";
+    }
+
+    function escolherMarca(id) {
+      const achada = marcas.find((item) => item.id === id) || marcas[0];
+      if (achada) marcaAtual = achada;
+      atualizarMarcaVisual();
+      desenharListaMarcas();
+    }
+
+    function desenharListaMarcas() {
+      const lista = document.getElementById("lista-marcas");
+      lista.innerHTML = "";
+      marcas.forEach((item) => {
+        const botao = document.createElement("button");
+        botao.type = "button";
+        botao.textContent = item.nome;
+        if (item.id === marcaAtual.id) botao.classList.add("ativo");
+        botao.addEventListener("click", () => {
+          escolherMarca(item.id);
+          lista.hidden = true;
+          desenharLista();
+          atualizarContas("fechar").catch(() => {});
+        });
+        lista.appendChild(botao);
+      });
+      const nova = document.createElement("button");
+      nova.type = "button";
+      nova.className = "nova";
+      nova.textContent = "+ Nova marca";
+      nova.addEventListener("click", () => {
+        lista.hidden = true;
+        abrirFicha(0);
+      });
+      lista.appendChild(nova);
+    }
+
+    async function carregarMarcas(idPreferido) {
+      const resposta = await fetch("/marcas");
+      const dados = await lerResposta(resposta);
+      if (!resposta.ok) throw new Error(mensagemErro(dados));
+      marcas = dados.itens || [];
+      escolherMarca(idPreferido || marcaAtual.id);
+      desenharLista();
+      atualizarContas().catch(() => {});
     }
 
     function falar(quem, mensagem) {
@@ -1913,7 +1999,8 @@
         const linha = document.createElement("li");
         const titulo = document.createElement("strong");
         const temaItem = item.tema ? ` · ${item.tema.charAt(0).toUpperCase()}${item.tema.slice(1)}` : "";
-        titulo.textContent = `${item.dia.slice(8)} · ${item.hora} · ${nomeRede(item.rede)} · ${nomeFormato(item.formato)}${temaItem} · ${item.titulo}`;
+        const marcaItem = item.marca_id && nomeDaMarca(item.marca_id) ? `${nomeDaMarca(item.marca_id)} · ` : "";
+        titulo.textContent = `${item.dia.slice(8)} · ${item.hora} · ${marcaItem}${nomeRede(item.rede)} · ${nomeFormato(item.formato)}${temaItem} · ${item.titulo}`;
         const estado = document.createElement("span");
         estado.textContent = textoStatus(item);
         linha.append(titulo, estado);
@@ -1929,8 +2016,20 @@
       });
     }
 
+    let pedidoContas = 0;
+
+    async function atualizarContas(acao) {
+      const numero = ++pedidoContas;
+      const resposta = await fetch("/contas/estado?marca_id=" + (marcaAtual.id || 0));
+      const dados = await lerResposta(resposta);
+      if (numero !== pedidoContas || !resposta.ok) return;
+      pintarContas(dados);
+      await mostrarPaginas(acao);
+    }
+
     function pintarContas(dados) {
-      metaPronta = Boolean(dados.meta_pronta);
+      if ("meta_pronta" in dados) metaPronta = Boolean(dados.meta_pronta);
+      document.getElementById("titulo-contas").textContent = "Contas · " + lerMarca().nome;
       const instagram = document.getElementById("estado-instagram");
       const facebook = document.getElementById("estado-facebook");
       instagram.textContent = dados.instagram.ligado ? `Instagram · ${dados.instagram.nome || "ligado"}` : "Instagram desligado";
@@ -2002,7 +2101,7 @@
       const dados = await lerResposta(resposta);
       if (!resposta.ok) throw new Error(mensagemErro(dados));
       agendaItens = dados.itens || [];
-      pintarContas(dados);
+      metaPronta = Boolean(dados.meta_pronta);
       desenharSemana();
     }
 
@@ -2063,14 +2162,7 @@
       }
       pedidoCampo.value = "";
       const marca = lerMarca();
-      let memoria = "";
-      try {
-        const ficha = await fetch("/ficha");
-        const dadosFicha = await lerResposta(ficha);
-        if (ficha.ok) memoria = (dadosFicha.texto || "").trim();
-      } catch (falha) {
-        memoria = "";
-      }
+      const memoria = (marca.texto || "").trim();
       const base = `${marca.produto}. Pedido: ${textoPedido}. Objetivo: ${objetivo || "publicação"}. Tema: ${tema || "livre"}. Público: ${marca.publico}. Rede: ${redePost}.`;
       const produto = (memoria ? `${base} Ficha: ${memoria}` : base).slice(0, 4000);
       falar("assistente", "Estou montando o post de " + marca.nome + " para " + marca.publico + ", no " + redePost + ".");
@@ -2112,12 +2204,16 @@
       seta.className = paginasAbertas ? "fa-solid fa-chevron-up" : "fa-solid fa-chevron-down";
     }
 
+    let pedidoPaginas = 0;
+
     async function mostrarPaginas(acao) {
       const lugar = document.getElementById("paginas-facebook");
       const notaContas = document.getElementById("nota-contas");
       const alternar = document.getElementById("alternar-paginas");
-      const resposta = await fetch("/contas/facebook/paginas");
+      const numero = ++pedidoPaginas;
+      const resposta = await fetch("/contas/facebook/paginas?marca_id=" + (marcaAtual.id || 0));
       const dados = await lerResposta(resposta);
+      if (numero !== pedidoPaginas) return;
       const paginas = dados.paginas || [];
       lugar.innerHTML = "";
       if (!paginas.length) {
@@ -2149,13 +2245,12 @@
         const resposta = await fetch("/contas/facebook/escolher", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pagina_id: paginaId }),
+          body: JSON.stringify({ pagina_id: paginaId, marca_id: marcaAtual.id }),
         });
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
+        await atualizarContas("fechar");
         if (notaContas) notaContas.textContent = "Página escolhida: " + (dados.nome || "Facebook") + ".";
-        await carregarAgenda();
-        await mostrarPaginas("fechar");
       } catch (falha) {
         if (notaContas) notaContas.textContent = falha.message || "Não consegui escolher essa Página.";
         botao.disabled = false;
@@ -2181,20 +2276,26 @@
       criarPost();
     });
 
+    let marcaSalva = 0;
     try {
       const salva = JSON.parse(localStorage.getItem("ferramenta-marca") || "");
-      if (salva.nome) campoMarca.value = salva.nome;
-      if (salva.publico) campoPublico.value = salva.publico;
+      if (salva.marca_id) marcaSalva = Number(salva.marca_id) || 0;
       if (salva.tema) tema = salva.tema;
     } catch { /* a primeira visita ainda não tem marca salva */ }
+    const marcaDoRetorno = Number(new URLSearchParams(location.search).get("marca")) || 0;
+    if (marcaDoRetorno) marcaSalva = marcaDoRetorno;
     atualizarMarcaVisual();
     if (tema) {
       const botaoTema = [...document.querySelectorAll("[data-tema]")].find((item) => item.dataset.tema === tema);
       if (botaoTema) botaoTema.classList.add("ativo");
       else tema = "";
     }
-    campoMarca.addEventListener("input", atualizarMarcaVisual);
-    campoPublico.addEventListener("input", atualizarMarcaVisual);
+    carregarMarcas(marcaSalva).catch(() => {});
+    document.getElementById("escolher-marca").addEventListener("click", () => {
+      const lista = document.getElementById("lista-marcas");
+      lista.hidden = !lista.hidden;
+      document.getElementById("seta-marca").className = lista.hidden ? "fa-solid fa-chevron-down" : "fa-solid fa-chevron-up";
+    });
 
     document.querySelectorAll("[data-tema]").forEach((botao) => {
       botao.addEventListener("click", () => {
@@ -2271,11 +2372,11 @@
         document.getElementById("nota-agenda").textContent = "A agenda já guarda o dia e o horário. Para sair sozinho, falta criar o aplicativo na Meta.";
         return;
       }
-      window.location.href = "/contas/iniciar";
+      window.location.href = "/contas/iniciar?marca_id=" + (marcaAtual.id || 0);
     }
     document.getElementById("ligar-instagram").addEventListener("click", ligarInstagram);
     document.getElementById("ligar-facebook").addEventListener("click", () => {
-      window.location.href = "/contas/iniciar?rede=facebook";
+      window.location.href = "/contas/iniciar?rede=facebook&marca_id=" + (marcaAtual.id || 0);
     });
 
     document.getElementById("anexo-post").addEventListener("change", async () => {
@@ -2343,6 +2444,7 @@
           body: JSON.stringify({
             rede: redeAgenda,
             formato: formatoAgenda,
+            marca_id: marcaAtual.id,
             titulo: publicado.titulo,
             legenda: publicado.legenda,
             imagem_url: imagemProjeto,
@@ -2392,6 +2494,7 @@
             rede: redeAgenda,
             formato: formatoAgenda,
             tema,
+            marca_id: marcaAtual.id,
             titulo: publicado.titulo,
             legenda: publicado.legenda,
             imagem_url: imagemProjeto,
@@ -2409,18 +2512,47 @@
       }
     });
 
-    document.getElementById("abrir-ficha").addEventListener("click", async () => {
+    let fichaEditando = 0;
+
+    function preencherFicha(id) {
+      fichaEditando = id;
+      const escolha = document.getElementById("ficha-escolha");
+      escolha.innerHTML = "";
+      marcas.forEach((item) => {
+        const opcao = document.createElement("option");
+        opcao.value = String(item.id);
+        opcao.textContent = item.nome;
+        escolha.appendChild(opcao);
+      });
+      const nova = document.createElement("option");
+      nova.value = "0";
+      nova.textContent = "+ Nova marca";
+      escolha.appendChild(nova);
+      escolha.value = String(id);
+      const achada = marcas.find((item) => item.id === id);
+      document.getElementById("ficha-nome").value = achada ? achada.nome : "";
+      document.getElementById("ficha-publico").value = achada ? achada.publico : "";
+      document.getElementById("texto-ficha").value = achada ? achada.texto : "";
+      document.getElementById("apagar-marca").hidden = !achada || marcas.length <= 1;
+    }
+
+    async function abrirFicha(id) {
       document.getElementById("pagina-ficha").hidden = false;
       const nota = document.getElementById("nota-ficha");
       nota.textContent = "";
       try {
-        const resposta = await fetch("/ficha");
-        const dados = await lerResposta(resposta);
-        if (!resposta.ok) throw new Error(mensagemErro(dados));
-        document.getElementById("texto-ficha").value = dados.texto || "";
+        if (!marcas.length) await carregarMarcas(marcaAtual.id);
+        preencherFicha(id);
+        if (!id) document.getElementById("ficha-nome").focus();
       } catch (falha) {
-        nota.textContent = falha.message || "Não consegui abrir a ficha.";
+        nota.textContent = falha.message || "Não consegui abrir as marcas.";
       }
+    }
+
+    document.getElementById("abrir-ficha").addEventListener("click", () => abrirFicha(marcaAtual.id));
+    document.getElementById("ficha-escolha").addEventListener("change", (evento) => {
+      document.getElementById("nota-ficha").textContent = "";
+      preencherFicha(Number(evento.target.value) || 0);
     });
     document.getElementById("voltar-ficha").addEventListener("click", () => {
       document.getElementById("pagina-ficha").hidden = true;
@@ -2428,20 +2560,54 @@
     document.getElementById("form-ficha").addEventListener("submit", async (evento) => {
       evento.preventDefault();
       const nota = document.getElementById("nota-ficha");
-      const texto = document.getElementById("texto-ficha").value.trim();
+      const corpo = {
+        nome: document.getElementById("ficha-nome").value.trim(),
+        publico: document.getElementById("ficha-publico").value.trim(),
+        texto: document.getElementById("texto-ficha").value.trim(),
+      };
+      if (corpo.nome.length < 2) {
+        nota.textContent = "Escreva o nome da marca.";
+        return;
+      }
+      if (corpo.texto.length < 20) {
+        nota.textContent = "Escreva o prompt com pelo menos algumas frases.";
+        return;
+      }
       const botao = document.getElementById("salvar-ficha");
       botao.disabled = true;
       try {
-        const resposta = await fetch("/ficha", {
-          method: "PUT",
+        const resposta = await fetch(fichaEditando ? "/marcas/" + fichaEditando : "/marcas", {
+          method: fichaEditando ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ texto }),
+          body: JSON.stringify(corpo),
         });
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
-        nota.textContent = "Prompt salvo.";
+        await carregarMarcas(dados.id);
+        preencherFicha(dados.id);
+        desenharLista();
+        nota.textContent = "Marca salva. Ela já está escolhida.";
       } catch (falha) {
-        nota.textContent = falha.message || "Não consegui salvar o prompt.";
+        nota.textContent = falha.message || "Não consegui salvar a marca.";
+      } finally {
+        botao.disabled = false;
+      }
+    });
+    document.getElementById("apagar-marca").addEventListener("click", async () => {
+      const nota = document.getElementById("nota-ficha");
+      if (!fichaEditando) return;
+      const botao = document.getElementById("apagar-marca");
+      botao.disabled = true;
+      try {
+        const resposta = await fetch("/marcas/" + fichaEditando, { method: "DELETE" });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        await carregarMarcas(0);
+        preencherFicha(marcaAtual.id);
+        desenharLista();
+        nota.textContent = "Marca apagada.";
+      } catch (falha) {
+        nota.textContent = falha.message || "Não consegui apagar a marca.";
       } finally {
         botao.disabled = false;
       }
@@ -2469,6 +2635,7 @@
             rede: redeAgenda,
             formato: formatoAgenda,
             tema,
+            marca_id: marcaAtual.id,
           }),
         });
         const dados = await lerResposta(resposta);

@@ -82,6 +82,42 @@ async def criar_tabelas() -> None:
         await conexao.execute(
             text("ALTER TABLE mkt_agendamentos ADD COLUMN IF NOT EXISTS tema VARCHAR(30) NOT NULL DEFAULT ''")
         )
+        await conexao.execute(
+            text("ALTER TABLE mkt_agendamentos ADD COLUMN IF NOT EXISTS marca_id INTEGER NOT NULL DEFAULT 0")
+        )
+        await conexao.execute(text("ALTER TABLE mkt_ficha ADD COLUMN IF NOT EXISTS nome VARCHAR(120) NOT NULL DEFAULT ''"))
+        await conexao.execute(
+            text("ALTER TABLE mkt_ficha ADD COLUMN IF NOT EXISTS publico VARCHAR(200) NOT NULL DEFAULT ''")
+        )
+        await conexao.execute(
+            text("ALTER TABLE mkt_contas ADD COLUMN IF NOT EXISTS marca_id INTEGER NOT NULL DEFAULT 0")
+        )
+        await conexao.execute(
+            text(
+                "DO $$ BEGIN "
+                "IF EXISTS (SELECT 1 FROM pg_indexes WHERE tablename = 'mkt_contas' "
+                "AND indexname = 'ix_mkt_contas_rede' AND indexdef LIKE 'CREATE UNIQUE%') THEN "
+                "DROP INDEX ix_mkt_contas_rede; "
+                "CREATE INDEX ix_mkt_contas_rede ON mkt_contas (rede); "
+                "END IF; END $$"
+            )
+        )
+        await conexao.execute(
+            text(
+                "UPDATE mkt_contas SET marca_id = (SELECT min(id) FROM mkt_ficha) "
+                "WHERE marca_id = 0 AND EXISTS (SELECT 1 FROM mkt_ficha)"
+            )
+        )
+        await conexao.execute(
+            text(
+                "UPDATE mkt_agendamentos SET marca_id = (SELECT min(id) FROM mkt_ficha) "
+                "WHERE marca_id = 0 AND EXISTS (SELECT 1 FROM mkt_ficha)"
+            )
+        )
+        await conexao.execute(text("CREATE INDEX IF NOT EXISTS ix_mkt_contas_marca_id ON mkt_contas (marca_id)"))
+        await conexao.execute(
+            text("CREATE UNIQUE INDEX IF NOT EXISTS ux_mkt_contas_marca_rede ON mkt_contas (marca_id, rede)")
+        )
 
 
 async def fechar_engine() -> None:

@@ -9,12 +9,15 @@ from app.schemas import (
     EstadoRede,
     ItemAgenda,
     PedidoAgenda,
+    ItemMarca,
     PedidoFicha,
+    PedidoMarca,
     PedidoPagina,
     PedidoPublicarAgora,
     PedidoSemana,
     RespostaAgenda,
     RespostaFicha,
+    RespostaMarcas,
     RespostaPaginas,
     RespostaPublicacao,
     RespostaSemana,
@@ -25,18 +28,28 @@ from app.services.publicar import (
     escolher_pagina_facebook,
     estado_contas,
     facebook_pronta,
+    falta_conta,
     guardar_codigo,
     guardar_codigo_facebook,
+    marca_do_state,
+    marca_do_state_facebook,
+    marca_efetiva,
     meta_pronta,
     paginas_facebook,
     publicar_agora,
     publicar_vencidos,
-    state_facebook_valido,
-    state_valido,
     url_oauth,
     url_oauth_facebook,
 )
-from app.services.semana import guardar_ficha, montar_dias, texto_ficha
+from app.services.semana import (
+    apagar_marca,
+    atualizar_marca,
+    criar_marca,
+    guardar_ficha,
+    listar_marcas,
+    montar_dias,
+    texto_ficha,
+)
 
 router = APIRouter()
 
@@ -70,6 +83,7 @@ def _item(registro: Agendamento) -> ItemAgenda:
         rede=registro.rede,
         formato=registro.formato or "feed",
         tema=registro.tema or "",
+        marca_id=registro.marca_id or 0,
         titulo=registro.titulo,
         status=registro.status,
         detalhe=registro.detalhe,
@@ -96,10 +110,10 @@ async def post_anexo(arquivo: UploadFile = File()) -> dict[str, str]:
 
 
 @router.get("/agenda", response_model=RespostaAgenda)
-async def get_agenda(session: AsyncSession = Depends(get_session)) -> RespostaAgenda:
+async def get_agenda(marca_id: int = 0, session: AsyncSession = Depends(get_session)) -> RespostaAgenda:
     await publicar_vencidos(session)
     resultado = await session.exec(select(Agendamento).order_by(Agendamento.dia))
-    contas = await estado_contas(session)
+    contas = await estado_contas(session, await marca_efetiva(session, marca_id))
     return RespostaAgenda(
         itens=[_item(item) for item in resultado.all()],
         instagram=_estado(contas["instagram"]),
@@ -130,6 +144,7 @@ async def post_agenda(
             video_url=pedido.video_url.strip()[:500],
             formato=pedido.formato if pedido.formato in {"feed", "story", "ambos"} else "feed",
             tema=pedido.tema.strip()[:30],
+            marca_id=pedido.marca_id,
         )
         session.add(registro)
     else:
@@ -148,20 +163,20 @@ async def post_agenda(
         registro.formato = pedido.formato if pedido.formato in {"feed", "story", "ambos"} else "feed"
         registro.feito = ""
         registro.tema = pedido.tema.strip()[:30]
+        registro.marca_id = pedido.marca_id
     formato = registro.formato or "feed"
     precisa_foto = formato in {"story", "ambos"} or registro.rede in {"Instagram", "Ambos"}
-    contas = await estado_contas(session)
+    contas = await estado_contas(session, await marca_efetiva(session, registro.marca_id))
+    faltam = []
+    if registro.rede in ("Instagram", "Ambos") and not _estado(contas["instagram"]).ligado:
+        faltam.append(falta_conta("Instagram"))
+    if registro.rede in ("Facebook", "Ambos") and not _estado(contas["facebook"]).ligado:
+        faltam.append(falta_conta("Facebook"))
     if precisa_foto and not registro.imagem_url and not registro.video_url:
         registro.status = "falta_imagem"
         registro.detalhe = "Falta a foto."
-    elif registro.rede == "Facebook" and _estado(contas["facebook"]).ligado is False:
-        registro.detalhe = "Falta ligar a conta."
-    elif registro.rede == "Instagram" and _estado(contas["instagram"]).ligado is False:
-        registro.detalhe = "Falta ligar a conta."
-    elif registro.rede == "Ambos" and (
-        _estado(contas["instagram"]).ligado is False or _estado(contas["facebook"]).ligado is False
-    ):
-        registro.detalhe = "Falta ligar o Instagram ou o Facebook."
+    elif faltam:
+        registro.detalhe = " ".join(faltam)
     elif registro.rede not in ("Instagram", "Facebook", "Ambos"):
         registro.status = "manual"
         registro.detalhe = "Essa rede ainda não publica sozinha."
@@ -183,6 +198,7 @@ async def post_publicar_agora(
         pedido.imagem_url,
         pedido.video_url,
         pedido.formato,
+        pedido.marca_id,
     )
     return RespostaPublicacao(status=status, detalhe=detalhe)
 
@@ -198,6 +214,46 @@ async def put_ficha(
     session: AsyncSession = Depends(get_session),
 ) -> RespostaFicha:
     return RespostaFicha(texto=await guardar_ficha(session, pedido.texto))
+
+
+def _marca(registro) -> ItemMarca:
+    return ItemMarca(
+        id=registro.id or 0,
+        nome=registro.nome or "",
+        publico=registro.publico or "",
+        texto=registro.texto or "",
+    )
+
+
+@router.get("/marcas", response_model=RespostaMarcas)
+async def get_marcas(session: AsyncSession = Depends(get_session)) -> RespostaMarcas:
+    return RespostaMarcas(itens=[_marca(item) for item in await listar_marcas(session)])
+
+
+@router.post("/marcas", response_model=ItemMarca)
+async def post_marca(pedido: PedidoMarca, session: AsyncSession = Depends(get_session)) -> ItemMarca:
+    return _marca(await criar_marca(session, pedido.nome, pedido.publico, pedido.texto))
+
+
+@router.put("/marcas/{marca_id}", response_model=ItemMarca)
+async def put_marca(
+    marca_id: int,
+    pedido: PedidoMarca,
+    session: AsyncSession = Depends(get_session),
+) -> ItemMarca:
+    registro = await atualizar_marca(session, marca_id, pedido.nome, pedido.publico, pedido.texto)
+    if registro is None:
+        raise HTTPException(status_code=404, detail="Essa marca não existe mais.")
+    return _marca(registro)
+
+
+@router.delete("/marcas/{marca_id}")
+async def delete_marca(marca_id: int, session: AsyncSession = Depends(get_session)) -> dict[str, bool]:
+    try:
+        await apagar_marca(session, marca_id)
+    except ValueError as erro:
+        raise HTTPException(status_code=422, detail=str(erro)) from erro
+    return {"ok": True}
 
 
 @router.delete("/agenda/{item_id}")
@@ -231,6 +287,7 @@ async def post_semana(
             pedido.rede if pedido.rede in {"Instagram", "Facebook", "Ambos"} else "Ambos",
             pedido.formato if pedido.formato in {"feed", "story", "ambos"} else "feed",
             pedido.tema.strip()[:30],
+            pedido.marca_id,
         )
     except ValueError as erro:
         raise HTTPException(status_code=422, detail=str(erro)) from erro
@@ -243,15 +300,40 @@ async def post_semana(
     )
 
 
+async def _marca_existente(session: AsyncSession, marca_id: int) -> int:
+    marcas = await listar_marcas(session)
+    if marca_id <= 0 and marcas:
+        return marcas[0].id or 0
+    if any(marca.id == marca_id for marca in marcas):
+        return marca_id
+    raise HTTPException(status_code=404, detail="Essa marca não existe mais.")
+
+
+@router.get("/contas/estado")
+async def get_estado_contas(marca_id: int = 0, session: AsyncSession = Depends(get_session)) -> dict:
+    marca = await _marca_existente(session, marca_id)
+    contas = await estado_contas(session, marca)
+    return {
+        "marca_id": marca,
+        "instagram": _estado(contas["instagram"]).model_dump(),
+        "facebook": _estado(contas["facebook"]).model_dump(),
+    }
+
+
 @router.get("/contas/iniciar", response_model=None)
-async def iniciar_contas(rede: str = "instagram"):
+async def iniciar_contas(
+    rede: str = "instagram",
+    marca_id: int = 0,
+    session: AsyncSession = Depends(get_session),
+):
+    marca = await _marca_existente(session, marca_id)
     if rede == "facebook":
         if not facebook_pronta():
             return HTMLResponse(PAGINA_FALTA)
-        return RedirectResponse(url_oauth_facebook())
+        return RedirectResponse(url_oauth_facebook(marca))
     if not meta_pronta():
         return HTMLResponse(PAGINA_FALTA)
-    return RedirectResponse(url_oauth())
+    return RedirectResponse(url_oauth(marca))
 
 
 @router.get("/contas/retorno")
@@ -265,22 +347,23 @@ async def retorno_contas(
         return RedirectResponse("/?contas=cancelado")
     try:
         if state.startswith("facebook."):
-            if not state_facebook_valido(state):
+            marca = marca_do_state_facebook(state)
+            if marca is None:
                 return RedirectResponse("/?contas=cancelado")
-            await guardar_codigo_facebook(session, code)
-            return RedirectResponse("/?contas=escolher")
-        if state_valido(state):
-            await guardar_codigo(session, code)
-        else:
+            await guardar_codigo_facebook(session, code, marca)
+            return RedirectResponse(f"/?contas=escolher&marca={marca}")
+        marca = marca_do_state(state)
+        if marca is None:
             return RedirectResponse("/?contas=cancelado")
+        await guardar_codigo(session, code, marca)
     except Exception:
         return RedirectResponse("/?contas=erro")
-    return RedirectResponse("/?contas=ligado")
+    return RedirectResponse(f"/?contas=ligado&marca={marca}")
 
 
 @router.get("/contas/facebook/paginas", response_model=RespostaPaginas)
-async def get_paginas_facebook(session: AsyncSession = Depends(get_session)) -> RespostaPaginas:
-    paginas, escolhida = await paginas_facebook(session)
+async def get_paginas_facebook(marca_id: int = 0, session: AsyncSession = Depends(get_session)) -> RespostaPaginas:
+    paginas, escolhida = await paginas_facebook(session, await marca_efetiva(session, marca_id))
     return RespostaPaginas(paginas=paginas, escolhida=escolhida)
 
 
@@ -289,8 +372,9 @@ async def post_pagina_facebook(
     pedido: PedidoPagina,
     session: AsyncSession = Depends(get_session),
 ):
+    marca = await _marca_existente(session, pedido.marca_id)
     try:
-        nome = await escolher_pagina_facebook(session, pedido.pagina_id.strip())
+        nome = await escolher_pagina_facebook(session, pedido.pagina_id.strip(), marca)
     except RuntimeError as erro:
         raise HTTPException(status_code=400, detail=str(erro)) from erro
     return {"nome": nome}

@@ -6,7 +6,7 @@ from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import get_settings
-from app.models import Agendamento, Ficha, agora
+from app.models import Agendamento, ContaRede, Ficha, agora
 from app.services.openai_campanha import cliente_openai
 
 ZONA = timezone(timedelta(hours=-3))
@@ -36,10 +36,79 @@ class PacoteSemana(BaseModel):
     posts: list[PosteGerado]
 
 
-async def texto_ficha(session: AsyncSession) -> str:
+async def listar_marcas(session: AsyncSession) -> list[Ficha]:
     resultado = await session.exec(select(Ficha).order_by(Ficha.id))
+    marcas = list(resultado.all())
+    if not marcas:
+        primeira = Ficha(nome="Risca Aí", publico="Donos de bar no Brasil", texto=FICHA_PADRAO)
+        session.add(primeira)
+        await session.commit()
+        await session.refresh(primeira)
+        return [primeira]
+    mudou = False
+    for indice, marca in enumerate(marcas):
+        if not (marca.nome or "").strip():
+            marca.nome = "Risca Aí" if indice == 0 else f"Marca {marca.id}"
+            if indice == 0 and not (marca.publico or "").strip():
+                marca.publico = "Donos de bar no Brasil"
+            mudou = True
+    if mudou:
+        await session.commit()
+    return marcas
+
+
+async def marca_por_id(session: AsyncSession, marca_id: int) -> Ficha | None:
+    marcas = await listar_marcas(session)
+    for marca in marcas:
+        if marca.id == marca_id:
+            return marca
+    return marcas[0] if marcas else None
+
+
+async def criar_marca(session: AsyncSession, nome: str, publico: str, texto: str) -> Ficha:
+    registro = Ficha(nome=nome.strip()[:120], publico=publico.strip()[:200], texto=texto.strip())
+    session.add(registro)
+    await session.commit()
+    await session.refresh(registro)
+    return registro
+
+
+async def atualizar_marca(session: AsyncSession, marca_id: int, nome: str, publico: str, texto: str) -> Ficha | None:
+    resultado = await session.exec(select(Ficha).where(Ficha.id == marca_id))
     registro = resultado.first()
-    texto = (registro.texto if registro else "").strip()
+    if registro is None:
+        return None
+    registro.nome = nome.strip()[:120]
+    registro.publico = publico.strip()[:200]
+    registro.texto = texto.strip()
+    registro.atualizado_em = agora()
+    await session.commit()
+    await session.refresh(registro)
+    return registro
+
+
+async def apagar_marca(session: AsyncSession, marca_id: int) -> None:
+    marcas = await listar_marcas(session)
+    if len(marcas) <= 1:
+        raise ValueError("Precisa ficar pelo menos uma marca.")
+    alvo = next((marca for marca in marcas if marca.id == marca_id), None)
+    if alvo is None:
+        raise ValueError("Essa marca não existe mais.")
+    fila = await session.exec(
+        select(Agendamento).where(Agendamento.marca_id == marca_id, Agendamento.status == "na_fila")
+    )
+    if fila.first() is not None:
+        raise ValueError("Essa marca tem post na fila. Cancele os posts dela antes.")
+    contas = await session.exec(select(ContaRede).where(ContaRede.marca_id == marca_id))
+    for conta in contas.all():
+        await session.delete(conta)
+    await session.delete(alvo)
+    await session.commit()
+
+
+async def texto_ficha(session: AsyncSession) -> str:
+    marcas = await listar_marcas(session)
+    texto = (marcas[0].texto if marcas else "").strip()
     return texto or FICHA_PADRAO
 
 
@@ -110,6 +179,7 @@ async def montar_dias(
     rede: str = "Ambos",
     formato: str = "feed",
     tema: str = "",
+    marca_id: int = 0,
 ) -> tuple[list[Agendamento], str]:
     if not pedidos:
         raise ValueError("Marque pelo menos um dia.")
@@ -131,10 +201,13 @@ async def montar_dias(
     resultado = await session.exec(select(Agendamento).where(col(Agendamento.dia).in_(dias)))
     if resultado.first() is not None:
         raise ValueError("Um desses dias já tem publicação. Cancele primeiro.")
-    ficha = await texto_ficha(session)
-    guardada = await session.exec(select(Ficha).order_by(Ficha.id))
-    if guardada.first() is None:
-        ficha = await guardar_ficha(session, ficha)
+    marca = await marca_por_id(session, marca_id)
+    if marca is None:
+        raise ValueError("Crie uma marca no Prompt antes.")
+    cabecalho = f"Marca: {marca.nome}."
+    if (marca.publico or "").strip():
+        cabecalho += f" Público: {marca.publico}."
+    ficha = f"{cabecalho}\n{(marca.texto or '').strip() or FICHA_PADRAO}"
     try:
         posts = await escrever_semana(ficha, len(pedidos), tema)
     except APIError as erro:
@@ -150,6 +223,7 @@ async def montar_dias(
             rede=rede,
             formato=formato,
             tema=tema,
+            marca_id=marca.id or 0,
             titulo=post.titulo.strip()[:300],
             legenda=post.legenda.strip(),
             cena=post.cena.strip()[:800],
@@ -160,7 +234,7 @@ async def montar_dias(
     await session.commit()
     for registro in criados:
         await session.refresh(registro)
-    aviso = "A foto de cada dia é criada perto do horário marcado. O mesmo post sai no Instagram e no Facebook."
+    aviso = f"Post de {marca.nome} na fila. A foto é criada perto do horário marcado."
     if len(criados) < len(pedidos):
         aviso = "Parte dos dias entrou na fila. " + aviso
     return criados, aviso

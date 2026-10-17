@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Text
+from sqlalchemy import DateTime, Text, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -39,6 +39,7 @@ class Agendamento(SQLModel, table=True):
     ok_facebook: bool = Field(default=False)
     formato: str = Field(default="feed", max_length=20)
     tema: str = Field(default="", max_length=30)
+    marca_id: int = Field(default=0)
     feito: str = Field(default="", max_length=80)
     status: str = Field(default="na_fila", max_length=20)
     detalhe: str = Field(default="", sa_type=Text)
@@ -59,9 +60,11 @@ class Projeto(SQLModel, table=True):
 
 class ContaRede(SQLModel, table=True):
     __tablename__ = "mkt_contas"
+    __table_args__ = (UniqueConstraint("marca_id", "rede", name="ux_mkt_contas_marca_rede"),)
 
     id: int | None = Field(default=None, primary_key=True)
-    rede: str = Field(max_length=20, unique=True, index=True)
+    marca_id: int = Field(default=0, index=True)
+    rede: str = Field(max_length=20, index=True)
     nome: str = Field(default="", max_length=120)
     externo_id: str = Field(default="", max_length=80)
     token: str = Field(default="", sa_type=Text)
@@ -72,6 +75,8 @@ class Ficha(SQLModel, table=True):
     __tablename__ = "mkt_ficha"
 
     id: int | None = Field(default=None, primary_key=True)
+    nome: str = Field(default="", max_length=120)
+    publico: str = Field(default="", max_length=200)
     texto: str = Field(sa_type=Text)
     atualizado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
 
