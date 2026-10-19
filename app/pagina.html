@@ -83,6 +83,9 @@
     .topo-marca span { color: var(--mudo); }
     .painel, .lado { min-height: 0; overflow: auto; background: #fafbfc; }
     .painel { padding: 16px 12px 24px; border-right: 1px solid var(--linha); }
+    .legal { margin: 24px 10px 0; font-size: 11.5px; color: var(--mudo); }
+    .legal a { color: var(--mudo); text-decoration: none; }
+    .legal a:hover { color: var(--azul); text-decoration: underline; }
     .lado { padding: 16px 16px 28px; border-left: 1px solid var(--linha); }
     .conversa {
       min-width: 0;
@@ -505,6 +508,8 @@
       background: var(--azul-suave);
     }
     button.rede.selecionada i { color: var(--azul); }
+    button.rede:disabled { opacity: 0.45; cursor: not-allowed; }
+    button.rede:disabled:hover { border-color: var(--linha); }
     .tipos { display: grid; gap: 8px; }
     label.tipo {
       display: flex;
@@ -768,6 +773,7 @@
           <button class="atalho" type="button" id="abrir-projetos"><i class="fa-solid fa-folder-open"></i>Projetos</button>
           <button class="atalho" type="button" id="abrir-ficha"><i class="fa-solid fa-book"></i>Prompt</button>
         </div>
+        <p class="legal"><a href="/privacidade" target="_blank" rel="noopener">Privacidade</a> · <a href="/termos" target="_blank" rel="noopener">Termos</a></p>
       </aside>
       <section class="conversa">
         <div class="coluna-topo" id="topo-conversa">Novo post</div>
@@ -935,11 +941,12 @@
           <input id="busca-radar" name="busca_radar" minlength="2" placeholder="Ex.: bar, petiscaria" />
           <p class="secao">Onde você quer buscar?</p>
           <div class="redes" id="redes">
-            <button class="rede" type="button" data-rede="instagram" aria-pressed="false"><i class="fa-brands fa-instagram" aria-hidden="true"></i>Instagram</button>
-            <button class="rede" type="button" data-rede="tiktok" aria-pressed="false"><i class="fa-brands fa-tiktok" aria-hidden="true"></i>TikTok</button>
-            <button class="rede" type="button" data-rede="facebook" aria-pressed="false"><i class="fa-brands fa-facebook" aria-hidden="true"></i>Facebook</button>
-            <button class="rede" type="button" data-rede="google" aria-pressed="false"><i class="fa-solid fa-location-dot" aria-hidden="true"></i>Google Maps</button>
+            <button class="rede selecionada" type="button" data-rede="google" aria-pressed="true"><i class="fa-solid fa-location-dot" aria-hidden="true"></i>Google Maps</button>
+            <button class="rede" type="button" data-rede="instagram" aria-pressed="false" disabled><i class="fa-brands fa-instagram" aria-hidden="true"></i>Instagram</button>
+            <button class="rede" type="button" data-rede="tiktok" aria-pressed="false" disabled><i class="fa-brands fa-tiktok" aria-hidden="true"></i>TikTok</button>
+            <button class="rede" type="button" data-rede="facebook" aria-pressed="false" disabled><i class="fa-brands fa-facebook" aria-hidden="true"></i>Facebook</button>
           </div>
+          <p class="nota">Por enquanto a busca de lugares é só no Google Maps. Instagram, TikTok e Facebook ainda não buscam lugares.</p>
           <p class="secao">Tipo de busca</p>
           <div class="tipos">
             <label class="tipo">
@@ -1009,7 +1016,8 @@
       },
       radar: {
         titulo: "Radar de Clientes B2B",
-        ajuda: "Busca lugares reais no Google Maps. Instagram, TikTok e Facebook ainda não entram nessa busca.",
+        ajuda: "Busca lugares reais no Google Maps, com endereço, telefone, site e nota.",
+        espera: "Buscando no mapa",
         botao: "Buscar no mapa",
       },
     };
@@ -1095,7 +1103,7 @@
       }
     }
 
-    const redesEscolhidas = new Set();
+    const redesEscolhidas = new Set(["google"]);
 
     function exigir(id, ativo) {
       document.getElementById(id).required = ativo;
@@ -1280,7 +1288,11 @@
         </article>`;
       }
       if (acao === "radar") {
-        const itens = (dados.empresas || []).map((empresa) => `<li><strong>${texto(empresa.nome)}.</strong> ${texto(empresa.categoria)} em ${texto(empresa.bairro)}. ${texto(empresa.endereco)}. ${texto(empresa.telefone)}. ${texto(empresa.porque)}</li>`).join("");
+        const link = (url, nome) => (/^https?:\/\//i.test(url || "") ? ` <a href="${texto(url).replaceAll('"', "&quot;")}" target="_blank" rel="noopener">${nome}</a>` : "");
+        const itens = (dados.empresas || []).map((empresa) => {
+          const nota = typeof empresa.nota === "number" ? ` Nota ${empresa.nota.toFixed(1)}${empresa.avaliacoes ? ` (${empresa.avaliacoes} avaliações)` : ""}.` : "";
+          return `<li><strong>${texto(empresa.nome)}.</strong> ${texto(empresa.categoria)} em ${texto(empresa.bairro)}. ${texto(empresa.endereco)}. ${texto(empresa.telefone)}.${nota}${link(empresa.site, "Site")}${link(empresa.mapa, "Ver no mapa")}</li>`;
+        }).join("");
         const redes = (dados.redes || []).join(", ");
         corpo += `<article><h2>Lugares no Google Maps</h2><p>${texto(dados.aviso)}</p><p>${texto(dados.tipo_busca)} em ${texto(redes)}.</p><ul>${itens}</ul></article>`;
       }
@@ -1298,6 +1310,7 @@
     const CAPAS = [
       { acao: "texto", nome: "Anúncio", imagem: "/quadros/anuncio.jpg" },
       { acao: "foto", nome: "Foto", imagem: "/quadros/foto.jpg" },
+      { acao: "radar", nome: "Radar", imagem: "/quadros/radar.jpg" },
     ];
 
     function desenharCapas() {
@@ -1448,6 +1461,7 @@
     document.querySelectorAll(".rede").forEach((botao) => {
       botao.addEventListener("click", () => {
         const rede = botao.dataset.rede;
+        if (botao.disabled || rede === "google") return;
         if (redesEscolhidas.has(rede)) {
           redesEscolhidas.delete(rede);
           botao.classList.remove("selecionada");
@@ -1780,8 +1794,8 @@
         };
       }
       if (acao === "radar") {
-        if (redesEscolhidas.size === 0) {
-          erro.textContent = "Escolha pelo menos uma rede.";
+        if (!redesEscolhidas.has("google")) {
+          erro.textContent = "A busca de lugares é feita no Google Maps.";
           erro.hidden = false;
           spinner.hidden = true;
           enviar.disabled = false;

@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     instagram_app_secret: str = ""
     google_places_api_key: str = ""
     app_url: str = "https://ferramenta-ooun.onrender.com"
+    empresa_nome: str = "Risca Aí"
+    empresa_cnpj: str = ""
+    contato_email: str = ""
 
     model_config = SettingsConfigDict(
         env_file=PASTA / ".env",

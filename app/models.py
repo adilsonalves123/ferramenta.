@@ -67,6 +67,7 @@ class ContaRede(SQLModel, table=True):
     rede: str = Field(max_length=20, index=True)
     nome: str = Field(default="", max_length=120)
     externo_id: str = Field(default="", max_length=80)
+    usuario_meta: str = Field(default="", max_length=200)
     token: str = Field(default="", sa_type=Text)
     atualizado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
 

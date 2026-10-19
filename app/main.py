@@ -14,6 +14,7 @@ from app.services.fila_video import retomar
 from app.services.publicar import preparar_fotos, publicar_vencidos
 from app.routers.agenda import router as router_agenda
 from app.routers.campanhas import router
+from app.routers.legal import router as router_legal
 from app.routers.novas import router as router_novas
 from app.routers.projetos import router as router_projetos
 from app.services.midia import PASTA_MIDIA
@@ -64,6 +65,7 @@ def create_app() -> FastAPI:
     app.include_router(router_novas)
     app.include_router(router_projetos)
     app.include_router(router_agenda)
+    app.include_router(router_legal)
     PASTA_MIDIA.mkdir(parents=True, exist_ok=True)
     PASTA_QUADROS.mkdir(parents=True, exist_ok=True)
     app.mount("/midia", StaticFiles(directory=PASTA_MIDIA), name="midia")

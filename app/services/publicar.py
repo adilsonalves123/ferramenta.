@@ -104,7 +104,7 @@ def url_oauth_facebook(marca_id: int) -> str:
             "client_id": ajustes.meta_app_id,
             "redirect_uri": url_retorno(),
             "state": criar_state_facebook(marca_id),
-            "scope": "pages_show_list,pages_manage_posts,business_management",
+            "scope": "pages_show_list,pages_read_engagement,pages_manage_posts",
             "response_type": "code",
         }
     )
@@ -382,15 +382,31 @@ async def _conta(session: AsyncSession, rede: str, marca_id: int) -> ContaRede |
 
 
 async def definir_conta(
-    session: AsyncSession, marca_id: int, rede: str, nome: str, externo_id: str, token: str
+    session: AsyncSession,
+    marca_id: int,
+    rede: str,
+    nome: str,
+    externo_id: str,
+    token: str,
+    usuario_meta: str = "",
 ) -> None:
     conta = await _conta(session, rede, marca_id)
     if conta is None:
-        session.add(ContaRede(marca_id=marca_id, rede=rede, nome=nome, externo_id=externo_id, token=token))
+        session.add(
+            ContaRede(
+                marca_id=marca_id,
+                rede=rede,
+                nome=nome,
+                externo_id=externo_id,
+                token=token,
+                usuario_meta=usuario_meta[:200],
+            )
+        )
         return
     conta.nome = nome
     conta.externo_id = externo_id
     conta.token = token
+    conta.usuario_meta = usuario_meta[:200]
     conta.atualizado_em = agora()
 
 
@@ -400,17 +416,35 @@ async def apagar_conta(session: AsyncSession, rede: str, marca_id: int) -> None:
         await session.delete(conta)
 
 
-def perfil_instagram(token: str) -> tuple[str, str]:
-    query = urllib.parse.urlencode({"fields": "user_id,username", "access_token": token})
+def perfil_instagram(token: str) -> tuple[str, str, str]:
+    query = urllib.parse.urlencode({"fields": "id,user_id,username", "access_token": token})
     dados = _pedir(f"https://graph.instagram.com/{VERSAO}/me?{query}")
-    return str(dados.get("user_id") or ""), str(dados.get("username") or "Instagram")
+    return (
+        str(dados.get("user_id") or ""),
+        str(dados.get("username") or "Instagram"),
+        str(dados.get("id") or ""),
+    )
+
+
+def usuario_facebook(token: str) -> str:
+    query = urllib.parse.urlencode({"fields": "id", "access_token": token})
+    dados = _pedir(f"https://graph.facebook.com/{VERSAO}/me?{query}")
+    return str(dados.get("id") or "")
+
+
+def juntar_ids(*ids: str) -> str:
+    return ",".join(dict.fromkeys(item for item in ids if item))
 
 
 async def guardar_codigo_facebook(session: AsyncSession, codigo: str, marca_id: int) -> None:
     token = await asyncio.to_thread(trocar_codigo_facebook, codigo)
     if not token:
         raise RuntimeError("O Facebook não devolveu o acesso.")
-    await definir_conta(session, marca_id, "facebook_acesso", "", "", token)
+    try:
+        usuario = await asyncio.to_thread(usuario_facebook, token)
+    except Exception:
+        usuario = ""
+    await definir_conta(session, marca_id, "facebook_acesso", "", "", token, usuario)
     await session.commit()
 
 
@@ -439,22 +473,28 @@ async def escolher_pagina_facebook(session: AsyncSession, pagina_id: str, marca_
     token_pagina = str(pagina.get("access_token") or "")
     if not token_pagina:
         raise RuntimeError("O Facebook não entregou a Página.")
-    await definir_conta(session, marca_id, "facebook", nome, pagina_id, token_pagina)
+    await definir_conta(
+        session, marca_id, "facebook", nome, pagina_id, token_pagina, acesso.usuario_meta or ""
+    )
     await session.commit()
     return nome
 
 
 async def guardar_codigo(session: AsyncSession, codigo: str, marca_id: int) -> None:
     token, usuario = await asyncio.to_thread(trocar_codigo, codigo)
+    usuario_app = usuario
+    escopo = ""
     try:
-        usuario_perfil, nome = await asyncio.to_thread(perfil_instagram, token)
+        usuario_perfil, nome, escopo = await asyncio.to_thread(perfil_instagram, token)
         if usuario_perfil:
             usuario = usuario_perfil
     except Exception:
         nome = "Instagram"
     if not usuario:
         raise RuntimeError("O Instagram não informou a conta.")
-    await definir_conta(session, marca_id, "instagram", nome, usuario, token)
+    await definir_conta(
+        session, marca_id, "instagram", nome, usuario, token, juntar_ids(escopo, usuario_app, usuario)
+    )
     await session.commit()
 
 

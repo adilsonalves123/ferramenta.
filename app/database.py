@@ -93,6 +93,9 @@ async def criar_tabelas() -> None:
             text("ALTER TABLE mkt_contas ADD COLUMN IF NOT EXISTS marca_id INTEGER NOT NULL DEFAULT 0")
         )
         await conexao.execute(
+            text("ALTER TABLE mkt_contas ADD COLUMN IF NOT EXISTS usuario_meta VARCHAR(200) NOT NULL DEFAULT ''")
+        )
+        await conexao.execute(
             text(
                 "DO $$ BEGIN "
                 "IF EXISTS (SELECT 1 FROM pg_indexes WHERE tablename = 'mkt_contas' "

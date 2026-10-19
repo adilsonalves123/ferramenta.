@@ -159,6 +159,10 @@ class EmpresaRadar(BaseModel):
     endereco: str
     telefone: str
     porque: str
+    site: str = ""
+    mapa: str = ""
+    nota: float | None = None
+    avaliacoes: int | None = None
 
 
 class PedidoProjeto(BaseModel):
