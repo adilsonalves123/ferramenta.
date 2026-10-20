@@ -89,6 +89,32 @@ async def criar_tabelas() -> None:
         await conexao.execute(
             text("ALTER TABLE mkt_ficha ADD COLUMN IF NOT EXISTS publico VARCHAR(200) NOT NULL DEFAULT ''")
         )
+        ja_tinha_site = (
+            await conexao.execute(
+                text(
+                    "SELECT 1 FROM information_schema.columns "
+                    "WHERE table_name = 'mkt_ficha' AND column_name = 'site'"
+                )
+            )
+        ).first() is not None
+        await conexao.execute(
+            text("ALTER TABLE mkt_ficha ADD COLUMN IF NOT EXISTS site VARCHAR(200) NOT NULL DEFAULT ''")
+        )
+        await conexao.execute(
+            text("ALTER TABLE mkt_ficha ADD COLUMN IF NOT EXISTS marca_dagua VARCHAR(60) NOT NULL DEFAULT ''")
+        )
+        if not ja_tinha_site:
+            await conexao.execute(
+                text(
+                    "UPDATE mkt_ficha SET site = 'https://www.riscaai.com.br', marca_dagua = 'Risca Aí' "
+                    "WHERE site = '' AND marca_dagua = '' AND lower(nome) IN ('risca aí', 'risca ai')"
+                )
+            )
+        await conexao.execute(
+            text(
+                "ALTER TABLE mkt_agendamentos ADD COLUMN IF NOT EXISTS tentativas_marca INTEGER NOT NULL DEFAULT 0"
+            )
+        )
         await conexao.execute(
             text("ALTER TABLE mkt_contas ADD COLUMN IF NOT EXISTS marca_id INTEGER NOT NULL DEFAULT 0")
         )

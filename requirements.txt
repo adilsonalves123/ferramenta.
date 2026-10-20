@@ -8,3 +8,4 @@ openai>=1.55
 python-multipart>=0.0.20
 youtube-transcript-api>=1.0.0
 imageio-ffmpeg>=0.5.1
+pillow>=10.1

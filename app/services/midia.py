@@ -60,17 +60,132 @@ def _jpeg_story(origem: Path, destino: Path) -> None:
 
 
 def arquivo_story(caminho: str) -> str:
+    caminho = caminho.strip().split("?", 1)[0]
     if not caminho.startswith("/midia/"):
         return caminho
     partes = caminho.strip("/").split("/")
-    if len(partes) < 3:
-        return caminho
+    if len(partes) != 3 or not partes[1] or not partes[2] or ".." in partes:
+        raise RuntimeError("A foto do Story não foi achada. Anexe de novo.")
     origem = PASTA_MIDIA / partes[1] / partes[2]
     destino = PASTA_MIDIA / partes[1] / "story.jpg"
-    if not origem.exists():
-        return caminho
+    if not origem.is_file():
+        raise RuntimeError("A foto do Story não está mais no servidor. Anexe de novo.")
     _jpeg_story(origem, destino)
     return f"/midia/{partes[1]}/story.jpg"
+
+
+FONTES_MARCA = (
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
+    "C:/Windows/Fonts/arialbd.ttf",
+    "C:/Windows/Fonts/segoeuib.ttf",
+)
+
+
+def _arquivos_fonte() -> list[Path]:
+    achadas = [Path(caminho) for caminho in FONTES_MARCA if Path(caminho).is_file()]
+    pasta = Path("/usr/share/fonts")
+    if pasta.is_dir():
+        todas = sorted(pasta.rglob("*.ttf"))
+        achadas += [fonte for fonte in todas if "bold" in fonte.name.lower()]
+        achadas += todas
+    return achadas
+
+
+def _fonte_marca(tamanho: int):
+    """Fonte do sistema; sem nenhuma, a fonte embutida do Pillow (que não tem acento)."""
+    from PIL import ImageFont
+
+    for caminho in _arquivos_fonte():
+        try:
+            return ImageFont.truetype(str(caminho), tamanho), False
+        except OSError:
+            continue
+    return ImageFont.load_default(size=tamanho), True
+
+
+def _sem_acento(texto: str) -> str:
+    import unicodedata
+
+    return "".join(letra for letra in unicodedata.normalize("NFKD", texto) if not unicodedata.combining(letra))
+
+
+def _carimbar(origem: Path, destino: Path, texto: str, margem_baixo: float = 0.03) -> None:
+    from PIL import Image, ImageDraw
+
+    with Image.open(origem) as aberta:
+        foto = aberta.convert("RGBA")
+    largura, altura = foto.size
+    camada = Image.new("RGBA", foto.size, (0, 0, 0, 0))
+    desenho = ImageDraw.Draw(camada)
+    tamanho = max(14, round(altura * 0.035))
+    for _ in range(2):
+        fonte, embutida = _fonte_marca(tamanho)
+        if embutida:
+            texto = _sem_acento(texto)
+        esquerda, topo, direita, baixo = desenho.textbbox((0, 0), texto, font=fonte)
+        folga = max(4, round(tamanho * 0.4))
+        caixa_largura = direita - esquerda + 2 * folga
+        caixa_altura = baixo - topo + 2 * folga
+        if caixa_largura <= largura * 0.6:
+            break
+        tamanho = max(10, int(tamanho * largura * 0.6 / caixa_largura))
+    x = largura - round(largura * 0.03) - caixa_largura
+    y = altura - round(altura * margem_baixo) - caixa_altura
+    desenho.rounded_rectangle(
+        (x, y, x + caixa_largura, y + caixa_altura),
+        radius=max(2, round(tamanho * 0.3)),
+        fill=(0, 0, 0, 115),
+    )
+    desenho.text((x + folga - esquerda, y + folga - topo), texto, font=fonte, fill=(255, 255, 255, 240))
+    Image.alpha_composite(foto, camada).convert("RGB").save(destino, "JPEG", quality=92)
+    if not destino.exists() or destino.stat().st_size < 100:
+        raise RuntimeError("A marca d'água não entrou na foto.")
+
+
+def _foto_local(caminho: str) -> str:
+    from app.config import get_settings
+
+    caminho = caminho.strip().split("?", 1)[0]
+    base = get_settings().app_url.rstrip("/")
+    if base and caminho.startswith(base + "/midia/"):
+        caminho = caminho[len(base) :]
+    if caminho.startswith("http://") or caminho.startswith("https://"):
+        import urllib.request
+
+        with urllib.request.urlopen(caminho, timeout=30) as resposta:
+            dados = resposta.read(8_000_001)
+        caminho, tipo = salvar_anexo(dados)
+        if tipo != "foto":
+            raise RuntimeError("A foto do post não é uma foto.")
+    return caminho
+
+
+def foto_com_marca(caminho: str, texto: str, story: bool = False) -> str:
+    """Devolve a foto pronta para a Meta (feed, ou Story 1080x1920) com o texto da marca no canto."""
+    texto = texto.strip()
+    if not texto:
+        return arquivo_story(caminho) if story else caminho
+    try:
+        local = _foto_local(caminho)
+        if story:
+            local = arquivo_story(local)
+        partes = local.strip("/").split("/")
+        if len(partes) != 3 or partes[0] != "midia" or not partes[1] or not partes[2] or ".." in partes:
+            raise RuntimeError("A foto do post não foi achada. Anexe de novo.")
+        origem = PASTA_MIDIA / partes[1] / partes[2]
+        if not origem.is_file():
+            raise RuntimeError("A foto do post não está mais no servidor. Anexe de novo.")
+        nome = "story_marca.jpg" if story else f"{origem.stem}_marca.jpg"
+        _carimbar(origem, origem.with_name(nome), texto, 0.12 if story else 0.03)
+    except RuntimeError:
+        raise
+    except Exception as erro:
+        raise RuntimeError("A marca d'água não pôde ser colocada na foto.") from erro
+    return f"/midia/{partes[1]}/{nome}"
 
 
 def salvar_anexo(dados: bytes) -> tuple[str, str]:

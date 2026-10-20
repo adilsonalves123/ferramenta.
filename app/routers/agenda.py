@@ -11,6 +11,7 @@ from app.schemas import (
     PedidoAgenda,
     ItemMarca,
     PedidoFicha,
+    PedidoFormato,
     PedidoMarca,
     PedidoPagina,
     PedidoPublicarAgora,
@@ -158,6 +159,7 @@ async def post_agenda(
         registro.video_url = pedido.video_url.strip()[:500]
         registro.cena = ""
         registro.tentativas = 0
+        registro.tentativas_marca = 0
         registro.ok_instagram = False
         registro.ok_facebook = False
         registro.formato = pedido.formato if pedido.formato in {"feed", "story", "ambos"} else "feed"
@@ -221,6 +223,8 @@ def _marca(registro) -> ItemMarca:
         id=registro.id or 0,
         nome=registro.nome or "",
         publico=registro.publico or "",
+        site=registro.site or "",
+        marca_dagua=registro.marca_dagua or "",
         texto=registro.texto or "",
     )
 
@@ -232,7 +236,9 @@ async def get_marcas(session: AsyncSession = Depends(get_session)) -> RespostaMa
 
 @router.post("/marcas", response_model=ItemMarca)
 async def post_marca(pedido: PedidoMarca, session: AsyncSession = Depends(get_session)) -> ItemMarca:
-    return _marca(await criar_marca(session, pedido.nome, pedido.publico, pedido.texto))
+    return _marca(
+        await criar_marca(session, pedido.nome, pedido.publico, pedido.texto, pedido.site, pedido.marca_dagua)
+    )
 
 
 @router.put("/marcas/{marca_id}", response_model=ItemMarca)
@@ -241,7 +247,9 @@ async def put_marca(
     pedido: PedidoMarca,
     session: AsyncSession = Depends(get_session),
 ) -> ItemMarca:
-    registro = await atualizar_marca(session, marca_id, pedido.nome, pedido.publico, pedido.texto)
+    registro = await atualizar_marca(
+        session, marca_id, pedido.nome, pedido.publico, pedido.texto, pedido.site, pedido.marca_dagua
+    )
     if registro is None:
         raise HTTPException(status_code=404, detail="Essa marca não existe mais.")
     return _marca(registro)
@@ -267,6 +275,35 @@ async def delete_agenda(item_id: int, session: AsyncSession = Depends(get_sessio
     await session.delete(registro)
     await session.commit()
     return {"ok": True}
+
+
+@router.put("/agenda/{item_id}/formato", response_model=ItemAgenda)
+async def put_formato_agenda(
+    item_id: int,
+    pedido: PedidoFormato,
+    session: AsyncSession = Depends(get_session),
+) -> ItemAgenda:
+    if pedido.formato not in {"feed", "story", "ambos"}:
+        raise HTTPException(status_code=422, detail="Escolha Feed, Story ou Feed e Story.")
+    resultado = await session.exec(select(Agendamento).where(Agendamento.id == item_id))
+    registro = resultado.first()
+    if registro is None:
+        raise HTTPException(status_code=404, detail="Esse post não está na fila.")
+    if registro.status == "publicado":
+        raise HTTPException(status_code=422, detail="Esse post já saiu.")
+    registro.formato = pedido.formato
+    precisa_foto = pedido.formato in {"story", "ambos"} or registro.rede in {"Instagram", "Ambos"}
+    tem_foto = bool(registro.imagem_url or registro.video_url or (registro.cena or "").strip())
+    if registro.status in {"na_fila", "falta_imagem"}:
+        if precisa_foto and not tem_foto:
+            registro.status = "falta_imagem"
+            registro.detalhe = "Falta a foto."
+        elif registro.status == "falta_imagem":
+            registro.status = "na_fila"
+            registro.detalhe = ""
+    await session.commit()
+    await session.refresh(registro)
+    return _item(registro)
 
 
 @router.post("/semana", response_model=RespostaSemana)

@@ -35,6 +35,7 @@ class Agendamento(SQLModel, table=True):
     video_url: str = Field(default="", max_length=500)
     cena: str = Field(default="", sa_type=Text)
     tentativas: int = Field(default=0)
+    tentativas_marca: int = Field(default=0)
     ok_instagram: bool = Field(default=False)
     ok_facebook: bool = Field(default=False)
     formato: str = Field(default="feed", max_length=20)
@@ -78,6 +79,8 @@ class Ficha(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     nome: str = Field(default="", max_length=120)
     publico: str = Field(default="", max_length=200)
+    site: str = Field(default="", max_length=200)
+    marca_dagua: str = Field(default="", max_length=60)
     texto: str = Field(sa_type=Text)
     atualizado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
 

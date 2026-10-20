@@ -320,6 +320,13 @@
     .lista-agenda li { font-size: 12px; line-height: 1.35; }
     .lista-agenda strong { font-weight: 600; }
     .lista-agenda span { display: block; color: var(--mudo); }
+    .lista-agenda select.formato-fila {
+      margin: 4px 10px 0 0;
+      width: auto;
+      padding: 2px 6px;
+      font: inherit;
+      font-size: 12px;
+    }
     .lista-agenda button.cancelar {
       margin-top: 4px;
       border: 0;
@@ -879,6 +886,10 @@
         <input id="ficha-nome" required minlength="2" maxlength="120" placeholder="Ex.: Risca Aí" />
         <label for="ficha-publico">Público</label>
         <input id="ficha-publico" maxlength="200" placeholder="Ex.: Donos de bar no Brasil" />
+        <label for="ficha-site">Site (vai no final de toda legenda)</label>
+        <input id="ficha-site" maxlength="200" placeholder="Ex.: https://www.riscaai.com.br" />
+        <label for="ficha-marca-dagua">Marca d'água (texto no canto de toda foto)</label>
+        <input id="ficha-marca-dagua" maxlength="60" placeholder="Ex.: Risca Aí" />
         <label for="texto-ficha">Prompt</label>
         <textarea id="texto-ficha" required minlength="20" placeholder="O que o sistema deve lembrar dessa marca: o que vende, para quem, o que não pode inventar e quais fotos combinam."></textarea>
         <div class="ficha-botoes">
@@ -2019,6 +2030,18 @@
         estado.textContent = textoStatus(item);
         linha.append(titulo, estado);
         if (item.status !== "publicado") {
+          const escolha = document.createElement("select");
+          escolha.className = "formato-fila";
+          escolha.title = "Formato deste post";
+          [["feed", "Feed"], ["story", "Story"], ["ambos", "Feed e Story"]].forEach(([valor, rotulo]) => {
+            const opcao = document.createElement("option");
+            opcao.value = valor;
+            opcao.textContent = rotulo;
+            escolha.appendChild(opcao);
+          });
+          escolha.value = item.formato || "feed";
+          escolha.addEventListener("change", () => trocarFormato(item.id, escolha.value));
+          linha.append(escolha);
           const cancelar = document.createElement("button");
           cancelar.type = "button";
           cancelar.className = "cancelar";
@@ -2107,6 +2130,24 @@
         nota.textContent = "Post cancelado.";
       } catch (falha) {
         nota.textContent = falha.message || "Não consegui cancelar.";
+      }
+    }
+
+    async function trocarFormato(id, formato) {
+      const nota = document.getElementById("nota-agenda");
+      try {
+        const resposta = await fetch("/agenda/" + id + "/formato", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ formato }),
+        });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        await carregarAgenda();
+        nota.textContent = "Formato trocado: " + nomeFormato(formato) + ".";
+      } catch (falha) {
+        await carregarAgenda().catch(() => {});
+        nota.textContent = falha.message || "Não consegui trocar o formato.";
       }
     }
 
@@ -2546,6 +2587,8 @@
       const achada = marcas.find((item) => item.id === id);
       document.getElementById("ficha-nome").value = achada ? achada.nome : "";
       document.getElementById("ficha-publico").value = achada ? achada.publico : "";
+      document.getElementById("ficha-site").value = achada ? achada.site || "" : "";
+      document.getElementById("ficha-marca-dagua").value = achada ? achada.marca_dagua || "" : "";
       document.getElementById("texto-ficha").value = achada ? achada.texto : "";
       document.getElementById("apagar-marca").hidden = !achada || marcas.length <= 1;
     }
@@ -2577,6 +2620,8 @@
       const corpo = {
         nome: document.getElementById("ficha-nome").value.trim(),
         publico: document.getElementById("ficha-publico").value.trim(),
+        site: document.getElementById("ficha-site").value.trim(),
+        marca_dagua: document.getElementById("ficha-marca-dagua").value.trim(),
         texto: document.getElementById("texto-ficha").value.trim(),
       };
       if (corpo.nome.length < 2) {

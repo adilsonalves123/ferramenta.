@@ -336,7 +336,9 @@ def alvos_de(rede: str, formato: str) -> list[str]:
     return [f"{nome}:{tipo}" for nome in redes for tipo in formatos]
 
 
-def _publicar_alvo(alvo: str, conta: ContaRede, texto: str, imagem_url: str, video_url: str) -> None:
+def _publicar_alvo(
+    alvo: str, conta: ContaRede, texto: str, imagem_url: str, video_url: str, foto_story: str = ""
+) -> None:
     from app.services.midia import arquivo_story
 
     rede, formato = alvo.split(":", 1)
@@ -348,14 +350,68 @@ def _publicar_alvo(alvo: str, conta: ContaRede, texto: str, imagem_url: str, vid
         if rede == "Facebook":
             if video and not imagem:
                 raise RuntimeError("O Story do Facebook sai com foto.")
-            publicar_facebook_story(conta.externo_id, conta.token, endereco_publico(arquivo_story(imagem)))
+            publicar_facebook_story(
+                conta.externo_id, conta.token, endereco_publico(foto_story or arquivo_story(imagem))
+            )
             return
         if video and video.lower().split("?", 1)[0].endswith(".mp4"):
             publicar_instagram_story_video(conta.externo_id, conta.token, endereco_publico(video))
             return
-        publicar_instagram_story(conta.externo_id, conta.token, endereco_publico(arquivo_story(imagem)))
+        publicar_instagram_story(conta.externo_id, conta.token, endereco_publico(foto_story or arquivo_story(imagem)))
         return
     _publicar_rede(rede, conta, texto, imagem, video)
+
+
+LIMITE_LEGENDA = 2200
+
+
+def com_site(texto: str, site: str) -> str:
+    site = site.strip()
+    if not site:
+        return texto
+    chave = site.lower().split("://", 1)[-1].removeprefix("www.").rstrip("/")
+    if chave and chave in texto.lower():
+        return texto
+    corpo = texto.rstrip()[: max(0, LIMITE_LEGENDA - len(site) - 2)].rstrip()
+    return f"{corpo}\n\n{site}" if corpo else site
+
+
+def _usa_foto(alvo: str, imagem_url: str, video_url: str) -> bool:
+    rede, formato = alvo.split(":", 1)
+    video = video_url.strip().lower().split("?", 1)[0]
+    if not imagem_url.strip():
+        return False
+    if formato == "story":
+        return rede == "Facebook" or not video.endswith(".mp4")
+    return not video
+
+
+def fotos_com_marca(alvos: list[str], imagem_url: str, video_url: str, marca_dagua: str) -> tuple[str, str]:
+    """Foto do feed e do Story com a marca d'água. Vídeo segue sem marca d'água."""
+    from app.services.midia import foto_com_marca
+
+    feed, story = imagem_url, ""
+    if not marca_dagua.strip():
+        return feed, story
+    usados = [alvo for alvo in alvos if _usa_foto(alvo, imagem_url, video_url)]
+    if any(alvo.endswith(":feed") for alvo in usados):
+        feed = foto_com_marca(imagem_url, marca_dagua)
+    if any(alvo.endswith(":story") for alvo in usados):
+        story = foto_com_marca(imagem_url, marca_dagua, story=True)
+    return feed, story
+
+
+async def dados_marca(session: AsyncSession, marca_id: int) -> tuple[str, str]:
+    if marca_id <= 0:
+        return "", ""
+    registro = await session.get(Ficha, marca_id)
+    if registro is None:
+        return "", ""
+    return (registro.site or "").strip(), (registro.marca_dagua or "").strip()
+
+
+def erro_marca(erro: Exception) -> str:
+    return f"A marca d'água não entrou na foto: {str(erro)[:160]}"
 
 
 def momento(dia: str, hora: str) -> datetime:
@@ -542,7 +598,12 @@ async def publicar_agora(
     faltam = await contas_faltando(session, alvos, marca)
     if faltam:
         return "falta_conta", " ".join(falta_conta(nome) for nome in faltam)
-    texto = f"{titulo.strip()}\n\n{legenda.strip()}".strip()
+    site, marca_dagua = await dados_marca(session, marca)
+    texto = com_site(f"{titulo.strip()}\n\n{legenda.strip()}".strip(), site)
+    try:
+        foto_feed, foto_story = await asyncio.to_thread(fotos_com_marca, alvos, imagem_url, video_url, marca_dagua)
+    except Exception as erro:
+        return "erro", (erro_marca(erro) + " Nada foi publicado.")[:300]
     erros: list[str] = []
     for alvo in alvos:
         nome = alvo.split(":", 1)[0]
@@ -551,7 +612,7 @@ async def publicar_agora(
             erros.append(falta_conta(nome))
             continue
         try:
-            await asyncio.to_thread(_publicar_alvo, alvo, conta, texto, imagem_url, video_url)
+            await asyncio.to_thread(_publicar_alvo, alvo, conta, texto, foto_feed, video_url, foto_story)
         except Exception as erro:
             erros.append(_erro_foto(erro)[:180])
     if erros:
@@ -635,7 +696,23 @@ async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
         return
     feitos = _feitos(item)
     marca = await marca_efetiva(session, item.marca_id)
-    texto = f"{item.titulo}\n\n{item.legenda}".strip()
+    site, marca_dagua = await dados_marca(session, marca)
+    texto = com_site(f"{item.titulo}\n\n{item.legenda}".strip(), site)
+    pendentes = [alvo for alvo in alvos if alvo not in feitos]
+    faltam = await contas_faltando(session, pendentes, marca)
+    prontos = [alvo for alvo in pendentes if alvo.split(":", 1)[0] not in faltam]
+    try:
+        foto_feed, foto_story = await asyncio.to_thread(
+            fotos_com_marca, prontos, item.imagem_url, item.video_url, marca_dagua
+        )
+    except Exception as erro:
+        item.tentativas_marca = (item.tentativas_marca or 0) + 1
+        if item.tentativas_marca >= 3:
+            item.status = "erro"
+            item.detalhe = "A marca d'água não entrou na foto depois de 3 tentativas. O post não saiu sem ela."
+        else:
+            item.detalhe = (erro_marca(erro) + " Tento de novo em instantes.")[:300]
+        return
     erros: list[str] = []
     for alvo in alvos:
         if alvo in feitos:
@@ -651,8 +728,9 @@ async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
                 alvo,
                 conta,
                 texto,
-                item.imagem_url,
+                foto_feed,
                 item.video_url,
+                foto_story,
             )
             feitos.add(alvo)
             item.feito = ",".join(sorted(feitos))[:80]
@@ -677,9 +755,16 @@ async def publicar_vencidos(session: AsyncSession) -> None:
     for item in resultado.all():
         if momento(item.dia, item.hora) > agora_local:
             continue
-        antes = (item.status, item.detalhe, item.feito, item.ok_instagram, item.ok_facebook)
+        antes = (item.status, item.detalhe, item.feito, item.ok_instagram, item.ok_facebook, item.tentativas_marca)
         await _publicar_item(session, item)
-        if (item.status, item.detalhe, item.feito, item.ok_instagram, item.ok_facebook) != antes:
+        if (
+            item.status,
+            item.detalhe,
+            item.feito,
+            item.ok_instagram,
+            item.ok_facebook,
+            item.tentativas_marca,
+        ) != antes:
             mudou = True
     if mudou:
         await session.commit()

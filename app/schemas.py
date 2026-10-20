@@ -208,6 +208,8 @@ class RespostaFicha(BaseModel):
 class PedidoMarca(BaseModel):
     nome: str = Field(min_length=2, max_length=120)
     publico: str = Field(default="", max_length=200)
+    site: str = Field(default="", max_length=200)
+    marca_dagua: str = Field(default="", max_length=60)
     texto: str = Field(min_length=20, max_length=8000)
 
 
@@ -215,6 +217,8 @@ class ItemMarca(BaseModel):
     id: int
     nome: str
     publico: str
+    site: str = ""
+    marca_dagua: str = ""
     texto: str
 
 
@@ -276,6 +280,10 @@ class PedidoAgenda(BaseModel):
         if not (0 <= horas <= 23 and 0 <= minutos <= 59):
             raise ValueError("Escolha um horário válido.")
         return f"{horas:02d}:{minutos:02d}"
+
+
+class PedidoFormato(BaseModel):
+    formato: str = Field(min_length=4, max_length=20)
 
 
 class ItemAgenda(BaseModel):

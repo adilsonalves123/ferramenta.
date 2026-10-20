@@ -40,7 +40,13 @@ async def listar_marcas(session: AsyncSession) -> list[Ficha]:
     resultado = await session.exec(select(Ficha).order_by(Ficha.id))
     marcas = list(resultado.all())
     if not marcas:
-        primeira = Ficha(nome="Risca Aí", publico="Donos de bar no Brasil", texto=FICHA_PADRAO)
+        primeira = Ficha(
+            nome="Risca Aí",
+            publico="Donos de bar no Brasil",
+            site="https://www.riscaai.com.br",
+            marca_dagua="Risca Aí",
+            texto=FICHA_PADRAO,
+        )
         session.add(primeira)
         await session.commit()
         await session.refresh(primeira)
@@ -65,21 +71,39 @@ async def marca_por_id(session: AsyncSession, marca_id: int) -> Ficha | None:
     return marcas[0] if marcas else None
 
 
-async def criar_marca(session: AsyncSession, nome: str, publico: str, texto: str) -> Ficha:
-    registro = Ficha(nome=nome.strip()[:120], publico=publico.strip()[:200], texto=texto.strip())
+async def criar_marca(
+    session: AsyncSession, nome: str, publico: str, texto: str, site: str = "", marca_dagua: str = ""
+) -> Ficha:
+    registro = Ficha(
+        nome=nome.strip()[:120],
+        publico=publico.strip()[:200],
+        site=site.strip()[:200],
+        marca_dagua=marca_dagua.strip()[:60],
+        texto=texto.strip(),
+    )
     session.add(registro)
     await session.commit()
     await session.refresh(registro)
     return registro
 
 
-async def atualizar_marca(session: AsyncSession, marca_id: int, nome: str, publico: str, texto: str) -> Ficha | None:
+async def atualizar_marca(
+    session: AsyncSession,
+    marca_id: int,
+    nome: str,
+    publico: str,
+    texto: str,
+    site: str = "",
+    marca_dagua: str = "",
+) -> Ficha | None:
     resultado = await session.exec(select(Ficha).where(Ficha.id == marca_id))
     registro = resultado.first()
     if registro is None:
         return None
     registro.nome = nome.strip()[:120]
     registro.publico = publico.strip()[:200]
+    registro.site = site.strip()[:200]
+    registro.marca_dagua = marca_dagua.strip()[:60]
     registro.texto = texto.strip()
     registro.atualizado_em = agora()
     await session.commit()
@@ -136,9 +160,11 @@ TEMAS = {
 }
 
 
-async def escrever_semana(ficha: str, quantidade: int, tema: str = "") -> list[PosteGerado]:
+async def escrever_semana(ficha: str, quantidade: int, tema: str = "", site: str = "") -> list[PosteGerado]:
     guia = TEMAS.get(tema.strip().lower(), "")
     pedido_tema = f"\nTema de todas as publicações: {guia}" if guia else ""
+    if site.strip():
+        pedido_tema += "\nNão escreva o site nem link na legenda: o site da marca entra sozinho no final."
     resposta = await cliente_openai().with_options(timeout=90).chat.completions.parse(
         model=get_settings().openai_model,
         messages=[
@@ -209,7 +235,7 @@ async def montar_dias(
         cabecalho += f" Público: {marca.publico}."
     ficha = f"{cabecalho}\n{(marca.texto or '').strip() or FICHA_PADRAO}"
     try:
-        posts = await escrever_semana(ficha, len(pedidos), tema)
+        posts = await escrever_semana(ficha, len(pedidos), tema, marca.site or "")
     except APIError as erro:
         detalhe = str(erro)
         if "insufficient_quota" in detalhe or "credit_balance" in detalhe:
