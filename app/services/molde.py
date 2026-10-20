@@ -1,13 +1,16 @@
 """Moldes de arte: a foto vira a peça do post (feed 1080x1350 e Story 1080x1920), com o texto sempre cabendo."""
 
+import colorsys
 import io
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 from app.services import arte
+from app.services.assunto import Lugar, achar_assunto, posicionar
 
 PASTA_FONTES = Path(__file__).resolve().parent.parent / "fontes"
 ARQUIVOS_FONTE = {
@@ -15,11 +18,25 @@ ARQUIVOS_FONTE = {
     "negrito": "Montserrat-Bold.ttf",
     "medio": "Montserrat-SemiBold.ttf",
 }
-VERSAO = "2"
+VERSAO = "3"
 FEED = (1080, 1350)
 STORY = (1080, 1920)
 SEGURO_STORY = (250, 300)
-MODELOS = ("faixa", "selo", "destaque", "antes_depois", "tela_app", "story_chamada")
+MODELOS = (
+    "faixa",
+    "selo",
+    "destaque",
+    "antes_depois",
+    "tela_app",
+    "story_chamada",
+    "alerta",
+    "etiqueta",
+    "carimbo",
+    "neon",
+    "poster",
+    "minimal",
+    "livre",
+)
 NOMES_MODELOS = {
     "faixa": "Faixa",
     "selo": "Selo",
@@ -27,12 +44,48 @@ NOMES_MODELOS = {
     "antes_depois": "Antes e depois",
     "tela_app": "Imagem em destaque",
     "story_chamada": "Chamada",
+    "alerta": "Alerta",
+    "etiqueta": "Etiqueta",
+    "carimbo": "Carimbo",
+    "neon": "Neon",
+    "poster": "Pôster",
+    "minimal": "Minimalista",
+    "livre": "Só a imagem",
 }
+# (cor de ênfase, cor de apoio escura). "marca" usa as cores da marca; "livre" usa a cor que a pessoa pediu.
+PALETAS = {
+    "urgencia": ((255, 214, 10), (17, 17, 17)),
+    "quente": ((244, 140, 46), (72, 30, 14)),
+    "fresca": ((163, 230, 53), (8, 58, 44)),
+    "fria": ((56, 189, 248), (12, 24, 52)),
+    "elegante": ((212, 175, 90), (16, 16, 18)),
+    "doce": ((244, 114, 182), (74, 22, 70)),
+    "natural": ((190, 214, 140), (40, 56, 34)),
+    "vibrante": ((217, 70, 239), (40, 14, 96)),
+    "neutra": ((255, 255, 255), (20, 24, 32)),
+    "vermelha": ((230, 57, 70), (36, 20, 24)),
+}
+NOMES_PALETAS = {
+    "marca": "cores da marca",
+    "urgencia": "amarelo e preto (urgência)",
+    "quente": "laranja e marrom (comida, calor)",
+    "fresca": "verde-limão e verde-escuro (fresco, natural)",
+    "fria": "azul e marinho (tecnologia, limpeza)",
+    "elegante": "dourado e preto (elegante)",
+    "doce": "rosa e ameixa (doce, delicado)",
+    "natural": "verde-sálvia e oliva (natural, saúde)",
+    "vibrante": "magenta e roxo (festa, noite)",
+    "neutra": "branco e grafite (sóbrio)",
+    "vermelha": "vermelho e vinho (forte)",
+    "livre": "a cor que você pediu",
+}
+POSICOES_TEXTO = ("auto", "topo", "base")
 COR_PRINCIPAL = "#1B2A41"
 COR_DESTAQUE = "#E63946"
 BRANCO = (255, 255, 255)
 GRAFITE = (17, 24, 39)
 MARGEM = 64
+Caixa = tuple[float, float, float, float]
 
 
 @dataclass
@@ -51,6 +104,9 @@ class Textos:
     chamada: str = ""
     antes: str = ""
     cor: str = "destaque"
+    paleta: str = "marca"
+    posicao: str = "auto"
+    cor_livre: str = ""
 
 
 @dataclass
@@ -341,6 +397,50 @@ def degrade(
     tela.alpha_composite(camada, (0, y0))
 
 
+def _peca_pilula(
+    texto: str,
+    fundo,
+    cor_texto=None,
+    tamanho: int = 40,
+    largura_max: int = 700,
+    caixa_alta: bool = False,
+    peso: str = "negrito",
+) -> Image.Image | None:
+    texto = (texto or "").strip()
+    if not texto:
+        return None
+    folga_x = round(tamanho * 0.95)
+    folga_y = round(tamanho * 0.62)
+    bloco = ajustar(texto, peso, largura_max - 2 * folga_x, tamanho * 2, tamanho, 22, 1, caixa_alta=caixa_alta)
+    altura_texto = _montar_bloco(["H"], bloco.letra, bloco.tamanho, 1.0).topo
+    largura = bloco.largura + 2 * folga_x
+    altura = altura_texto + 2 * folga_y
+    peca = caixa_redonda((largura, altura), altura // 2, fundo)
+    escrita = Image.new("RGBA", peca.size, (0, 0, 0, 0))
+    ImageDraw.Draw(escrita).text(
+        (folga_x, folga_y + altura_texto),
+        bloco.linhas[0] if bloco.linhas else "",
+        font=bloco.letra,
+        fill=cor_texto or tinta(tuple(fundo[:3])),
+        anchor="ls",
+    )
+    peca.alpha_composite(escrita)
+    return peca
+
+
+def medir_pilula(texto: str, tamanho: int = 40, largura_max: int = 700, caixa_alta: bool = False, peso: str = "negrito") -> tuple[int, int]:
+    peca = _peca_pilula(texto, (0, 0, 0), tamanho=tamanho, largura_max=largura_max, caixa_alta=caixa_alta, peso=peso)
+    return (peca.width, peca.height) if peca else (0, 0)
+
+
+def _x_alinhado(x: float, largura: int, alinhar: str) -> int:
+    if alinhar == "centro":
+        return round(x - largura / 2)
+    if alinhar == "direita":
+        return round(x - largura)
+    return round(x)
+
+
 def pilula(
     tela: Image.Image,
     texto: str,
@@ -356,38 +456,46 @@ def pilula(
     sombra: bool = True,
 ) -> tuple[int, int, int, int]:
     """Chamada em pílula. y é o topo. Devolve a caixa ocupada."""
-    texto = (texto or "").strip()
-    if not texto:
+    peca = _peca_pilula(texto, fundo, cor_texto, tamanho, largura_max, caixa_alta, peso)
+    if peca is None:
         return (int(x), int(y), int(x), int(y))
-    folga_x = round(tamanho * 0.95)
-    folga_y = round(tamanho * 0.62)
-    bloco = ajustar(texto, peso, largura_max - 2 * folga_x, tamanho * 2, tamanho, 22, 1, caixa_alta=caixa_alta)
-    letra_h = _montar_bloco(["H"], bloco.letra, bloco.tamanho, 1.0)
-    altura_texto = letra_h.topo
-    largura = bloco.largura + 2 * folga_x
-    altura = altura_texto + 2 * folga_y
-    if alinhar == "centro":
-        x0 = round(x - largura / 2)
-    elif alinhar == "direita":
-        x0 = round(x - largura)
-    else:
-        x0 = round(x)
-    y0 = round(y)
-    peca = caixa_redonda((largura, altura), altura // 2, fundo)
-    escrita = Image.new("RGBA", peca.size, (0, 0, 0, 0))
-    ImageDraw.Draw(escrita).text(
-        (folga_x, folga_y + altura_texto),
-        bloco.linhas[0] if bloco.linhas else "",
-        font=bloco.letra,
-        fill=cor_texto or tinta(tuple(fundo[:3])),
-        anchor="ls",
-    )
-    peca.alpha_composite(escrita)
+    x0, y0 = _x_alinhado(x, peca.width, alinhar), round(y)
     if sombra:
         colar_com_sombra(tela, peca, x0, y0, raio=12, opacidade=0.35, desloc=(0, 6))
     else:
         tela.alpha_composite(peca, (x0, y0))
-    return (x0, y0, x0 + largura, y0 + altura)
+    return (x0, y0, x0 + peca.width, y0 + peca.height)
+
+
+def _chip_assinatura(
+    ident: Identidade, altura_max: int = 76, largura_max: int = 250, fundo=(0, 0, 0, 120), cor_texto=(255, 255, 255, 245)
+) -> Image.Image | None:
+    """Logo da marca num chip branco; sem logo, o texto da marca d'água numa pílula (escura por padrão)."""
+    if ident.logo is not None:
+        logo = caber(ident.logo.convert("RGBA"), largura_max, altura_max)
+        folga = 14
+        chip = caixa_redonda((logo.width + 2 * folga, logo.height + 2 * folga), 18, (255, 255, 255, 238))
+        chip.alpha_composite(logo, (folga, folga))
+        return chip
+    if ident.assinatura.strip():
+        bloco = ajustar(ident.assinatura, "negrito", largura_max + 120, 60, 30, 20, 1)
+        folga_x, folga_y = 22, 14
+        chip = caixa_redonda((bloco.largura + 2 * folga_x, bloco.altura + 2 * folga_y), (bloco.altura + 2 * folga_y) // 2, fundo)
+        escrever(chip, bloco, folga_x, folga_y, cor_texto)
+        return chip
+    return None
+
+
+def caixa_assinatura(
+    ident: Identidade, x: float, y: float, alinhar: str = "esquerda", vertical: str = "topo", altura_max: int = 76, largura_max: int = 250
+) -> tuple[int, int, int, int]:
+    """Onde o logo vai ficar (para reservar o lugar antes de pôr a foto)."""
+    chip = _chip_assinatura(ident, altura_max, largura_max)
+    if chip is None:
+        return (int(x), int(y), int(x), int(y))
+    x0 = _x_alinhado(x, chip.width, alinhar)
+    y0 = round(y - chip.height) if vertical == "base" else round(y)
+    return (x0, y0, x0 + chip.width, y0 + chip.height)
 
 
 def assinar(
@@ -400,25 +508,12 @@ def assinar(
     altura_max: int = 76,
     largura_max: int = 250,
 ) -> tuple[int, int, int, int]:
-    """Logo da marca num chip branco; sem logo, o texto da marca d'água numa pílula escura."""
-    if ident.logo is not None:
-        logo = caber(ident.logo.convert("RGBA"), largura_max, altura_max)
-        folga = 14
-        chip = caixa_redonda((logo.width + 2 * folga, logo.height + 2 * folga), 18, (255, 255, 255, 238))
-        chip.alpha_composite(logo, (folga, folga))
-    elif ident.assinatura.strip():
-        bloco = ajustar(ident.assinatura, "negrito", largura_max + 120, 60, 30, 20, 1)
-        folga_x, folga_y = 22, 14
-        largura = bloco.largura + 2 * folga_x
-        altura = bloco.altura + 2 * folga_y
-        chip = caixa_redonda((largura, altura), altura // 2, (0, 0, 0, 120))
-        escrever(chip, bloco, folga_x, folga_y, (255, 255, 255, 245))
-    else:
+    chip = _chip_assinatura(ident, altura_max, largura_max)
+    if chip is None:
         return (int(x), int(y), int(x), int(y))
-    x0 = round(x - chip.width) if alinhar == "direita" else round(x - chip.width / 2) if alinhar == "centro" else round(x)
-    y0 = round(y - chip.height) if vertical == "base" else round(y)
+    x0, y0, x1, y1 = caixa_assinatura(ident, x, y, alinhar, vertical, altura_max, largura_max)
     colar_com_sombra(tela, chip, x0, y0, raio=10, opacidade=0.25, desloc=(0, 4))
-    return (x0, y0, x0 + chip.width, y0 + chip.height)
+    return (x0, y0, x1, y1)
 
 
 def _faixa_inclinada(
@@ -452,7 +547,13 @@ def _area(formato: str) -> tuple[int, int, int, int]:
 
 
 def _cores(ident: Identidade, textos: Textos) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
-    """(ênfase, fundo): a cor que chama atenção e a cor de apoio para barras e fundos."""
+    """(ênfase, fundo): a cor que chama atenção e a cor de apoio para barras e fundos.
+    A paleta do plano manda; 'marca' usa as cores da marca."""
+    if textos.paleta == "livre" and textos.cor_livre:
+        enfase = cor_hex(textos.cor_livre, COR_DESTAQUE)
+        return enfase, (_escuro(enfase, 0.8) if _luz(enfase) > 0.08 else _misturar(enfase, (255, 255, 255), 0.85))
+    if textos.paleta in PALETAS:
+        return PALETAS[textos.paleta]
     if textos.cor == "principal":
         return ident.principal, ident.destaque
     return ident.destaque, ident.principal
@@ -474,52 +575,132 @@ def _rodape(tela: Image.Image, ident: Identidade, textos: Textos, enfase, base: 
     return y
 
 
-def _foto_cheia(foto: Image.Image, largura: int, altura: int) -> Image.Image:
-    return cobrir(foto, largura, altura)
+def _mascara_bordas(largura: int, altura: int, esquerda: bool, direita: bool, cima: bool, baixo: bool, sumir: int = 140) -> Image.Image:
+    """Máscara que some aos poucos nas bordas da foto que ficam dentro da peça."""
+    mascara = Image.new("L", (largura, altura), 255)
+    sumir = max(2, min(sumir, largura // 3, altura // 3))
+    rampa = [round(255 * (i / sumir) ** 1.3) for i in range(sumir)]
+    horizontal = Image.new("L", (sumir, 1))
+    horizontal.putdata(rampa)
+    vertical = Image.new("L", (1, sumir))
+    vertical.putdata(rampa)
+    if esquerda:
+        mascara.paste(ImageChops.darker(mascara.crop((0, 0, sumir, altura)), horizontal.resize((sumir, altura))), (0, 0))
+    if direita:
+        faixa = horizontal.transpose(Image.FLIP_LEFT_RIGHT).resize((sumir, altura))
+        mascara.paste(ImageChops.darker(mascara.crop((largura - sumir, 0, largura, altura)), faixa), (largura - sumir, 0))
+    if cima:
+        mascara.paste(ImageChops.darker(mascara.crop((0, 0, largura, sumir)), vertical.resize((largura, sumir))), (0, 0))
+    if baixo:
+        faixa = vertical.transpose(Image.FLIP_TOP_BOTTOM).resize((largura, sumir))
+        mascara.paste(ImageChops.darker(mascara.crop((0, altura - sumir, largura, altura)), faixa), (0, altura - sumir))
+    return mascara
 
 
-def _foto_inteira(foto: Image.Image, largura: int, altura: int, y: int, altura_max: int | None = None) -> Image.Image:
-    """A foto inteira na largura toda, a partir de y, sobre uma cópia desfocada dela mesma.
-    As bordas de cima e de baixo somem aos poucos no fundo (o produto não é cortado pelo texto)."""
-    tela = arte.fundo_desfocado(foto, largura, altura, brilho=0.5).convert("RGBA")
-    altura_foto = round(foto.height * largura / foto.width)
-    limite = min(altura_max or altura, altura - max(0, y))
-    peca = cobrir(foto, largura, min(altura_foto, limite))
-    mascara = Image.new("L", peca.size, 255)
-    desenho = ImageDraw.Draw(mascara)
-    sumir = 150
-    for i in range(sumir):
-        valor = round(255 * (i / sumir) ** 1.3)
-        if y > 0:
-            desenho.line((0, i, peca.width, i), fill=valor)
-        if y + peca.height < altura:
-            desenho.line((0, peca.height - 1 - i, peca.width, peca.height - 1 - i), fill=valor)
+def _fundo_foto(foto: Image.Image, largura: int, altura: int, lugar: Lugar, brilho: float = 0.5) -> Image.Image:
+    """A foto no lugar escolhido; o que sobra da peça é a própria foto desfocada (sem faixa vazia)."""
+    tela = arte.fundo_desfocado(foto, largura, altura, brilho=brilho).convert("RGBA")
+    pw, ph = max(1, round(foto.width * lugar.escala)), max(1, round(foto.height * lugar.escala))
+    peca = foto.convert("RGB").resize((pw, ph), Image.LANCZOS)
+    if lugar.escala > 1.25:
+        peca = peca.filter(ImageFilter.UnsharpMask(radius=2, percent=70, threshold=2))
+    x, y = round(lugar.x), round(lugar.y)
+    mascara = _mascara_bordas(pw, ph, x > 0, x + pw < largura, y > 0, y + ph < altura)
+    peca = peca.convert("RGBA")
     peca.putalpha(mascara)
-    tela.alpha_composite(peca, (0, max(0, y)))
+    recorte = (max(0, -x), max(0, -y), min(pw, largura - x), min(ph, altura - y))
+    if recorte[2] > recorte[0] and recorte[3] > recorte[1]:
+        tela.alpha_composite(peca.crop(recorte), (max(0, x), max(0, y)))
     return tela
 
 
-def _molde_faixa(foto, ident, textos, formato):
+Layout = Callable[[str], tuple[list[Caixa], Callable[[Image.Image], None]]]
+
+
+def _rodar(
+    foto: Image.Image,
+    assunto: Caixa,
+    formato: str,
+    layout: Layout,
+    posicao: str,
+    opcoes: tuple[str, ...],
+    brilho: float = 0.5,
+    efeito: Callable[[Image.Image], Image.Image] | None = None,
+) -> Image.Image:
+    """Mede os textos de cada posição possível, põe a foto onde o assunto não fica embaixo de texto
+    e desenha a arte na posição em que a foto sai maior."""
+    largura, altura, _topo, _base = _area(formato)
+    candidatas = [posicao] if posicao in opcoes else list(opcoes)
+    escolha = None
+    for indice, pos in enumerate(candidatas):
+        ocupados, desenhar = layout(pos)
+        lugar = posicionar(foto.size, assunto, largura, altura, ocupados)
+        nota = lugar.escala * (0.75 + 0.25 * lugar.cobre) * (1.0 if indice == 0 else 0.96) * (1.0 if lugar.livre else 0.5)
+        if escolha is None or nota > escolha[0]:
+            escolha = (nota, lugar, desenhar)
+    _nota, lugar, desenhar = escolha
+    tela = _fundo_foto(foto, largura, altura, lugar, brilho)
+    if efeito is not None:
+        tela = efeito(tela)
+    desenhar(tela)
+    return tela
+
+
+def _altura_girada(largura: float, altura: float, angulo: float) -> int:
+    import math
+
+    radianos = math.radians(abs(angulo))
+    return round(altura * math.cos(radianos) + largura * math.sin(radianos))
+
+
+def _layout_faixa(ident, textos, formato, pos):
     largura, altura, topo, base = _area(formato)
+    enfase, fundo = _cores(ident, textos)
     titulo = ajustar(textos.titulo, "forte", largura - 2 * MARGEM - 40, 270, 128, 56, 2, 1.0, caixa_alta=True)
     altura_faixa = titulo.altura + 2 * 34
-    inclinacao = round(largura * 1.3 * 0.07 / 2)
-    centro = topo + (70 if formato == "feed" else 60) + inclinacao + altura_faixa // 2
-    y_foto = centro + altura_faixa // 4 if formato == "feed" else centro + altura_faixa // 2 - 60
-    tela = _foto_inteira(foto, largura, altura, min(y_foto, altura - largura), altura - min(y_foto, altura - largura))
-    enfase, fundo = _cores(ident, textos)
-    degrade(tela, (0, 0, 0), round(altura * 0.62), altura, 0, 170)
-    girada = _faixa_inclinada(tela, titulo, enfase, centro)
-    if textos.subtitulo.strip():
-        sub = ajustar(textos.subtitulo, "negrito", largura - 2 * MARGEM - 120, 130, 50, 30, 2, 1.1)
-        largura_tag = sub.largura + 2 * 34
-        tag = Image.new("RGBA", (largura_tag, sub.altura + 2 * 22), (255, 255, 255, 255))
-        escrever(tag, sub, largura_tag / 2, 22, fundo, "centro")
-        tag = tag.rotate(4, resample=Image.BICUBIC, expand=True)
+    girada = _altura_girada(largura * 1.3, altura_faixa, 4)
+    sub = ajustar(textos.subtitulo, "negrito", largura - 2 * MARGEM - 120, 130, 50, 30, 2, 1.1) if textos.subtitulo.strip() else None
+    largura_tag = (sub.largura + 2 * 34) if sub else 0
+    altura_tag = _altura_girada(largura_tag, sub.altura + 2 * 22, 4) if sub else 0
+    y_rodape = base - MARGEM - 92
+    if pos == "base":
+        centro = y_rodape - 30 - (altura_tag - 10 if sub else 0) - girada // 2
+    else:
+        centro = topo + (40 if formato == "feed" else 30) + girada // 2
+    ocupados = [(0, centro - girada / 2, largura, centro + girada / 2)]
+    if sub:
         y_tag = centro + girada // 2 - 10
-        colar_com_sombra(tela, tag, round(largura / 2 - tag.width / 2), y_tag, raio=12, opacidade=0.35)
-    _rodape(tela, ident, textos, enfase, base)
-    return tela
+        ocupados.append((largura / 2 - largura_tag / 2 - 20, y_tag, largura / 2 + largura_tag / 2 + 20, y_tag + altura_tag))
+    if formato == "story" and pos == "topo":
+        y_rodape = round(centro + girada / 2 + (altura_tag if sub else 0) + 24)
+    ocupados += _caixas_rodape(ident, textos, y_rodape + MARGEM + 92)
+
+    def desenhar(tela):
+        if pos == "base":
+            degrade(tela, (0, 0, 0), round(centro - girada), altura, 0, 190)
+        else:
+            degrade(tela, (0, 0, 0), round(altura * 0.66), altura, 0, 170)
+        _faixa_inclinada(tela, titulo, enfase, centro)
+        if sub:
+            tag = Image.new("RGBA", (largura_tag, sub.altura + 2 * 22), (255, 255, 255, 255))
+            escrever(tag, sub, largura_tag / 2, 22, _fundo_escuro(fundo), "centro")
+            tag = tag.rotate(4, resample=Image.BICUBIC, expand=True)
+            colar_com_sombra(tela, tag, round(largura / 2 - tag.width / 2), centro + girada // 2 - 10, raio=12, opacidade=0.35)
+        _rodape(tela, ident, textos, enfase, base, y_rodape)
+
+    return ocupados, desenhar
+
+
+def _caixas_rodape(ident: Identidade, textos: Textos, base: int, largura: int = FEED[0]) -> list[Caixa]:
+    """O que a linha de baixo ocupa (chamada à esquerda e logo à direita)."""
+    y = base - MARGEM - 92
+    caixas = [caixa_assinatura(ident, largura - MARGEM, y + 92 / 2 - 52, "direita", altura_max=76)]
+    if textos.chamada.strip():
+        logo = caixas[0]
+        espaco = (logo[0] - MARGEM - 30) if logo[2] > logo[0] else largura - 2 * MARGEM
+        w, h = medir_pilula(textos.chamada, 40, max(320, espaco))
+        caixas.append((MARGEM, y + 8, MARGEM + w, y + 8 + h))
+    return caixas
 
 
 def _selo_redondo(tela: Image.Image, texto: str, cx: int, cy: int, diametro: int, cor) -> None:
@@ -538,9 +719,8 @@ def _selo_redondo(tela: Image.Image, texto: str, cx: int, cy: int, diametro: int
     colar_com_sombra(tela, selo, round(cx - selo.width / 2), round(cy - selo.height / 2), raio=18, opacidade=0.45)
 
 
-def _molde_selo(foto, ident, textos, formato):
+def _layout_selo(ident, textos, formato, pos):
     largura, altura, topo, base = _area(formato)
-    tela = _foto_inteira(foto, largura, altura, 0 if formato == "feed" else topo - 70)
     enfase, fundo = _cores(ident, textos)
     barra = _fundo_escuro(fundo)
     cor_texto = tinta(barra)
@@ -551,68 +731,92 @@ def _molde_selo(foto, ident, textos, formato):
     sub = ajustar(textos.subtitulo, "medio", largura_texto, 110, 42, 28, 2, 1.15) if textos.subtitulo.strip() else None
     conteudo = titulo.altura + ((22 + sub.altura) if sub else 0)
     linha_rodape = 92 + 34
+    altura_barra = folga + conteudo + linha_rodape + folga - (0 if formato == "feed" else 20)
     if formato == "feed":
-        y_barra = base - folga - conteudo - linha_rodape - folga
-        degrade(tela, (0, 0, 0), y_barra - 200, y_barra, 0, 110)
-        tela.alpha_composite(Image.new("RGBA", (largura, altura - y_barra), tuple(barra) + (250,)), (0, y_barra))
-        x_texto = MARGEM
+        y_barra = base - altura_barra if pos == "base" else 0
     else:
-        altura_cartao = folga + conteudo + linha_rodape + folga - 20
-        y_barra = base - altura_cartao
-        degrade(tela, (0, 0, 0), y_barra - 300, altura, 0, 200, 1.2)
-        cartao = caixa_redonda((largura - 2 * recuo, altura_cartao), 36, tuple(barra) + (246,))
-        colar_com_sombra(tela, cartao, recuo, y_barra, raio=20, opacidade=0.4)
-        x_texto = MARGEM + recuo
-    y = y_barra + folga
-    escrever(tela, titulo, x_texto, y, cor_texto)
-    y += titulo.altura
-    if sub:
-        y += 22
-        escrever(tela, sub, x_texto, y, _misturar(cor_texto, barra, 0.22))
-        y += sub.altura
-    y += 34
-    if textos.chamada.strip():
-        pilula(tela, textos.chamada, x_texto, y, enfase, tamanho=40, largura_max=largura_texto - 300)
-    assinar(tela, ident, largura - MARGEM - recuo, y + 46 - 52, "direita")
-    degrade(tela, (0, 0, 0), 0, round(altura * 0.22), 90, 0)
+        y_barra = base - altura_barra if pos == "base" else topo
     diametro = 330 if formato == "feed" else 380
     cx = largura - MARGEM - diametro // 2 + 14
-    cy = topo + MARGEM + diametro // 2 + (0 if formato == "feed" else 30)
-    _selo_redondo(tela, textos.selo, cx, cy, diametro, enfase)
-    return tela
+    if pos == "base":
+        cy = topo + MARGEM + diametro // 2 + (0 if formato == "feed" else 30)
+    else:
+        cy = base - MARGEM - diametro // 2 - (0 if formato == "feed" else 30)
+    ocupados = [(recuo, y_barra, largura - recuo, y_barra + altura_barra), (cx - diametro * 0.6, cy - diametro * 0.6, largura, cy + diametro * 0.6)]
+
+    def desenhar(tela):
+        if formato == "feed":
+            if pos == "base":
+                degrade(tela, (0, 0, 0), y_barra - 200, y_barra, 0, 110)
+            else:
+                degrade(tela, (0, 0, 0), y_barra + altura_barra, y_barra + altura_barra + 200, 110, 0)
+            tela.alpha_composite(Image.new("RGBA", (largura, altura_barra), tuple(barra) + (250,)), (0, y_barra))
+        else:
+            if pos == "base":
+                degrade(tela, (0, 0, 0), y_barra - 300, altura, 0, 200, 1.2)
+            else:
+                degrade(tela, (0, 0, 0), 0, y_barra + altura_barra + 300, 200, 0, 1.2)
+            cartao = caixa_redonda((largura - 2 * recuo, altura_barra), 36, tuple(barra) + (246,))
+            colar_com_sombra(tela, cartao, recuo, y_barra, raio=20, opacidade=0.4)
+        x_texto = MARGEM + recuo
+        y = y_barra + folga
+        escrever(tela, titulo, x_texto, y, cor_texto)
+        y += titulo.altura
+        if sub:
+            y += 22
+            escrever(tela, sub, x_texto, y, _misturar(cor_texto, barra, 0.22))
+            y += sub.altura
+        y += 34
+        if textos.chamada.strip():
+            pilula(tela, textos.chamada, x_texto, y, enfase, tamanho=40, largura_max=largura_texto - 300)
+        assinar(tela, ident, largura - MARGEM - recuo, y + 46 - 52, "direita")
+        _selo_redondo(tela, textos.selo, cx, cy, diametro, enfase)
+
+    return ocupados, desenhar
 
 
-def _molde_destaque(foto, ident, textos, formato):
+def _layout_destaque(ident, textos, formato, pos):
     largura, altura, topo, base = _area(formato)
-    tela = _foto_inteira(foto, largura, altura, 0 if formato == "feed" else topo)
     enfase, fundo = _cores(ident, textos)
     escuro = _fundo_escuro(fundo)
     largura_texto = largura - 2 * MARGEM
     titulo = ajustar(textos.titulo, "forte", largura_texto, 330, 104, 48, 3, 1.02)
     sub = ajustar(textos.subtitulo, "medio", largura_texto, 120, 42, 28, 2, 1.15) if textos.subtitulo.strip() else None
-    tem_selo = bool(textos.selo.strip())
-    altura_selo = 64
-    altura_chamada = 92 if textos.chamada.strip() else 0
-    conteudo = (altura_selo + 26 if tem_selo else 0) + titulo.altura + ((20 + sub.altura) if sub else 0)
+    altura_selo = medir_pilula(textos.selo, 30, 500, True, "forte")[1]
+    altura_chamada = medir_pilula(textos.chamada, 40, largura_texto)[1]
+    conteudo = (altura_selo + 26 if altura_selo else 0) + titulo.altura + ((20 + sub.altura) if sub else 0)
     conteudo += (40 + altura_chamada) if altura_chamada else 0
-    y = base - MARGEM - conteudo - (10 if formato == "feed" else 20)
-    inicio = max(topo, y - 330)
-    degrade(tela, escuro, inicio, altura, 0, 242, 1.25)
-    cor_texto = tinta(escuro)
-    if tem_selo:
-        pilula(tela, textos.selo, MARGEM, y, enfase, tamanho=30, largura_max=500, caixa_alta=True, peso="forte", sombra=False)
-        y += altura_selo + 26
-    texto_com_sombra(tela, titulo, MARGEM, y, cor_texto, raio=12, opacidade=0.35)
-    y += titulo.altura
-    if sub:
-        y += 20
-        escrever(tela, sub, MARGEM, y, _misturar(cor_texto, escuro, 0.18))
-        y += sub.altura
-    if altura_chamada:
-        pilula(tela, textos.chamada, MARGEM, y + 40, enfase, tamanho=40, largura_max=largura_texto)
-    degrade(tela, (0, 0, 0), 0, round(altura * 0.2), 80, 0)
-    assinar(tela, ident, MARGEM, topo + (MARGEM if formato == "feed" else 10))
-    return tela
+    if pos == "topo":
+        y0 = topo + (MARGEM if formato == "feed" else 20)
+        logo = caixa_assinatura(ident, MARGEM, base - (MARGEM if formato == "feed" else 10), vertical="base")
+    else:
+        y0 = base - MARGEM - conteudo - (10 if formato == "feed" else 20)
+        logo = caixa_assinatura(ident, MARGEM, topo + (MARGEM if formato == "feed" else 10))
+    ocupados = [(0, y0 - 20, largura, y0 + conteudo + 20), logo]
+
+    def desenhar(tela):
+        if pos == "topo":
+            degrade(tela, escuro, 0, min(altura, y0 + conteudo + 260), 242, 0, 1.25)
+            degrade(tela, (0, 0, 0), round(altura * 0.82), altura, 0, 80)
+        else:
+            degrade(tela, escuro, max(0, y0 - 260), altura, 0, 242, 1.25)
+            degrade(tela, (0, 0, 0), 0, round(altura * 0.2), 80, 0)
+        cor_texto = tinta(escuro)
+        y = y0
+        if altura_selo:
+            pilula(tela, textos.selo, MARGEM, y, enfase, tamanho=30, largura_max=500, caixa_alta=True, peso="forte", sombra=False)
+            y += altura_selo + 26
+        texto_com_sombra(tela, titulo, MARGEM, y, cor_texto, raio=12, opacidade=0.35)
+        y += titulo.altura
+        if sub:
+            y += 20
+            escrever(tela, sub, MARGEM, y, _misturar(cor_texto, escuro, 0.18))
+            y += sub.altura
+        if altura_chamada:
+            pilula(tela, textos.chamada, MARGEM, y + 40, enfase, tamanho=40, largura_max=largura_texto)
+        assinar(tela, ident, logo[0], logo[1])
+
+    return ocupados, desenhar
 
 
 def _icone(tela: Image.Image, cx: int, cy: int, raio: int, cor, tipo: str) -> None:
@@ -775,40 +979,507 @@ def _molde_tela_app(foto, ident, textos, formato, tela_app=True):
     return tela
 
 
-def _molde_story_chamada(foto, ident, textos, formato):
+def _layout_story_chamada(ident, textos, formato, _pos):
     largura, altura, topo, base = _area(formato)
-    tela = _foto_cheia(foto, largura, altura)
     enfase, _fundo = _cores(ident, textos)
     titulo = ajustar(textos.titulo, "forte", largura - 2 * MARGEM, 300, 100, 48, 3, 1.02)
     sub = ajustar(textos.subtitulo, "medio", largura - 2 * MARGEM, 120, 42, 28, 2, 1.15) if textos.subtitulo.strip() else None
-    y = topo + (MARGEM if formato == "feed" else 10)
-    altura_topo = 96 + titulo.altura + ((20 + sub.altura) if sub else 0)
-    degrade(tela, (0, 0, 0), 0, y + altura_topo + 260, 200, 0, 1.3)
-    caixa_logo = assinar(tela, ident, largura / 2, y, "centro", altura_max=64)
-    if caixa_logo[3] > caixa_logo[1]:
-        y = caixa_logo[3] + 32
-    texto_com_sombra(tela, titulo, largura / 2, y, BRANCO, "centro", raio=12, opacidade=0.5)
-    y += titulo.altura
-    if sub:
-        y += 20
-        texto_com_sombra(tela, sub, largura / 2, y, (240, 240, 240), "centro", raio=8, opacidade=0.5)
+    y_inicio = topo + (MARGEM if formato == "feed" else 10)
+    logo = caixa_assinatura(ident, largura / 2, y_inicio, "centro", altura_max=64)
+    y_titulo = logo[3] + 32 if logo[3] > logo[1] else y_inicio
+    fim_topo = y_titulo + titulo.altura + ((20 + sub.altura) if sub else 0)
+    meia = max(titulo.largura, sub.largura if sub else 0, logo[2] - logo[0]) / 2 + 20
     chamada = textos.chamada.strip() or "Responda QUERO"
-    altura_pilula = 120
-    y_pilula = base - altura_pilula - (MARGEM if formato == "feed" else 30)
-    degrade(tela, (0, 0, 0), y_pilula - 280, altura, 0, 170, 1.4)
-    pilula(tela, chamada, largura / 2, y_pilula, BRANCO, GRAFITE, tamanho=50, largura_max=largura - 2 * MARGEM, alinhar="centro", peso="forte")
-    if textos.selo.strip():
-        pilula(tela, textos.selo, largura / 2, y_pilula - 96, enfase, tamanho=32, largura_max=600, alinhar="centro", caixa_alta=True, peso="forte")
-    return tela
+    w_chamada, h_chamada = medir_pilula(chamada, 50, largura - 2 * MARGEM, peso="forte")
+    y_pilula = base - h_chamada - (MARGEM if formato == "feed" else 30)
+    w_selo, h_selo = medir_pilula(textos.selo, 32, 600, True, "forte")
+    y_selo = y_pilula - h_selo - 24
+    ocupados = [
+        (largura / 2 - meia, y_inicio, largura / 2 + meia, fim_topo + 10),
+        (largura / 2 - w_chamada / 2, y_pilula, largura / 2 + w_chamada / 2, y_pilula + h_chamada),
+    ]
+    if w_selo:
+        ocupados.append((largura / 2 - w_selo / 2, y_selo, largura / 2 + w_selo / 2, y_selo + h_selo))
+
+    def desenhar(tela):
+        degrade(tela, (0, 0, 0), 0, fim_topo + 260, 200, 0, 1.3)
+        assinar(tela, ident, largura / 2, y_inicio, "centro", altura_max=64)
+        texto_com_sombra(tela, titulo, largura / 2, y_titulo, BRANCO, "centro", raio=12, opacidade=0.5)
+        if sub:
+            texto_com_sombra(tela, sub, largura / 2, y_titulo + titulo.altura + 20, (240, 240, 240), "centro", raio=8, opacidade=0.5)
+        degrade(tela, (0, 0, 0), (y_selo if w_selo else y_pilula) - 240, altura, 0, 170, 1.4)
+        pilula(tela, chamada, largura / 2, y_pilula, BRANCO, GRAFITE, tamanho=50, largura_max=largura - 2 * MARGEM, alinhar="centro", peso="forte")
+        if w_selo:
+            pilula(tela, textos.selo, largura / 2, y_selo, enfase, tamanho=32, largura_max=600, alinhar="centro", caixa_alta=True, peso="forte")
+
+    return ocupados, desenhar
 
 
-DESENHOS = {
-    "faixa": _molde_faixa,
-    "selo": _molde_selo,
-    "destaque": _molde_destaque,
-    "antes_depois": _molde_antes_depois,
-    "tela_app": _molde_tela_app,
-    "story_chamada": _molde_story_chamada,
+def _contraste(a: tuple[int, int, int], b: tuple[int, int, int]) -> float:
+    claro, escuro = sorted((_luz(a), _luz(b)), reverse=True)
+    return (claro + 0.05) / (escuro + 0.05)
+
+
+def _escuro_oposto(cor: tuple[int, int, int]) -> tuple[int, int, int]:
+    return (17, 17, 17) if _luz(cor) > 0.25 else (250, 250, 250)
+
+
+def _y_zona(pos: str, formato: str, topo: int, base: int, altura_bloco: int, folga_feed: int = MARGEM, folga_story: int = 10) -> int:
+    folga = folga_feed if formato == "feed" else folga_story
+    return topo + folga if pos == "topo" else base - folga - altura_bloco
+
+
+def _escurecer_zona(tela: Image.Image, cor, pos: str, y0: float, y1: float, forca: int = 225, alcance: int = 240) -> None:
+    if pos == "topo":
+        degrade(tela, cor, 0, min(tela.height, round(y1 + alcance)), forca, 0, 1.25)
+    else:
+        degrade(tela, cor, max(0, round(y0 - alcance)), tela.height, 0, forca, 1.25)
+
+
+def _logo_oposto(ident: Identidade, pos: str, formato: str, topo: int, base: int, alinhar: str = "esquerda") -> Caixa:
+    x = MARGEM if alinhar == "esquerda" else FEED[0] - MARGEM
+    if pos == "topo":
+        return caixa_assinatura(ident, x, base - (MARGEM if formato == "feed" else 10), alinhar, "base", 70, 230)
+    return caixa_assinatura(ident, x, topo + (MARGEM if formato == "feed" else 10), alinhar, "topo", 70, 230)
+
+
+def _assinar_em(tela: Image.Image, ident: Identidade, caixa: Caixa) -> None:
+    if caixa[2] > caixa[0]:
+        chip = _chip_assinatura(ident, 70, 230)
+        if chip is not None:
+            colar_com_sombra(tela, chip, round(caixa[0]), round(caixa[1]), raio=10, opacidade=0.25, desloc=(0, 4))
+
+
+def _listras(largura: int, altura: int, cor_a, cor_b, passo: int = 40) -> Image.Image:
+    faixa = Image.new("RGBA", (largura, altura), tuple(cor_a[:3]) + (255,))
+    desenho = ImageDraw.Draw(faixa)
+    for x in range(-altura, largura + altura, passo * 2):
+        desenho.polygon([(x, 0), (x + passo, 0), (x + passo - altura, altura), (x - altura, altura)], fill=tuple(cor_b[:3]) + (255,))
+    return faixa
+
+
+def _triangulo_alerta(lado: int, cor, sinal) -> Image.Image:
+    escala = 3
+    grande = Image.new("RGBA", (lado * escala, lado * escala), (0, 0, 0, 0))
+    desenho = ImageDraw.Draw(grande)
+    s = lado * escala
+    desenho.polygon([(s / 2, s * 0.04), (s * 0.98, s * 0.92), (s * 0.02, s * 0.92)], fill=tuple(cor[:3]) + (255,))
+    desenho.rounded_rectangle((s * 0.45, s * 0.32, s * 0.55, s * 0.64), radius=s * 0.04, fill=tuple(sinal[:3]) + (255,))
+    desenho.ellipse((s * 0.44, s * 0.7, s * 0.56, s * 0.82), fill=tuple(sinal[:3]) + (255,))
+    return grande.resize((lado, lado), Image.LANCZOS)
+
+
+def _layout_alerta(ident, textos, formato, pos):
+    largura, altura, topo, base = _area(formato)
+    enfase, _fundo = PALETAS["urgencia"] if textos.paleta == "marca" else _cores(ident, textos)
+    escuro = _escuro_oposto(enfase)
+    largura_texto = largura - 2 * MARGEM
+    listra, folga = 30, 42
+    selo = ajustar(textos.selo, "forte", largura_texto - 100, 60, 44, 28, 1, caixa_alta=True) if textos.selo.strip() else None
+    titulo = ajustar(textos.titulo, "forte", largura_texto, 330, 116, 52, 3, 0.98, caixa_alta=True)
+    sub = ajustar(textos.subtitulo, "negrito", largura_texto, 110, 42, 28, 2, 1.12) if textos.subtitulo.strip() else None
+    chip = _chip_assinatura(ident, 64, 220, tuple(escuro) + (255,), tuple(enfase) + (255,))
+    w_chamada, h_chamada = medir_pilula(textos.chamada, 40, largura_texto - (chip.width + 40 if chip else 0))
+    linha = max(h_chamada, chip.height if chip else 0)
+    conteudo = (max(64, selo.altura) + 24 if selo else 0) + titulo.altura + ((18 + sub.altura) if sub else 0) + ((32 + linha) if linha else 0)
+    altura_painel = 2 * listra + 2 * folga + conteudo
+    y0 = _y_zona(pos, formato, topo, base, altura_painel, 40, 0)
+    ocupados = [(0, y0 - 10, largura, y0 + altura_painel + 10)]
+
+    def desenhar(tela):
+        painel = Image.new("RGBA", (largura, altura_painel), tuple(enfase) + (255,))
+        painel.alpha_composite(_listras(largura, listra, escuro, enfase), (0, 0))
+        painel.alpha_composite(_listras(largura, listra, escuro, enfase), (0, altura_painel - listra))
+        y = listra + folga
+        cor_texto = tinta(enfase)
+        if selo:
+            painel.alpha_composite(_triangulo_alerta(64, escuro, enfase), (MARGEM, round(y + (max(64, selo.altura) - 64) / 2)))
+            escrever(painel, selo, MARGEM + 84, y + (max(64, selo.altura) - selo.altura) / 2, escuro)
+            y += max(64, selo.altura) + 24
+        escrever(painel, titulo, MARGEM, y, cor_texto)
+        y += titulo.altura
+        if sub:
+            y += 18
+            escrever(painel, sub, MARGEM, y, _misturar(cor_texto, enfase, 0.12))
+            y += sub.altura
+        if linha:
+            y += 32
+            if w_chamada:
+                painel_pilula = _peca_pilula(textos.chamada, escuro, enfase, 40, largura_texto)
+                painel.alpha_composite(painel_pilula, (MARGEM, round(y + (linha - painel_pilula.height) / 2)))
+            if chip:
+                painel.alpha_composite(chip, (largura - MARGEM - chip.width, round(y + (linha - chip.height) / 2)))
+        colar_com_sombra(tela, painel, 0, y0, raio=18, opacidade=0.45, desloc=(0, 10))
+
+    return ocupados, desenhar
+
+
+def _peca_etiqueta(texto: str, cor, largura_max: int = 470) -> Image.Image:
+    """Etiqueta de preço com furo e barbante, levemente girada."""
+    cor = tuple(cor[:3])
+    bloco = ajustar(texto, "forte", largura_max - 160, 150, 96, 34, 2, 0.98, caixa_alta=True)
+    h = max(150, bloco.altura + 80)
+    ponta = round(h * 0.42)
+    w = ponta + bloco.largura + 90
+    escala = 3
+    pad_topo, pad_esq = 110, 80
+    S = lambda valor: round(valor * escala)  # noqa: E731
+    grande = Image.new("RGBA", (S(w + pad_esq + 12), S(h + pad_topo + 12)), (0, 0, 0, 0))
+    desenho = ImageDraw.Draw(grande)
+    ox, oy = S(pad_esq), S(pad_topo)
+    desenho.rounded_rectangle((ox + S(ponta - 24), oy, ox + S(w), oy + S(h)), radius=S(22), fill=cor + (255,))
+    desenho.polygon([(ox, oy + S(h / 2)), (ox + S(ponta), oy), (ox + S(ponta), oy + S(h))], fill=cor + (255,))
+    claro = _misturar(cor, (255, 255, 255), 0.45) + (200,)
+    desenho.rounded_rectangle((ox + S(ponta + 4), oy + S(12), ox + S(w - 12), oy + S(h - 12)), radius=S(14), outline=claro, width=S(3))
+    hx, hy, raio = ox + S(ponta * 0.6), oy + S(h / 2), S(h * 0.075)
+    desenho.ellipse((hx - raio - S(6), hy - raio - S(6), hx + raio + S(6), hy + raio + S(6)), fill=claro[:3] + (255,))
+    desenho.ellipse((hx - raio, hy - raio, hx + raio, hy + raio), fill=(0, 0, 0, 0))
+    desenho.line([(hx - raio * 0.4, hy - raio * 0.8), (hx - S(40), hy - S(70)), (S(6), S(8))], fill=(245, 243, 238, 255), width=S(4), joint="curve")
+    peca = grande.resize((w + pad_esq + 12, h + pad_topo + 12), Image.LANCZOS)
+    escrever(peca, bloco, pad_esq + ponta + (w - ponta) / 2 - 6, pad_topo + (h - bloco.altura) / 2, tinta(cor), "centro")
+    return peca.rotate(-9, resample=Image.BICUBIC, expand=True)
+
+
+def _layout_etiqueta(ident, textos, formato, pos):
+    largura, altura, topo, base = _area(formato)
+    enfase, fundo = _cores(ident, textos)
+    escuro = _fundo_escuro(fundo)
+    largura_texto = largura - 2 * MARGEM
+    no_selo = textos.selo.strip() or textos.chamada.strip() or "Oferta"
+    chamada_fora = textos.chamada.strip() if textos.selo.strip() else ""
+    etiqueta = _peca_etiqueta(no_selo, enfase, 400)
+    x_etiqueta = largura - etiqueta.width - 10
+    lado_a_lado = x_etiqueta + 70 - MARGEM - 24 >= 440
+    largura_titulo = (x_etiqueta + 70 - MARGEM - 24) if lado_a_lado else largura_texto
+    titulo = ajustar(textos.titulo, "forte", largura_titulo, 330, 96, 46, 3, 1.02)
+    sub = ajustar(textos.subtitulo, "medio", largura_titulo, 110, 38, 26, 2, 1.15) if textos.subtitulo.strip() else None
+    w_chamada, h_chamada = medir_pilula(chamada_fora, 40, largura_titulo)
+    bloco = titulo.altura + ((18 + sub.altura) if sub else 0) + ((32 + h_chamada) if h_chamada else 0)
+    if lado_a_lado:
+        total = max(bloco, etiqueta.height - 60)
+        y_zona = _y_zona(pos, formato, topo, base, total)
+        y_texto = y_zona + (total - bloco) / 2
+        y_etiqueta = y_zona + (total - etiqueta.height) / 2 - 30
+    else:
+        sobra = 50
+        total = etiqueta.height - sobra + bloco
+        y_zona = _y_zona(pos, formato, topo, base, total)
+        if pos == "topo":
+            y_texto = y_zona
+            y_etiqueta = y_zona + bloco - sobra + 20
+        else:
+            y_etiqueta = y_zona
+            y_texto = y_zona + etiqueta.height - sobra
+    y_texto, y_etiqueta = round(y_texto), round(y_etiqueta)
+    largura_bloco = max(titulo.largura, sub.largura if sub else 0, w_chamada)
+    logo = _logo_oposto(ident, pos, formato, topo, base)
+    ocupados = [
+        (MARGEM, y_texto - 10, MARGEM + largura_bloco + 10, y_texto + bloco + 10),
+        (x_etiqueta + 60, y_etiqueta + 50, largura - 20, y_etiqueta + etiqueta.height - 10),
+        logo,
+    ]
+
+    def desenhar(tela):
+        _escurecer_zona(tela, escuro, pos, min(y_texto, y_etiqueta), max(y_texto + bloco, y_etiqueta + etiqueta.height))
+        cor_texto = tinta(escuro)
+        texto_com_sombra(tela, titulo, MARGEM, y_texto, cor_texto, raio=12, opacidade=0.4)
+        y = y_texto + titulo.altura
+        if sub:
+            y += 18
+            escrever(tela, sub, MARGEM, y, _misturar(cor_texto, escuro, 0.15))
+            y += sub.altura
+        if h_chamada:
+            pilula(tela, chamada_fora, MARGEM, y + 32, enfase, tamanho=40, largura_max=largura_texto)
+        colar_com_sombra(tela, etiqueta, x_etiqueta, y_etiqueta, raio=16, opacidade=0.45, desloc=(0, 12))
+        _assinar_em(tela, ident, logo)
+
+    return ocupados, desenhar
+
+
+def _peca_carimbo(titulo: str, selo: str, cor, largura_max: int) -> Image.Image:
+    """Carimbo de borda dupla, com falhas de tinta, girado."""
+    cor = tuple(cor[:3])
+    bloco = ajustar(titulo, "forte", largura_max - 140, 330, 108, 44, 3, 0.98, caixa_alta=True)
+    acima = ajustar(selo, "negrito", largura_max - 260, 50, 34, 22, 1, caixa_alta=True) if selo.strip() else None
+    w = max(bloco.largura, (acima.largura + 160) if acima else 0) + 140
+    h = bloco.altura + 108 + ((acima.altura + 30) if acima else 0)
+    escala = 2
+    grande = Image.new("RGBA", (w * escala, h * escala), (0, 0, 0, 0))
+    desenho = ImageDraw.Draw(grande)
+    desenho.rounded_rectangle((8, 8, w * escala - 8, h * escala - 8), radius=52, outline=cor + (255,), width=20)
+    desenho.rounded_rectangle((44, 44, w * escala - 44, h * escala - 44), radius=28, outline=cor + (255,), width=7)
+    peca = grande.resize((w, h), Image.LANCZOS)
+    y = 54
+    if acima:
+        escrever(peca, acima, w / 2, y, cor + (255,), "centro")
+        meio = y + acima.altura / 2
+        traco = ImageDraw.Draw(peca)
+        traco.line((48, meio, w / 2 - acima.largura / 2 - 22, meio), fill=cor + (255,), width=4)
+        traco.line((w / 2 + acima.largura / 2 + 22, meio, w - 48, meio), fill=cor + (255,), width=4)
+        y += acima.altura + 30
+    escrever(peca, bloco, w / 2, y, cor + (255,), "centro")
+    ruido = Image.effect_noise((w, h), 46).point(lambda valor: 0 if valor < 74 else 255).filter(ImageFilter.GaussianBlur(0.8))
+    alfa = ImageChops.multiply(peca.getchannel("A"), ruido).point(lambda valor: int(valor * 0.94))
+    peca.putalpha(alfa)
+    return peca.rotate(7, resample=Image.BICUBIC, expand=True)
+
+
+def _layout_carimbo(ident, textos, formato, pos):
+    largura, altura, topo, base = _area(formato)
+    enfase, fundo = _cores(ident, textos)
+    escuro = _fundo_escuro(fundo)
+    tinta_carimbo = enfase if _contraste(enfase, escuro) >= 2.4 else _misturar(enfase, (255, 255, 255), 0.65)
+    carimbo = _peca_carimbo(textos.titulo, textos.selo, tinta_carimbo, largura - 2 * MARGEM - 40)
+    sub = ajustar(textos.subtitulo, "negrito", largura - 2 * MARGEM, 110, 42, 28, 2, 1.12) if textos.subtitulo.strip() else None
+    w_chamada, h_chamada = medir_pilula(textos.chamada, 40, largura - 2 * MARGEM)
+    bloco = carimbo.height + ((16 + sub.altura) if sub else 0) + ((28 + h_chamada) if h_chamada else 0)
+    y0 = _y_zona(pos, formato, topo, base, bloco, 40, 0)
+    x_carimbo = (largura - carimbo.width) // 2
+    logo = _logo_oposto(ident, pos, formato, topo, base)
+    meia = max(carimbo.width, sub.largura if sub else 0, w_chamada) / 2
+    ocupados = [(largura / 2 - meia, y0, largura / 2 + meia, y0 + bloco), logo]
+
+    def desenhar(tela):
+        _escurecer_zona(tela, escuro, pos, y0, y0 + bloco, 215)
+        tela.alpha_composite(carimbo, (x_carimbo, y0))
+        y = y0 + carimbo.height
+        if sub:
+            y += 16
+            texto_com_sombra(tela, sub, largura / 2, y, BRANCO, "centro", raio=8, opacidade=0.5)
+            y += sub.altura
+        if h_chamada:
+            pilula(tela, textos.chamada, largura / 2, y + 28, enfase, tamanho=40, largura_max=largura - 2 * MARGEM, alinhar="centro")
+        _assinar_em(tela, ident, logo)
+
+    return ocupados, desenhar
+
+
+def _neon(cor) -> tuple[int, int, int]:
+    h, s, _v = colorsys.rgb_to_hsv(*(canal / 255 for canal in cor[:3]))
+    if s >= 0.2:
+        s = max(s, 0.7)
+    r, g, b = colorsys.hsv_to_rgb(h, s, 1.0)
+    return (round(r * 255), round(g * 255), round(b * 255))
+
+
+def _outro_neon(cor) -> tuple[int, int, int]:
+    h, s, _v = colorsys.rgb_to_hsv(*(canal / 255 for canal in cor[:3]))
+    if s < 0.2:
+        return (125, 211, 252)
+    r, g, b = colorsys.hsv_to_rgb((h + 0.5) % 1.0, max(s, 0.6), 1.0)
+    return (round(r * 255), round(g * 255), round(b * 255))
+
+
+def _brilhar(tela: Image.Image, camada: Image.Image, cor) -> None:
+    """Contorno de neon: o desenho da camada vira tubo de luz na cor dada."""
+    caixa = camada.getbbox()
+    if not caixa:
+        return
+    folga = 90
+    x0, y0 = max(0, caixa[0] - folga), max(0, caixa[1] - folga)
+    x1, y1 = min(tela.width, caixa[2] + folga), min(tela.height, caixa[3] + folga)
+    alfa = camada.getchannel("A").crop((x0, y0, x1, y1))
+    cor = tuple(cor[:3])
+    for raio, forca in ((36, 0.9), (18, 1.0), (7, 1.0)):
+        brilho = Image.new("RGBA", alfa.size, cor + (255,))
+        brilho.putalpha(alfa.filter(ImageFilter.GaussianBlur(raio)).point(lambda valor, f=forca: min(255, int(valor * f * 1.6))))
+        tela.alpha_composite(brilho, (x0, y0))
+    nucleo = Image.new("RGBA", alfa.size, _misturar(cor, (255, 255, 255), 0.72) + (255,))
+    nucleo.putalpha(alfa)
+    tela.alpha_composite(nucleo, (x0, y0))
+
+
+def _layout_neon(ident, textos, formato, pos):
+    largura, altura, topo, base = _area(formato)
+    enfase, _fundo = _cores(ident, textos)
+    luz = _neon(enfase)
+    segunda = _outro_neon(enfase)
+    largura_texto = largura - 2 * MARGEM - 80
+    selo = ajustar(textos.selo, "negrito", largura_texto, 50, 34, 22, 1, caixa_alta=True) if textos.selo.strip() else None
+    titulo = ajustar(textos.titulo, "forte", largura_texto, 320, 108, 50, 3, 1.04, caixa_alta=True)
+    sub = ajustar(textos.subtitulo, "medio", largura_texto, 110, 40, 28, 2, 1.15) if textos.subtitulo.strip() else None
+    w_chamada, h_chamada = medir_pilula(textos.chamada, 38, largura_texto)
+    moldura = 46
+    dentro = (selo.altura + 22 if selo else 0) + titulo.altura + ((22 + sub.altura) if sub else 0)
+    largura_moldura = max(titulo.largura, sub.largura if sub else 0, selo.largura if selo else 0) + 2 * moldura
+    bloco = dentro + 2 * moldura + ((40 + h_chamada) if h_chamada else 0)
+    y0 = _y_zona(pos, formato, topo, base, bloco, 48, 10)
+    logo = _logo_oposto(ident, pos, formato, topo, base, "direita")
+    ocupados = [(largura / 2 - largura_moldura / 2 - 20, y0 - 20, largura / 2 + largura_moldura / 2 + 20, y0 + bloco + 20), logo]
+
+    def desenhar(tela):
+        tela.alpha_composite(Image.new("RGBA", tela.size, (4, 4, 16, 70)))
+        _escurecer_zona(tela, (4, 4, 16), pos, y0, y0 + bloco, 230, 300)
+        camada = Image.new("RGBA", tela.size, (0, 0, 0, 0))
+        ImageDraw.Draw(camada).rounded_rectangle(
+            (largura / 2 - largura_moldura / 2, y0, largura / 2 + largura_moldura / 2, y0 + dentro + 2 * moldura), radius=34, outline=(255, 255, 255, 255), width=6
+        )
+        _brilhar(tela, camada, segunda)
+        y = y0 + moldura
+        if selo:
+            camada = Image.new("RGBA", tela.size, (0, 0, 0, 0))
+            escrever(camada, selo, largura / 2, y, (255, 255, 255, 255), "centro")
+            _brilhar(tela, camada, segunda)
+            y += selo.altura + 22
+        camada = Image.new("RGBA", tela.size, (0, 0, 0, 0))
+        escrever(camada, titulo, largura / 2, y, (255, 255, 255, 255), "centro")
+        _brilhar(tela, camada, luz)
+        y += titulo.altura
+        if sub:
+            y += 22
+            texto_com_sombra(tela, sub, largura / 2, y, (245, 245, 250), "centro", raio=10, opacidade=0.6)
+        if h_chamada:
+            y_chamada = y0 + dentro + 2 * moldura + 40
+            camada = Image.new("RGBA", tela.size, (0, 0, 0, 0))
+            peca = _peca_pilula(textos.chamada, (0, 0, 0, 0), (255, 255, 255, 255), 38, largura_texto)
+            x_chamada = round(largura / 2 - peca.width / 2)
+            ImageDraw.Draw(camada).rounded_rectangle((x_chamada, y_chamada, x_chamada + peca.width, y_chamada + peca.height), radius=peca.height // 2, outline=(255, 255, 255, 255), width=5)
+            camada.alpha_composite(peca, (x_chamada, round(y_chamada)))
+            _brilhar(tela, camada, luz)
+        _assinar_em(tela, ident, logo)
+
+    return ocupados, desenhar
+
+
+def _duotone(tela: Image.Image, escuro, claro, mistura: float = 0.72) -> Image.Image:
+    cinza = ImageOps.autocontrast(ImageOps.grayscale(tela.convert("RGB")), cutoff=2)
+    duo = ImageOps.colorize(cinza, tuple(escuro[:3]), tuple(claro[:3])).convert("RGBA")
+    return Image.blend(tela.convert("RGBA"), duo, mistura)
+
+
+def _layout_poster(ident, textos, formato, pos):
+    largura, altura, topo, base = _area(formato)
+    enfase, fundo = _cores(ident, textos)
+    cor_bloco = enfase
+    cor_texto = tinta(cor_bloco)
+    largura_texto = largura - 2 * MARGEM
+    selo = ajustar(textos.selo, "negrito", largura_texto, 50, 34, 22, 1, caixa_alta=True) if textos.selo.strip() else None
+    titulo = ajustar(textos.titulo, "forte", largura_texto, 560 if formato == "story" else 470, 210, 84, 3, 0.9, caixa_alta=True)
+    sub = ajustar(textos.subtitulo, "medio", largura_texto, 110, 42, 28, 2, 1.15) if textos.subtitulo.strip() else None
+    cor_pilula = _fundo_escuro(fundo) if _contraste(_fundo_escuro(fundo), cor_bloco) >= 2 else BRANCO
+    w_chamada, h_chamada = medir_pilula(textos.chamada, 40, largura_texto)
+    folga, corte = 56, 80
+    conteudo = (selo.altura + 18 if selo else 0) + titulo.altura + ((20 + sub.altura) if sub else 0) + ((30 + h_chamada) if h_chamada else 0)
+    if pos == "topo":
+        y_texto = topo + folga
+        fim = y_texto + conteudo + folga
+        caixa_bloco = (0, 0, largura, fim + corte)
+    else:
+        y_texto = base - folga - conteudo
+        inicio = y_texto - folga
+        caixa_bloco = (0, inicio - corte, largura, altura)
+    logo = _logo_oposto(ident, pos, formato, topo, base, "direita")
+    ocupados = [caixa_bloco, logo]
+
+    def desenhar(tela):
+        forma = Image.new("RGBA", tela.size, (0, 0, 0, 0))
+        desenho = ImageDraw.Draw(forma)
+        if pos == "topo":
+            desenho.polygon([(0, 0), (largura, 0), (largura, fim), (0, fim + corte)], fill=tuple(cor_bloco) + (255,))
+        else:
+            desenho.polygon([(0, inicio), (largura, inicio - corte), (largura, altura), (0, altura)], fill=tuple(cor_bloco) + (255,))
+        tela.alpha_composite(_sombra_de(forma, 18, 0.45, (0, 8)))
+        tela.alpha_composite(forma)
+        y = y_texto
+        if selo:
+            escrever(tela, selo, MARGEM, y, _misturar(cor_texto, cor_bloco, 0.15))
+            y += selo.altura + 18
+        escrever(tela, titulo, MARGEM, y, cor_texto)
+        y += titulo.altura
+        if sub:
+            y += 20
+            escrever(tela, sub, MARGEM, y, _misturar(cor_texto, cor_bloco, 0.12))
+            y += sub.altura
+        if h_chamada:
+            pilula(tela, textos.chamada, MARGEM, y + 30, cor_pilula, tamanho=40, largura_max=largura_texto, sombra=False)
+        _assinar_em(tela, ident, logo)
+
+    return ocupados, desenhar
+
+
+def _seta(tela: Image.Image, x: float, y: float, tamanho: int, cor) -> None:
+    desenho = ImageDraw.Draw(tela)
+    desenho.line((x, y, x + tamanho, y), fill=tuple(cor[:3]) + (255,), width=4)
+    desenho.polygon([(x + tamanho + 2, y), (x + tamanho - 10, y - 9), (x + tamanho - 10, y + 9)], fill=tuple(cor[:3]) + (255,))
+
+
+def _layout_minimal(ident, textos, formato, pos):
+    largura, altura, topo, base = _area(formato)
+    enfase, fundo = _cores(ident, textos)
+    elegante = textos.paleta == "elegante"
+    barra = (16, 16, 18) if elegante else (250, 249, 246)
+    cor_titulo = (244, 239, 228) if elegante else GRAFITE
+    cor_sub = _misturar(cor_titulo, barra, 0.4)
+    acento = enfase if _contraste(enfase, barra) >= 2.2 else (_fundo_escuro(fundo) if not elegante else (212, 175, 90))
+    chip = _chip_assinatura(ident, 60, 200, (0, 0, 0, 0), tuple(acento) + (255,))
+    largura_texto = largura - 2 * MARGEM - ((chip.width + 36) if chip else 0)
+    selo = ajustar(textos.selo, "negrito", largura_texto, 40, 26, 20, 1, caixa_alta=True) if textos.selo.strip() else None
+    titulo = ajustar(textos.titulo, "medio", largura_texto, 170, 66, 40, 2, 1.08)
+    sub = ajustar(textos.subtitulo, "medio", largura_texto, 90, 32, 24, 2, 1.25) if textos.subtitulo.strip() else None
+    chamada = ajustar(textos.chamada, "negrito", largura_texto - 60, 44, 30, 22, 1) if textos.chamada.strip() else None
+    folga = 50
+    conteudo = 6 + 24 + ((selo.altura + 14) if selo else 0) + titulo.altura + ((14 + sub.altura) if sub else 0) + ((26 + chamada.altura) if chamada else 0)
+    altura_barra = 2 * folga + conteudo
+    if pos == "topo":
+        y_texto = topo + folga
+        caixa_barra = (0, 0, largura, topo + altura_barra)
+    else:
+        y_texto = base - folga - conteudo
+        caixa_barra = (0, y_texto - folga, largura, altura)
+    ocupados = [caixa_barra]
+
+    def desenhar(tela):
+        if pos == "topo":
+            degrade(tela, (0, 0, 0), caixa_barra[3], caixa_barra[3] + 50, 50, 0)
+        else:
+            degrade(tela, (0, 0, 0), caixa_barra[1] - 50, caixa_barra[1], 0, 50)
+        tela.alpha_composite(Image.new("RGBA", (largura, round(caixa_barra[3] - caixa_barra[1])), barra + (250,)), (0, round(caixa_barra[1])))
+        desenho = ImageDraw.Draw(tela)
+        y = y_texto
+        desenho.rectangle((MARGEM, y, MARGEM + 90, y + 6), fill=tuple(acento) + (255,))
+        y += 6 + 24
+        if selo:
+            escrever(tela, selo, MARGEM, y, acento)
+            y += selo.altura + 14
+        escrever(tela, titulo, MARGEM, y, cor_titulo)
+        y += titulo.altura
+        if sub:
+            y += 14
+            escrever(tela, sub, MARGEM, y, cor_sub)
+            y += sub.altura
+        if chamada:
+            y += 26
+            escrever(tela, chamada, MARGEM, y, acento)
+            _seta(tela, MARGEM + chamada.largura + 16, y + chamada.altura / 2, 34, acento)
+        if chip:
+            meio = y_texto + conteudo / 2
+            colar_com_sombra(tela, chip, largura - MARGEM - chip.width, round(meio - chip.height / 2), raio=8, opacidade=0.18, desloc=(0, 3))
+
+    return ocupados, desenhar
+
+
+def _layout_livre(ident, textos, formato, _pos):
+    largura, _altura, _topo, base = _area(formato)
+    logo = caixa_assinatura(ident, largura - MARGEM, base - (MARGEM if formato == "feed" else 10), "direita", "base", 60, 200)
+
+    def desenhar(tela):
+        assinar(tela, ident, largura - MARGEM, base - (MARGEM if formato == "feed" else 10), "direita", "base", 60, 200)
+
+    return [logo], desenhar
+
+
+LAYOUTS = {
+    "faixa": (_layout_faixa, ("topo", "base")),
+    "selo": (_layout_selo, ("base", "topo")),
+    "destaque": (_layout_destaque, ("base", "topo")),
+    "story_chamada": (_layout_story_chamada, ("fixo",)),
+    "alerta": (_layout_alerta, ("topo", "base")),
+    "etiqueta": (_layout_etiqueta, ("base", "topo")),
+    "carimbo": (_layout_carimbo, ("topo", "base")),
+    "neon": (_layout_neon, ("base", "topo")),
+    "poster": (_layout_poster, ("topo", "base")),
+    "minimal": (_layout_minimal, ("base", "topo")),
+    "livre": (_layout_livre, ("fixo",)),
 }
 
 
@@ -819,19 +1490,31 @@ def compor(
     ident: Identidade,
     formato: str = "feed",
     tela_app: bool = False,
+    assunto: Caixa | None = None,
 ) -> Image.Image:
-    """Monta a peça final (RGB) no formato 'feed' (1080x1350) ou 'story' (1080x1920)."""
+    """Monta a peça final (RGB) no formato 'feed' (1080x1350) ou 'story' (1080x1920).
+    O texto vai para a parte da peça em que o assunto da foto não está."""
     formato = "story" if formato == "story" else "feed"
-    modelo = modelo if modelo in DESENHOS else "destaque"
+    modelo = modelo if modelo in MODELOS else "destaque"
     if modelo == "selo" and not textos.selo.strip():
         modelo = "destaque"
-    if not textos.titulo.strip():
+    if not textos.titulo.strip() and modelo != "livre":
         textos = Textos(**{**textos.__dict__, "titulo": textos.chamada or ident.assinatura or " "})
     foto = foto.convert("RGB")
-    if modelo in ("antes_depois", "tela_app"):
-        tela = DESENHOS[modelo](foto, ident, textos, formato, tela_app)
-    else:
-        tela = DESENHOS[modelo](foto, ident, textos, formato)
+    if modelo == "antes_depois":
+        return _molde_antes_depois(foto, ident, textos, formato, tela_app).convert("RGB")
+    if modelo == "tela_app":
+        return _molde_tela_app(foto, ident, textos, formato, tela_app).convert("RGB")
+    assunto = assunto or achar_assunto(foto)
+    layout, opcoes = LAYOUTS[modelo]
+    posicao = textos.posicao if textos.posicao in opcoes else "auto"
+    efeito = None
+    if modelo == "poster":
+        enfase, fundo = _cores(ident, textos)
+        efeito = lambda tela: _duotone(tela, _escuro(_fundo_escuro(fundo), 0.2), _misturar(enfase, (255, 255, 255), 0.55))  # noqa: E731
+    tela = _rodar(
+        foto, assunto, formato, lambda pos: layout(ident, textos, formato, pos), posicao, opcoes, 0.35 if modelo == "neon" else 0.5, efeito
+    )
     return tela.convert("RGB")
 
 

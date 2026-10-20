@@ -450,8 +450,8 @@ async def put_arte_agenda(
     if plano is None:
         raise HTTPException(status_code=422, detail="Este post não tem arte para refazer.")
     marca = await session.get(Ficha, await marca_efetiva(session, registro.marca_id))
-    textos = pedido.model_dump(exclude={"modelo"})
-    dados = {**plano, **textos, "modelo": pedido.modelo or plano.get("modelo")}
+    textos = pedido.model_dump(exclude={"modelo", "paleta"})
+    dados = {**plano, **textos, "modelo": pedido.modelo or plano.get("modelo"), "paleta": pedido.paleta or plano.get("paleta")}
     novo = diretor.do_cliente(dados, await montar_contexto(session, marca))
     if novo is None:
         raise HTTPException(status_code=422, detail="Não consegui ler a arte deste post.")

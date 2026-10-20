@@ -178,6 +178,45 @@ async def editar_com_ia(prompt: str, imagens: list[bytes], qualidade: str = "med
     return base64.b64decode(conteudo), usadas
 
 
+def tamanho_para(largura: int, altura: int, modelo: str) -> str:
+    """Tamanho de saída com a mesma proporção da foto base (a edição não pode reenquadrar a cena)."""
+    if largura <= 0 or altura <= 0:
+        return "1024x1024"
+    proporcao = min(max(largura / altura, 1 / 3), 3)
+    if not modelo.startswith("gpt-image-2"):
+        if proporcao > 1.2:
+            return "1536x1024"
+        if proporcao < 1 / 1.2:
+            return "1024x1536"
+        return "1024x1024"
+    area = 1024 * 1024
+    nova_largura = max(16, round((area * proporcao) ** 0.5 / 16) * 16)
+    nova_altura = max(16, round((area / proporcao) ** 0.5 / 16) * 16)
+    return f"{nova_largura}x{nova_altura}"
+
+
+async def editar_varias(prompt: str, imagens: list[bytes], tamanho: str = "1024x1024", qualidade: str = "medium") -> bytes:
+    """Edita a 1ª foto usando as outras como material (até 16 fotos nos modelos GPT Image).
+    Não descarta as fotos extras: se o modelo recusar, o erro sobe para quem chamou decidir."""
+    modelo = _modelo()
+    cliente = cliente_openai().with_options(timeout=240)
+    extra = {"input_fidelity": "high"} if modelo in ("gpt-image-1", "gpt-image-1.5") else {}
+    arquivos = [_arquivo_imagem(dados, f"foto{numero}") for numero, dados in enumerate(imagens[:16], start=1)]
+    resposta = await cliente.images.edit(
+        image=arquivos if len(arquivos) > 1 else arquivos[0],
+        model=modelo,
+        prompt=prompt,
+        size=tamanho,
+        quality=qualidade,
+        output_format="png",
+        **extra,
+    )
+    conteudo = resposta.data[0].b64_json if resposta.data else None
+    if not conteudo:
+        raise ValueError("A foto não veio.")
+    return base64.b64decode(conteudo)
+
+
 async def gerar_com_ia(prompt: str, qualidade: str = "medium") -> bytes:
     return await _foto(prompt, None, None, _modelo(), qualidade)
 

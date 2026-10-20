@@ -7,12 +7,24 @@ from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import get_settings
-from app.models import Agendamento, ContaRede, Ficha, Imagem, LogoMarca, MemoriaFoto, Publicacao, Sugestao, agora
+from app.models import (
+    Agendamento,
+    ContaRede,
+    Ficha,
+    Imagem,
+    LogoMarca,
+    MemoriaFoto,
+    Publicacao,
+    Rascunho,
+    Sugestao,
+    agora,
+)
 from app.schemas import PlanoArte
 from app.services import diretor
 from app.services.memoria import (
     ContextoMemoria,
     artes_recentes,
+    combinacoes_recentes,
     gravar_fatos,
     limpar_gancho,
     montar_contexto,
@@ -158,6 +170,7 @@ async def apagar_marca(session: AsyncSession, marca_id: int) -> None:
     await session.exec(delete(MemoriaFoto).where(MemoriaFoto.marca_id == marca_id))
     await session.exec(delete(Imagem).where(Imagem.marca_id == marca_id))
     await session.exec(delete(LogoMarca).where(LogoMarca.marca_id == marca_id))
+    await session.exec(delete(Rascunho).where(Rascunho.marca_id == marca_id))
     await session.delete(alvo)
     await session.commit()
 
@@ -302,7 +315,10 @@ async def montar_dias(
         raise ValueError("Os posts não puderam ser escritos agora.") from erro
     criados: list[Agendamento] = []
     planos: list[dict] = []
+    combinacoes = await combinacoes_recentes(session, marca.id or 0)
     for (dia, hora), (post, plano) in zip(pedidos, posts, strict=False):
+        plano = diretor.variar(plano, combinacoes, diretor.tem_cores(marca))
+        combinacoes = [(plano["modelo"], plano.get("paleta") or "marca"), *combinacoes][:5]
         registro = Agendamento(
             dia=dia,
             hora=hora,

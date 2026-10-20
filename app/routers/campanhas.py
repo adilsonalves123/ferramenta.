@@ -10,6 +10,7 @@ from app.services.imagens import url_memoria
 from app.services.memoria import (
     CAMPOS_FATOS,
     artes_recentes,
+    combinacoes_recentes,
     ler_fatos,
     limpar_gancho,
     montar_contexto,
@@ -51,6 +52,7 @@ async def _com_memoria(pedido: PedidoCampanha, marca: Ficha, session: AsyncSessi
     plano, legenda = diretor.validar_plano(
         gerada.plano_arte, contexto, diretor.pedido_do_usuario(pedido.produto), gerada.legenda_redes, gancho
     )
+    plano = diretor.variar(plano, await combinacoes_recentes(session, marca.id or 0), diretor.tem_cores(marca))
     foto_id = plano.get("foto_base_id")
     completa = CampanhaCompleta(
         titulo_anuncio=gerada.titulo_anuncio,

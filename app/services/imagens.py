@@ -12,7 +12,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import get_settings
 from app.database import get_sessionmaker
-from app.models import Agendamento, Imagem, MemoriaFoto, Projeto, agora
+from app.models import Agendamento, Imagem, MemoriaFoto, Projeto, Rascunho, agora
 from app.services import arte
 
 PADRAO_IMG = re.compile(r"^/img/(\d+)\.jpg$")
@@ -166,7 +166,11 @@ async def limpar_antigas(session: AsyncSession, dias: int = DIAS_GUARDADAS) -> i
     velhas = list((await session.exec(select(Imagem.id).where(Imagem.criado_em < limite))).all())
     if not velhas:
         return 0
-    usadas: set[int] = set()
+    from app.services.rascunho import ids_em_uso
+
+    await session.exec(delete(Rascunho).where(Rascunho.atualizado_em < limite))
+    rascunhos = await session.exec(select(Rascunho).where(Rascunho.status == "aberto"))
+    usadas: set[int] = ids_em_uso(list(rascunhos.all()))
     fila = await session.exec(
         select(Agendamento.imagem_url, Agendamento.plano_arte).where(Agendamento.status != "publicado")
     )

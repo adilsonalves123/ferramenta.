@@ -49,7 +49,14 @@ class PlanoArte(BaseModel):
     foto_base_id: int | None
     fotos_estilo_ids: list[int]
     edicao_foto: str
-    modelo: Literal["faixa", "selo", "destaque", "antes_depois", "tela_app", "story_chamada"]
+    modelo: Literal[
+        "faixa", "selo", "destaque", "antes_depois", "tela_app", "story_chamada",
+        "alerta", "etiqueta", "carimbo", "neon", "poster", "minimal",
+    ]
+    paleta: Literal[
+        "marca", "urgencia", "quente", "fresca", "fria", "elegante", "doce", "natural", "vibrante", "neutra", "vermelha"
+    ]
+    posicao_texto: Literal["auto", "topo", "base"]
     titulo_arte: str
     subtitulo_arte: str
     selo: str
@@ -71,8 +78,116 @@ class PedidoArteFoto(BaseModel):
     gancho: str = Field(default="", max_length=80)
 
 
+class PedidoRascunho(BaseModel):
+    marca_id: int = 0
+    legenda: str = Field(default="", max_length=5000)
+    plano_arte: dict | None = None
+    formato: str = Field(default="feed", max_length=20)
+    cena: str = Field(default="", max_length=800)
+    gancho: str = Field(default="", max_length=80)
+    descricao: str = Field(default="", max_length=200)
+
+
+class PedidoSalvarRascunho(BaseModel):
+    legenda: str | None = Field(default=None, max_length=5000)
+    plano_arte: dict | None = None
+    formato: str | None = Field(default=None, max_length=20)
+    descricao: str = Field(default="", max_length=200)
+    nova_versao: bool = False
+
+
+class PedidoAjuste(BaseModel):
+    mensagem: str = Field(min_length=1, max_length=2000)
+    fotos_ids: list[int] = Field(default_factory=list, max_length=6)
+
+
+class PedidoRestaurar(BaseModel):
+    n: int
+
+
+class VersaoRascunho(BaseModel):
+    n: int
+    criado_em: str
+    descricao_mudanca: str = ""
+    feed_url: str = ""
+    story_url: str = ""
+
+
+class ItemRascunho(BaseModel):
+    id: int
+    marca_id: int
+    legenda: str
+    titulo: str = ""
+    plano_arte: dict | None = None
+    formato: str = "feed"
+    base_url: str = ""
+    feed_url: str = ""
+    story_url: str = ""
+    cena: str = ""
+    gancho: str = ""
+    agendamento_id: int | None = None
+    versoes: list[VersaoRascunho] = Field(default_factory=list)
+    versao_atual: int = 0
+
+
+class RespostaRascunho(BaseModel):
+    rascunho: ItemRascunho | None = None
+
+
+class RespostaAjuste(BaseModel):
+    rascunho: ItemRascunho | None = None
+    resposta: str
+    tipos: list[str] = Field(default_factory=list)
+    novo: bool = False
+    pergunta: bool = False
+    custo_imagem: bool = False
+
+
+class CamposArteAjuste(BaseModel):
+    """Só os campos que a pessoa pediu para mudar; null = fica como está."""
+
+    titulo_arte: str | None
+    subtitulo_arte: str | None
+    selo: str | None
+    chamada: str | None
+    antes: str | None
+    modelo: Literal[
+        "faixa", "selo", "destaque", "antes_depois", "tela_app", "story_chamada",
+        "alerta", "etiqueta", "carimbo", "neon", "poster", "minimal", "livre",
+    ] | None
+    cor: Literal["principal", "destaque"] | None
+    paleta: Literal[
+        "marca", "urgencia", "quente", "fresca", "fria", "elegante", "doce", "natural", "vibrante", "neutra", "vermelha"
+    ] | None
+    cor_livre: str | None
+    posicao_texto: Literal["auto", "topo", "base"] | None
+
+
+class IntencaoAjuste(BaseModel):
+    """Como a IA leu a mensagem do chat sobre o rascunho atual."""
+
+    tipos: list[Literal["imagem", "arte", "legenda", "formato", "novo"]]
+    instrucao_imagem: str
+    tela_no_aparelho: bool
+    fotos_ids: list[int]
+    arte: CamposArteAjuste
+    legenda_nova: str
+    formato: Literal["feed", "story", "ambos"] | None
+    pergunta: str
+    resumo_mudanca: str
+
+
+class PedidoImagemRascunho(BaseModel):
+    marca_id: int = 0
+    descricao: str = Field(min_length=2, max_length=1500)
+    fotos_ids: list[int] = Field(default_factory=list, max_length=4)
+    anexo_url: str = Field(default="", max_length=500)
+    formato: str = Field(default="feed", max_length=20)
+
+
 class PedidoArteAgenda(BaseModel):
     modelo: str = Field(default="", max_length=20)
+    paleta: str = Field(default="", max_length=20)
     titulo_arte: str = Field(default="", max_length=80)
     subtitulo_arte: str = Field(default="", max_length=120)
     selo: str = Field(default="", max_length=30)

@@ -143,81 +143,46 @@
     }
     .coluna-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .coluna-topo button.link-mini { display: inline-flex; align-items: center; gap: 6px; }
-    .fio.com-resumo { justify-content: flex-start; }
-    .resumo-dia { width: 100%; max-width: 640px; margin: 4px auto 0; display: grid; gap: 10px; }
-    .resumo-ola h2 { margin: 0 0 4px; font-size: 22px; letter-spacing: -0.03em; font-weight: 600; }
-    .resumo-ola p { margin: 0; color: var(--mudo); line-height: 1.5; }
-    .cartao-dia {
-      padding: 12px 16px;
-      background: var(--papel);
-      border: 1px solid var(--linha);
-      border-radius: 12px;
-      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
-    }
-    .cartao-dia.erro-dia { border-left: 3px solid #e11d48; }
-    p.cartao-dia-topo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin: 0 0 10px;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: #8b919a;
-    }
-    p.cartao-dia-topo i { font-size: 12px; color: var(--azul); }
-    .erro-dia p.cartao-dia-topo, .erro-dia p.cartao-dia-topo i { color: #e11d48; }
-    .cartao-dia-vazio { margin: 0; color: var(--mudo); line-height: 1.45; }
-    .proximo-post { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; align-items: start; }
-    .proximo-foto {
-      width: 64px;
-      height: 64px;
-      border-radius: 10px;
-      object-fit: cover;
-      display: grid;
-      place-items: center;
-      color: var(--mudo);
-      font-size: 18px;
-      background: linear-gradient(160deg, #e0e7ff, #fce7f3);
-    }
-    .proximo-corpo { min-width: 0; display: grid; gap: 3px; }
-    .proximo-corpo strong { font-size: 14.5px; font-weight: 600; }
-    .proximo-corpo .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--mudo); font-size: 12.5px; }
-    .proximo-corpo .linha-post { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; }
-    .proximo-corpo small { color: var(--mudo); font-size: 12px; line-height: 1.4; }
-    .erro-dia .motivo { margin: 0; color: #9f1239; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
-    .acoes-dia { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 12px; }
-    .acoes-dia button.secundario { width: auto; height: 32px; padding: 0 12px; font-size: 13px; }
-    .acoes-dia button.cancelar-dia {
-      border: 0;
-      background: transparent;
-      color: #e11d48;
-      font: inherit;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      padding: 0;
-    }
-    .acoes-dia button:disabled { opacity: 0.6; cursor: wait; }
-    .numeros-semana { display: grid; grid-template-columns: 90px 120px minmax(0, 1fr); gap: 12px; }
-    .numeros-semana small { display: block; color: var(--mudo); font-size: 12px; }
-    .numeros-semana b { display: block; margin-top: 2px; font-size: 22px; letter-spacing: -0.03em; font-weight: 600; }
-    .numeros-semana .melhor-semana { min-width: 0; }
-    .melhor-semana span { display: block; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
-    .melhor-semana a, .cartao-dia a.ver-todos { color: var(--azul); font-weight: 600; font-size: 12.5px; text-decoration: none; }
-    .melhor-semana a:hover, .cartao-dia a.ver-todos:hover { text-decoration: underline; }
-    .dica-semana { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--linha); line-height: 1.45; }
-    .dica-semana i { margin-top: 3px; color: #f59e0b; }
-    .cartao-dia a.ver-todos { display: inline-block; margin-top: 10px; cursor: pointer; }
-    .resumo-ideias p.cartao-dia-topo { margin: 6px 2px 8px; }
-    #resumo-ideias button.chip { background: var(--papel); }
-    #resumo-ideias button.chip:hover { border-color: #c7cbff; background: var(--azul-suave); color: var(--azul); }
     .lista-agenda li.destaque { animation: destacar 2.4s ease-out; border-radius: 8px; }
     @keyframes destacar { 0%, 40% { background: var(--azul-suave); box-shadow: 0 0 0 4px var(--azul-suave); } 100% { background: transparent; box-shadow: none; } }
-    @media (max-width: 640px) {
-      .numeros-semana { grid-template-columns: 1fr 1fr; }
-      .numeros-semana .melhor-semana { grid-column: 1 / -1; }
+    button.alerta-falha { display: flex; align-items: center; gap: 6px; width: auto; margin: 10px 28px 0; padding: 8px 12px; border: 1px solid #fecdd3; border-radius: 10px; background: #fff1f2; color: #9f1239; font: inherit; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; }
+    button.alerta-falha[hidden] { display: none; }
+    button.alerta-falha u { text-underline-offset: 2px; }
+    .area-estudio { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto; padding: 0 24px; }
+    .area-estudio.com-mesa { display: grid; grid-template-columns: minmax(300px, 440px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 20px; overflow: hidden; padding-top: 12px; }
+    .area-estudio > [hidden] { display: none !important; }
+    .vazio-estudio { margin: auto; width: 100%; max-width: 680px; padding: 28px 0; text-align: center; }
+    .vazio-estudio h2 { margin: 0 0 6px; font-size: 28px; letter-spacing: -0.03em; font-weight: 700; }
+    .vazio-estudio > p { margin: 0 0 22px; color: var(--mudo); line-height: 1.5; }
+    .atalhos-estudio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; text-align: left; }
+    button.cartao-atalho { display: flex; flex-direction: column; gap: 6px; width: 100%; margin: 0; padding: 10px 10px 14px; border: 1px solid var(--linha); border-radius: 14px; background: var(--papel); color: var(--tinta); font: inherit; cursor: pointer; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04); transition: border-color 0.15s, transform 0.15s; }
+    button.cartao-atalho:hover { border-color: #c7cbff; transform: translateY(-2px); }
+    .capa-atalho { display: grid; place-items: center; width: 100%; aspect-ratio: 4 / 3; border-radius: 10px; object-fit: cover; }
+    .capa-imagem { background: linear-gradient(140deg, #4f46e5, #db2777 60%, #f59e0b); color: white; font-size: 34px; }
+    button.cartao-atalho strong { margin-top: 4px; font-size: 14.5px; }
+    button.cartao-atalho small { color: var(--mudo); font-size: 12px; line-height: 1.4; }
+    .estudio-tarefa { overflow: auto; }
+    .estudio-tarefa #tarefa { margin: 12px auto 24px; }
+    .mesa-rascunho { min-height: 0; overflow: auto; padding-bottom: 16px; }
+    .mesa-rascunho .post img.arte { max-height: 64vh; width: auto; max-width: 100%; margin: 0 auto; }
+    .mesa-rascunho .post #foto-previa.vazio-foto { height: 300px; }
+    .mesa-rascunho img#foto-previa:not(.arte), .mesa-rascunho video#foto-previa { height: auto; max-height: 64vh; object-fit: contain; background: #0f172a; }
+    .mesa-rascunho .vazio-foto .spinner { border-color: rgba(79, 70, 229, 0.25); border-top-color: var(--azul); }
+    .mesa-rascunho .post textarea.legenda { border-top: 1px solid var(--linha); }
+    .acoes-mesa { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; margin-top: 10px; }
+    .acoes-mesa button { margin: 0; }
+    details.detalhes-arte { margin: 0 14px 12px; font-size: 12.5px; }
+    details.detalhes-arte[hidden] { display: none; }
+    details.detalhes-arte summary { cursor: pointer; color: var(--azul); font-weight: 600; margin-bottom: 8px; }
+    details.detalhes-arte .editor-arte { margin: 0; }
+    .area-estudio.com-mesa .fio { min-height: 0; padding: 0 0 12px; justify-content: flex-start; }
+    .area-estudio:not(.com-mesa) .fio { padding: 8px 8px 0; }
+    .modo-composer { display: inline-flex; align-items: center; gap: 6px; flex: 1 0 100%; max-width: max-content; padding: 4px 6px 4px 10px; border-radius: 999px; background: #fdf2f8; color: #be185d; font-size: 12.5px; font-weight: 600; }
+    .modo-composer[hidden] { display: none; }
+    .modo-composer button { width: 20px; height: 20px; margin: 0; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; font-size: 14px; cursor: pointer; }
+    @media (max-width: 1100px) {
+      .area-estudio.com-mesa { grid-template-columns: 1fr; grid-template-rows: auto auto; overflow: auto; }
+      .atalhos-estudio { grid-template-columns: 1fr; }
     }
     .balao { max-width: 78%; line-height: 1.5; white-space: pre-wrap; font-size: 14.5px; }
     .balao.assistente { color: var(--tinta); padding: 2px 0; }
@@ -315,6 +280,7 @@
       font-size: 13px;
     }
     .vazio-foto i { font-size: 22px; }
+    .post div.vazio-foto { display: flex; padding: 0 24px; text-align: center; line-height: 1.4; }
     .post-acoes {
       display: flex;
       gap: 16px;
@@ -795,6 +761,44 @@
     .seletor-grade span { display: block; padding: 6px 8px; font-size: 11.5px; line-height: 1.3; color: var(--tinta); }
     .seletor-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
     .seletor-acoes button { width: auto; margin: 0; padding: 0 16px; height: 38px; }
+    .topo-acoes { display: flex; align-items: center; gap: 10px; }
+    button.novo-post { display: inline-flex; align-items: center; gap: 6px; width: auto; height: 30px; margin: 0; padding: 0 12px; border: 1px solid var(--linha); border-radius: 999px; background: var(--papel); color: var(--tinta); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+    button.novo-post:hover { border-color: var(--azul); color: var(--azul); }
+    button.novo-post[hidden] { display: none; }
+    form.composer { position: relative; }
+    button.da-memoria { display: inline-flex; align-items: center; gap: 6px; width: auto; height: 36px; margin: 0; padding: 0 10px; flex: none; border: 0; border-radius: 8px; background: transparent; color: var(--mudo); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+    button.da-memoria:hover, button.da-memoria.ativo { background: var(--fundo); color: var(--tinta); }
+    .chips-memoria { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 6px; }
+    .chips-memoria[hidden] { display: none; }
+    .chip-foto { display: inline-flex; align-items: center; gap: 6px; max-width: 240px; padding: 3px 4px 3px 3px; border: 1px solid #c7cbff; border-radius: 999px; background: var(--azul-suave); font-size: 12px; color: var(--tinta); }
+    .chip-foto img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex: none; }
+    .chip-foto span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .chip-foto button { width: 20px; height: 20px; margin: 0; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--mudo); cursor: pointer; font-size: 14px; line-height: 1; flex: none; }
+    .chip-foto button:hover { background: white; color: #e11d48; }
+    .picker-memoria { position: absolute; left: 10px; right: 10px; bottom: calc(100% + 8px); z-index: 30; max-height: 360px; overflow: auto; padding: 12px; background: white; border: 1px solid var(--linha); border-radius: 12px; box-shadow: var(--sombra); }
+    .picker-memoria[hidden] { display: none; }
+    .picker-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
+    .picker-memoria .nota { margin: 4px 0 10px; }
+    .picker-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+    .picker-grade button { position: relative; width: 100%; height: auto; margin: 0; padding: 0; border: 2px solid transparent; border-radius: 10px; background: #f6f7fb; text-align: left; font: inherit; cursor: pointer; overflow: hidden; }
+    .picker-grade button.escolhida { border-color: var(--azul); }
+    .picker-grade button.escolhida::after { content: "\2713"; position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 50%; background: var(--azul); color: white; font-size: 12px; display: grid; place-items: center; }
+    .picker-grade img { display: block; width: 100%; height: 80px; object-fit: cover; }
+    .picker-grade span { display: block; padding: 5px 7px; font-size: 11px; line-height: 1.3; color: var(--tinta); }
+    .versoes-rascunho { margin: 0 14px 12px; padding: 8px 10px; border: 1px solid var(--linha); border-radius: 10px; background: #fafbff; font-size: 12px; color: var(--tinta); }
+    .versoes-rascunho[hidden] { display: none; }
+    .versoes-titulo { margin: 0 0 6px; font-weight: 600; color: var(--mudo); font-size: 11.5px; }
+    .faixa-versoes { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+    .faixa-versoes button { position: relative; flex: none; width: 46px; height: 58px; margin: 0; padding: 0; border: 2px solid transparent; border-radius: 7px; background: #e5e7eb; cursor: pointer; overflow: hidden; }
+    .faixa-versoes button.atual { border-color: #16a34a; }
+    .faixa-versoes button.escolhida { border-color: var(--azul); }
+    .faixa-versoes img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .faixa-versoes small { position: absolute; left: 2px; bottom: 2px; padding: 0 4px; border-radius: 4px; background: rgba(15, 23, 42, 0.7); color: white; font-size: 10px; }
+    .versao-escolhida { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .versao-escolhida[hidden] { display: none; }
+    .versao-escolhida span { flex: 1; min-width: 0; line-height: 1.35; }
+    .versao-escolhida button.secundario { width: auto; height: 30px; margin: 0; padding: 0 10px; font-size: 12px; flex: none; }
+    .versoes-rascunho .nota { margin: 6px 0 0; }
     button.apagar-marca { border: 1px solid var(--linha); background: white; color: #e11d48; border-radius: 10px; font: inherit; cursor: pointer; }
     .ponto { width: 8px; height: 8px; border-radius: 50%; flex: none; }
     .tema-bastidores { background: #7c3aed; }
@@ -1011,86 +1015,156 @@
       </aside>
       <section class="conversa">
         <div class="coluna-topo" id="topo-conversa">
-          <span>Novo post</span>
-          <button class="link-mini" type="button" id="voltar-resumo" hidden><i class="fa-solid fa-arrow-left"></i> Voltar ao resumo</button>
-        </div>
-        <div class="fio com-resumo" id="fio">
-          <div class="resumo-dia" id="resumo-dia">
-            <header class="resumo-ola">
-              <h2 id="resumo-saudacao">Olá</h2>
-              <p id="resumo-data"></p>
-            </header>
-            <section class="cartao-dia erro-dia" id="resumo-erro" hidden></section>
-            <section class="cartao-dia" id="resumo-proximo">
-              <p class="cartao-dia-topo"><i class="fa-regular fa-calendar"></i>Próximo post</p>
-              <p class="cartao-dia-vazio">Carregando a fila...</p>
-            </section>
-            <section class="cartao-dia" id="resumo-semana">
-              <p class="cartao-dia-topo"><i class="fa-solid fa-chart-simple"></i>Como foi a semana</p>
-              <p class="cartao-dia-vazio">Carregando os números...</p>
-            </section>
-            <section class="resumo-ideias">
-              <p class="cartao-dia-topo"><i class="fa-regular fa-lightbulb"></i>Ideias rápidas</p>
-              <div class="atalhos em-linha" id="resumo-ideias"></div>
-            </section>
+          <span id="titulo-conversa">Estúdio</span>
+          <div class="topo-acoes">
+            <button class="novo-post" type="button" id="novo-post" hidden title="Começar outro post do zero"><i class="fa-solid fa-plus"></i> Novo post</button>
           </div>
+        </div>
+        <button class="alerta-falha" type="button" id="alerta-falha" hidden></button>
+        <div class="area-estudio" id="area-estudio">
+          <div class="vazio-estudio" id="vazio-estudio">
+            <h2>O que vamos postar hoje?</h2>
+            <p>Escreva aqui embaixo o que você quer, ou comece por um atalho.</p>
+            <div class="atalhos-estudio">
+              <button class="cartao-atalho" type="button" data-atalho="imagem">
+                <span class="capa-atalho capa-imagem"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+                <strong>Criar imagem</strong>
+                <small>Descreva a imagem. Pode partir de uma foto da memória ou de uma foto sua.</small>
+              </button>
+              <button class="cartao-atalho" type="button" data-atalho="texto">
+                <img class="capa-atalho" src="/quadros/anuncio.jpg" alt="" />
+                <strong>Anúncio</strong>
+                <small>Título e legenda prontos, sem imagem.</small>
+              </button>
+              <button class="cartao-atalho" type="button" data-atalho="foto">
+                <img class="capa-atalho" src="/quadros/foto.jpg" alt="" />
+                <strong>Foto</strong>
+                <small>Cole o link do seu site: a IA sugere a foto e a legenda.</small>
+              </button>
+            </div>
+          </div>
+          <div class="estudio-tarefa" id="estudio-tarefa" hidden></div>
+          <div class="mesa-rascunho" id="mesa-rascunho" hidden>
+            <div class="previa-topo">
+              <p class="secao">Rascunho · <span class="canal-nome" id="canal-previa">Feed</span></p>
+              <button class="link-mini" type="button" id="ver-outro" hidden>Ver Story</button>
+            </div>
+            <div class="cartao-previa">
+              <div class="post" id="previa">
+                <div class="vazio-foto" id="foto-previa"><i class="fa-regular fa-image"></i><span>A imagem aparece aqui</span></div>
+                <div class="faixa-memoria" id="faixa-memoria" hidden>
+                  <img id="faixa-memoria-foto" alt="Foto da memória escolhida" />
+                  <span id="faixa-memoria-texto">Foto da Memória da marca</span>
+                  <button class="link-mini" type="button" id="faixa-memoria-trocar">Trocar foto</button>
+                </div>
+                <div class="versoes-rascunho" id="versoes-rascunho" hidden>
+                  <p class="versoes-titulo">Versões do rascunho</p>
+                  <div class="faixa-versoes" id="faixa-versoes"></div>
+                  <div class="versao-escolhida" id="versao-escolhida" hidden>
+                    <span id="versao-texto"></span>
+                    <button class="secundario" type="button" id="voltar-versao">Voltar para esta</button>
+                  </div>
+                  <p class="nota" id="nota-versoes" hidden></p>
+                </div>
+                <textarea class="legenda" id="legenda-previa" rows="3" aria-label="Legenda do post" placeholder="A legenda aparece aqui. Você pode escrever ou mudar o texto aqui mesmo."></textarea>
+                <button class="criar-foto" type="button" id="criar-foto"><i class="fa-solid fa-wand-magic-sparkles"></i><span id="criar-foto-texto">Criar foto com IA</span></button>
+                <p class="nota" id="nota-foto" hidden></p>
+                <details class="detalhes-arte" id="detalhes-arte">
+                  <summary>Editar a arte à mão</summary>
+                  <div class="editor-arte" id="editor-arte" hidden>
+                    <p class="ideia-arte" id="ideia-arte"></p>
+                    <p class="aviso-arte" id="aviso-arte" hidden></p>
+                    <div class="campos-arte">
+                      <label>Estilo da arte
+                        <select id="arte-modelo">
+                          <option value="destaque">Destaque</option>
+                          <option value="faixa">Faixa</option>
+                          <option value="selo">Selo</option>
+                          <option value="alerta">Alerta</option>
+                          <option value="etiqueta">Etiqueta</option>
+                          <option value="carimbo">Carimbo</option>
+                          <option value="neon">Neon</option>
+                          <option value="poster">Pôster</option>
+                          <option value="minimal">Minimalista</option>
+                          <option value="story_chamada">Chamada</option>
+                          <option value="antes_depois">Antes e depois</option>
+                          <option value="tela_app">Imagem em destaque (moldura)</option>
+                          <option value="livre">Só a imagem</option>
+                        </select>
+                      </label>
+                      <label>Cores
+                        <select id="arte-paleta">
+                          <option value="marca">Cores da marca</option>
+                          <option value="urgencia">Amarelo e preto</option>
+                          <option value="quente">Laranja e marrom</option>
+                          <option value="fresca">Verde-limão</option>
+                          <option value="fria">Azul</option>
+                          <option value="elegante">Dourado e preto</option>
+                          <option value="doce">Rosa</option>
+                          <option value="natural">Verde-sálvia</option>
+                          <option value="vibrante">Magenta e roxo</option>
+                          <option value="neutra">Branco e grafite</option>
+                          <option value="vermelha">Vermelho</option>
+                          <option value="livre">A cor que você pediu</option>
+                        </select>
+                      </label>
+                      <label class="largo">Título da arte<input id="arte-titulo" maxlength="60" /></label>
+                      <label class="largo">Subtítulo<input id="arte-subtitulo" maxlength="90" placeholder="Opcional" /></label>
+                      <label>Selo<input id="arte-selo" maxlength="18" placeholder="Ex.: Hoje" /></label>
+                      <label>Chamada<input id="arte-chamada" maxlength="32" placeholder="Ex.: Peça já" /></label>
+                      <label class="largo" id="arte-antes-campo" hidden>Antes (o problema do cliente)<input id="arte-antes" maxlength="90" /></label>
+                    </div>
+                    <button class="secundario" type="button" id="refazer-arte"><i class="fa-solid fa-rotate"></i> Refazer arte</button>
+                    <p class="nota" id="nota-arte">Refazer arte troca só o texto, o estilo e as cores, com a mesma foto: não gasta IA.</p>
+                  </div>
+                </details>
+              </div>
+            </div>
+            <div class="acoes-mesa">
+              <button class="principal" type="button" id="aprovar"><i class="fa-solid fa-check"></i> <span id="aprovar-texto">Aprovar</span></button>
+              <button class="secundario" type="button" id="descartar">Descartar</button>
+            </div>
+            <p class="nota" id="nota-mesa" hidden></p>
+          </div>
+          <div class="fio" id="fio" hidden></div>
         </div>
         <form class="composer" id="composer">
           <label class="anexar" for="anexo-post" title="Foto ou vídeo"><i class="fa-regular fa-image"></i></label>
           <input id="anexo-post" type="file" accept="image/jpeg,image/png,image/webp,video/mp4" hidden />
+          <button class="da-memoria" type="button" id="abrir-da-memoria" title="Mandar fotos da Memória da marca junto com a mensagem"><i class="fa-solid fa-brain"></i><span>Da memória</span></button>
           <textarea id="pedido" required minlength="2" placeholder="Descreva a publicação. Ex.: novidade da semana para os clientes"></textarea>
           <button class="principal" type="submit" id="enviar-chat">Gerar</button>
+          <div class="modo-composer" id="modo-composer" hidden><i class="fa-solid fa-wand-magic-sparkles"></i> Criar imagem <button type="button" id="sair-modo" title="Voltar a criar post">×</button></div>
+          <div class="chips-memoria" id="chips-memoria" hidden></div>
           <p class="nota" id="anexo-nota" hidden></p>
+          <div class="picker-memoria" id="picker-memoria" hidden>
+            <div class="picker-topo">
+              <strong>Fotos da memória</strong>
+              <button class="link-mini" type="button" id="picker-pronto">Pronto</button>
+            </div>
+            <p class="nota" id="picker-nota">Escolha até 3 fotos. Elas vão junto com a mensagem.</p>
+            <div class="picker-grade" id="picker-grade"></div>
+          </div>
         </form>
       </section>
       <aside class="lado">
         <div class="previa-topo">
-          <p class="secao">Prévia · <span class="canal-nome" id="canal-previa">Feed</span></p>
-          <button class="link-mini" type="button" id="ver-outro" hidden>Ver Story</button>
+          <p class="secao">Prévia · <span class="canal-nome" id="canal-aprovado">Feed</span></p>
+          <button class="link-mini" type="button" id="ver-outro-aprovado" hidden>Ver Story</button>
         </div>
         <div class="cartao-previa">
-          <div class="post" id="previa">
+          <div class="post" id="previa-aprovada">
             <div class="post-topo">
               <div class="avatar" id="avatar-previa">R</div>
               <div class="post-conta"><strong id="nome-previa">Minha marca</strong><span>Agora</span></div>
             </div>
-            <div class="vazio-foto" id="foto-previa"><i class="fa-regular fa-image"></i><span>A imagem aparece aqui</span></div>
-            <div class="faixa-memoria" id="faixa-memoria" hidden>
-              <img id="faixa-memoria-foto" alt="Foto da memória escolhida" />
-              <span id="faixa-memoria-texto">Foto da Memória da marca</span>
-              <button class="link-mini" type="button" id="faixa-memoria-trocar">Trocar foto</button>
-            </div>
-            <div class="editor-arte" id="editor-arte" hidden>
-              <p class="ideia-arte" id="ideia-arte"></p>
-              <p class="aviso-arte" id="aviso-arte" hidden></p>
-              <div class="campos-arte">
-                <label class="largo">Modelo da arte
-                  <select id="arte-modelo">
-                    <option value="faixa">Faixa (oferta, dia especial)</option>
-                    <option value="selo">Selo (novidade, dia, preço)</option>
-                    <option value="destaque">Destaque (produto, serviço)</option>
-                    <option value="antes_depois">Antes e depois (problema e solução)</option>
-                    <option value="tela_app">Imagem em destaque (moldura)</option>
-                    <option value="story_chamada">Chamada (convite direto)</option>
-                  </select>
-                </label>
-                <label class="largo">Título da arte<input id="arte-titulo" maxlength="60" /></label>
-                <label class="largo">Subtítulo<input id="arte-subtitulo" maxlength="90" placeholder="Opcional" /></label>
-                <label>Selo<input id="arte-selo" maxlength="18" placeholder="Ex.: Hoje" /></label>
-                <label>Chamada<input id="arte-chamada" maxlength="32" placeholder="Ex.: Peça já" /></label>
-                <label class="largo" id="arte-antes-campo" hidden>Antes (o problema do cliente)<input id="arte-antes" maxlength="90" /></label>
-              </div>
-              <button class="secundario" type="button" id="refazer-arte"><i class="fa-solid fa-rotate"></i> Refazer arte</button>
-              <p class="nota" id="nota-arte">Refazer arte troca só o texto e o modelo, com a mesma foto: não gasta IA.</p>
-            </div>
+            <div class="vazio-foto" id="foto-aprovada"><i class="fa-regular fa-circle-check"></i><span>Aprove um post no estúdio e ele aparece aqui, pronto para sair.</span></div>
             <div class="post-acoes" aria-hidden="true">
               <i class="fa-regular fa-heart"></i>
               <i class="fa-regular fa-comment"></i>
               <i class="fa-regular fa-paper-plane"></i>
             </div>
-            <textarea class="legenda" id="legenda-previa" rows="3" aria-label="Legenda do post" placeholder="A legenda aparece aqui depois que você gerar. Você pode escrever ou mudar o texto aqui mesmo."></textarea>
-            <button class="criar-foto" type="button" id="criar-foto"><i class="fa-solid fa-wand-magic-sparkles"></i><span id="criar-foto-texto">Criar foto com IA</span></button>
-            <p class="nota" id="nota-foto" hidden></p>
+            <textarea class="legenda" id="legenda-aprovada" rows="3" aria-label="Legenda do post aprovado" placeholder="A legenda do post aprovado aparece aqui. Você ainda pode mudar o texto."></textarea>
           </div>
           <button class="atalho" type="button" id="adicionar-projeto">Usar algo que já criei</button>
         </div>
@@ -1145,8 +1219,7 @@
           <div class="botoes-agenda">
             <button class="principal" type="button" id="criar-agora">Publicar agora</button>
             <button class="principal" type="button" id="agendar">Agendar</button>
-          </div>
-          <p class="nota" id="nota-agenda" role="status" aria-live="polite">Escolha o dia e o horário. Cancelar tira o post da fila.</p>
+          </div>          <p class="nota" id="nota-agenda" role="status" aria-live="polite">Escolha o dia e o horário. Cancelar tira o post da fila.</p>
           <div class="bloco-ia">
             <p class="secao">Deixar a IA preencher o dia</p>
             <p class="nota">A IA escreve o post com a Memória da marca, escolhe a foto, edita se precisar e monta a arte (feed e Story) até 3 horas antes do horário. Você vê na fila antes de sair.</p>
@@ -1274,22 +1347,15 @@
     <section id="pagina-projetos" class="pagina-projetos" hidden>
       <header class="topo-projetos">
         <button class="voltar" type="button" id="voltar-projetos">Voltar</button>
-        <h1 id="titulo-projetos">Projetos</h1>
+        <h1 id="titulo-projetos">Meus projetos</h1>
       </header>
-      <div id="escolha-projetos" class="escolha-projetos">
-        <button class="porta" type="button" id="ir-mais-projetos"><span>Mais projetos</span><small>Abre os quadros para criar anúncio ou foto.</small></button>
-        <button class="porta" type="button" id="ir-meus-projetos"><span>Meus projetos</span><small>A galeria do que você já gerou.</small></button>
-      </div>
-      <div id="mais-projetos" class="vista-projetos" hidden>
-        <div class="grade-capas" id="capas-projetos"></div>
-      </div>
-      <div id="meus-projetos" class="vista-projetos" hidden>
+      <div id="meus-projetos" class="vista-projetos">
         <div class="galeria" id="lista-projetos"></div>
       </div>
     </section>
 
     <section id="tarefa" hidden>
-      <button class="voltar" type="button" id="voltar">Escolher outra</button>
+      <button class="voltar" type="button" id="voltar">Voltar ao estúdio</button>
       <h1 id="titulo-tarefa">Ferramenta</h1>
       <p class="ajuda" id="ajuda-tarefa"></p>
       <form id="formulario">
@@ -1410,9 +1476,9 @@
       erro.hidden = true;
       resultado.hidden = true;
       spinner.hidden = true;
-      document.getElementById("pagina-projetos").hidden = true;
-      menu.hidden = true;
       tarefa.hidden = false;
+      tarefaAberta = true;
+      atualizarEstudio();
     }
 
     function resumoProjeto(dados) {
@@ -1474,10 +1540,12 @@
           <h3>Título</h3><p>${texto(dados.titulo_anuncio)}</p>
           <h3>Legenda</h3><p>${texto(dados.legenda_redes)}</p>
           <button class="copiar" type="button" id="copiar">Copiar texto</button>
-        </article>`;
+        </article>
+        <p class="nota">O texto também foi para o rascunho do estúdio. Clique em Voltar ao estúdio para ajustar e aprovar.</p>`;
         resultado.innerHTML = corpo;
         resultado.hidden = false;
         salvarProjeto(dados);
+        escreverLegenda(anuncio);
         document.getElementById("copiar").addEventListener("click", async () => {
           await navigator.clipboard.writeText(anuncio);
           const botao = document.getElementById("copiar");
@@ -1491,43 +1559,18 @@
       salvarProjeto(dados);
     }
 
-    let veioDeProjetos = false;
-
-    const CAPAS = [
-      { acao: "texto", nome: "Anúncio", imagem: "/quadros/anuncio.jpg" },
-      { acao: "foto", nome: "Foto", imagem: "/quadros/foto.jpg" },
-    ];
-
-    function desenharCapas() {
-      const lugar = document.getElementById("capas-projetos");
-      if (lugar.childElementCount) return;
-      CAPAS.forEach((capa) => {
-        const botao = document.createElement("button");
-        botao.type = "button";
-        botao.className = "capa";
-        const imagem = document.createElement("img");
-        imagem.src = capa.imagem;
-        imagem.alt = "";
-        const nome = document.createElement("span");
-        nome.textContent = capa.nome;
-        botao.append(imagem, nome);
-        botao.addEventListener("click", () => {
-          veioDeProjetos = true;
-          abrir(capa.acao);
-        });
-        lugar.appendChild(botao);
-      });
-    }
+    let tarefaAberta = false;
 
     function colocarNaPrevia(projeto) {
-      imagemProjeto = projeto.video_url ? "" : (projeto.imagem_url || "");
-      videoProjeto = projeto.video_url || "";
-      origemFoto = "projeto";
-      memoriaPrevia = null;
-      artePrevia = null;
-      escreverLegenda(projeto.legenda ? projeto.titulo + "\n\n" + projeto.legenda : projeto.titulo);
-      if (videoProjeto) colocarMidiaPrevia(videoProjeto, "video");
-      else if (imagemProjeto) colocarMidiaPrevia(imagemProjeto, "foto");
+      aprovado = {
+        legenda: projeto.legenda ? projeto.titulo + "\n\n" + projeto.legenda : projeto.titulo,
+        imagem_url: projeto.video_url ? "" : (projeto.imagem_url || ""),
+        video_url: projeto.video_url || "",
+        foto_id: null,
+        gancho: "",
+        plano_arte: null,
+      };
+      desenharAprovado();
       document.getElementById("nota-agenda").textContent = "Projeto na prévia. Escolha o dia e o horário.";
       fecharPaginaProjetos();
     }
@@ -1569,29 +1612,19 @@
       return peca;
     }
 
-    function vistaProjetos(qual) {
-      document.getElementById("escolha-projetos").hidden = qual !== "escolha";
-      document.getElementById("mais-projetos").hidden = qual !== "mais";
-      document.getElementById("meus-projetos").hidden = qual !== "meus";
-      const titulos = { escolha: "Projetos", mais: "Mais projetos", meus: "Meus projetos" };
-      document.getElementById("titulo-projetos").textContent = titulos[qual];
-    }
-
     function fecharPaginaProjetos() {
       document.getElementById("pagina-projetos").hidden = true;
       document.getElementById("menu").hidden = false;
     }
 
-    function abrirPaginaProjetos(qual) {
+    function abrirPaginaProjetos() {
       document.getElementById("menu").hidden = true;
-      document.getElementById("tarefa").hidden = true;
       document.getElementById("pagina-projetos").hidden = false;
-      vistaProjetos(qual);
       window.scrollTo(0, 0);
     }
 
     async function mostrarGaleria() {
-      abrirPaginaProjetos("meus");
+      abrirPaginaProjetos();
       const lista = document.getElementById("lista-projetos");
       lista.innerHTML = "";
       const projetos = await listarProjetos();
@@ -1606,26 +1639,10 @@
     }
 
     document.getElementById("abrir-projetos").addEventListener("click", () => {
-      abrirPaginaProjetos("escolha");
-    });
-
-    document.getElementById("ir-mais-projetos").addEventListener("click", () => {
-      desenharCapas();
-      vistaProjetos("mais");
-    });
-
-    document.getElementById("ir-meus-projetos").addEventListener("click", () => {
       mostrarGaleria().catch(() => {});
     });
 
-    document.getElementById("voltar-projetos").addEventListener("click", () => {
-      const escolha = document.getElementById("escolha-projetos");
-      if (escolha.hidden) {
-        vistaProjetos("escolha");
-        return;
-      }
-      fecharPaginaProjetos();
-    });
+    document.getElementById("voltar-projetos").addEventListener("click", fecharPaginaProjetos);
 
     document.getElementById("adicionar-projeto").addEventListener("click", () => {
       mostrarGaleria().catch(() => {});
@@ -1633,13 +1650,8 @@
 
     document.getElementById("voltar").addEventListener("click", () => {
       tarefa.hidden = true;
-      if (veioDeProjetos) {
-        veioDeProjetos = false;
-        desenharCapas();
-        abrirPaginaProjetos("mais");
-        return;
-      }
-      menu.hidden = false;
+      tarefaAberta = false;
+      atualizarEstudio();
     });
 
     async function lerFotoReferencia() {
@@ -1865,6 +1877,7 @@
         memoriaPrevia = null;
         artePrevia = null;
         if (document.getElementById("legenda-previa")) mostrarPrevia(fotoPronta, imagemProjeto);
+        falarCriacao("assistente", "A foto também foi para o rascunho do estúdio. Clique em Voltar ao estúdio para ajustar e aprovar.");
       } catch (falha) {
         window.clearTimeout(pulsoMiniatura);
         const demorou = falha.name === "TimeoutError" || falha.name === "AbortError";
@@ -1997,7 +2010,6 @@
         lista.appendChild(linha);
       });
       if (clima !== undefined) nota.textContent = clima && clima !== "ok" ? clima : "";
-      desenharIdeias();
     }
 
     async function carregarSugestoes(atualizar) {
@@ -2074,6 +2086,7 @@
       desenharListaMarcas();
       carregarSugestoes(false).catch(() => {});
       carregarResumo();
+      carregarRascunho();
     }
 
     function desenharListaMarcas() {
@@ -2126,12 +2139,13 @@
     }
 
     function falar(quem, mensagem) {
-      if (!document.getElementById("resumo-dia").hidden) mostrarResumoDia(false);
       const bloco = document.createElement("div");
       bloco.className = `balao ${quem}`;
       bloco.textContent = mensagem;
       fio.appendChild(bloco);
+      atualizarEstudio();
       fio.scrollTop = fio.scrollHeight;
+      return bloco;
     }
 
     function diaIso(data) {
@@ -2241,6 +2255,15 @@
             editar.textContent = "Editar arte";
             editar.addEventListener("click", () => abrirArteFila(item, corpo, editar));
             corpo.append(editar);
+          }
+          if (item.arte && item.pode_trocar_foto) {
+            const ajustar = document.createElement("button");
+            ajustar.type = "button";
+            ajustar.className = "trocar-foto";
+            ajustar.textContent = "Ajustar";
+            ajustar.title = "Abrir este post na prévia e pedir ajustes no chat";
+            ajustar.addEventListener("click", () => abrirFilaComoRascunho(item, ajustar));
+            corpo.append(ajustar);
           }
           const escolha = document.createElement("select");
           escolha.className = "formato-fila";
@@ -2510,9 +2533,12 @@
         const vazio = document.createElement("div");
         vazio.id = "foto-previa";
         vazio.className = "vazio-foto";
-        vazio.innerHTML = '<i class="fa-regular fa-image"></i><span>A imagem aparece aqui</span>';
+        vazio.innerHTML = gerando
+          ? '<span class="spinner"></span><span>Criando o post...</span>'
+          : '<i class="fa-regular fa-image"></i><span>A imagem aparece aqui</span>';
         lugar.replaceWith(vazio);
         mostrarBotaoFoto();
+        atualizarEstudio();
         return;
       }
       const midia = tipo === "video" ? document.createElement("video") : document.createElement("img");
@@ -2527,6 +2553,7 @@
       }
       lugar.replaceWith(midia);
       mostrarBotaoFoto();
+      atualizarEstudio();
     }
 
     const NOMES_MODELOS = {
@@ -2536,6 +2563,13 @@
       antes_depois: "Antes e depois",
       tela_app: "Imagem em destaque",
       story_chamada: "Chamada",
+      alerta: "Alerta",
+      etiqueta: "Etiqueta",
+      carimbo: "Carimbo",
+      neon: "Neon",
+      poster: "Pôster",
+      minimal: "Minimalista",
+      livre: "Só a imagem",
     };
     const CAMPOS_ARTE = [
       ["arte-titulo", "titulo_arte"],
@@ -2557,7 +2591,9 @@
     function desenharEditorArte() {
       const editor = document.getElementById("editor-arte");
       editor.hidden = !arteAtiva();
+      document.getElementById("detalhes-arte").hidden = editor.hidden;
       if (editor.hidden) return;
+      document.getElementById("arte-paleta").value = artePrevia.paleta || "marca";
       const ideia = document.getElementById("ideia-arte");
       ideia.textContent = "";
       ideia.append(elemento("strong", "", "Ideia da IA: "), document.createTextNode(artePrevia.ideia || "arte da marca"));
@@ -2570,18 +2606,20 @@
       document.getElementById("arte-antes-campo").hidden = artePrevia.modelo !== "antes_depois";
       document.getElementById("refazer-arte").hidden = !imagemProjeto;
       document.getElementById("nota-arte").textContent = imagemProjeto
-        ? "Refazer arte troca só o texto e o modelo, com a mesma foto: não gasta IA."
+        ? "Refazer arte troca só o texto, o estilo e as cores, com a mesma foto: não gasta IA."
         : "A foto ainda não foi feita: clique em Criar foto com IA, escolha uma da memória ou agende (a IA faz até 3 horas antes).";
     }
 
     function arteDoEditor() {
       if (!artePrevia) return null;
-      const plano = { ...artePrevia, modelo: document.getElementById("arte-modelo").value };
+      const paleta = document.getElementById("arte-paleta").value;
+      const plano = { ...artePrevia, modelo: document.getElementById("arte-modelo").value, paleta };
+      if (paleta !== "livre") plano.cor_livre = "";
       CAMPOS_ARTE.forEach(([id, campo]) => { plano[campo] = document.getElementById(id).value.trim(); });
       return plano;
     }
 
-    function usarArte(dados) {
+    function usarArte(dados, descricao) {
       artePrevia = dados.plano_arte || null;
       if (artePrevia && dados.foto_url) {
         artePrevia.feed_url = dados.foto_url;
@@ -2596,6 +2634,7 @@
         desenharFaixaMemoria();
       }
       desenharEditorArte();
+      if (descricao && artePrevia) salvarRascunho(descricao, true).catch(() => {});
     }
 
     function planoParaEnviar() {
@@ -2604,7 +2643,7 @@
 
     function mostrarBotaoFoto() {
       const semMidia = !imagemProjeto && !videoProjeto;
-      document.getElementById("criar-foto").hidden = !semMidia;
+      document.getElementById("criar-foto").hidden = !semMidia || gerando;
       if (!semMidia) document.getElementById("nota-foto").hidden = true;
       desenharEditorArte();
     }
@@ -2626,6 +2665,10 @@
     }
 
     let vistaPrevia = "feed";
+    let vistaAprovada = "feed";
+    let gerando = false;
+    let modoImagem = false;
+    let aprovado = null;
 
     function aplicarVista() {
       const vista = formatoAgenda === "ambos" ? vistaPrevia : formatoAgenda;
@@ -2640,16 +2683,7 @@
         const alvo = urlArteDaVista();
         if (atual && atual.tagName === "IMG" && atual.getAttribute("src") !== alvo) colocarMidiaPrevia(alvo, "foto");
       }
-    }
-
-    function textoDoPost() {
-      const escrito = document.getElementById("legenda-previa").value.trim();
-      if (escrito) {
-        const primeira = escrito.split("\n").find((linha) => linha.trim()) || escrito;
-        return { titulo: primeira.trim().slice(0, 300), legenda: escrito };
-      }
-      if (imagemProjeto || videoProjeto) return { titulo: "Publicação", legenda: "Publicação" };
-      return null;
+      desenharVersoes();
     }
 
     function redeDoTexto() {
@@ -2716,12 +2750,16 @@
       nota.textContent = mensagem || "";
     }
 
-    async function criarPost() {
-      const textoPedido = pedidoCampo.value.trim();
+    async function criarPost(textoForcado, jaFalou) {
+      const textoPedido = String(textoForcado || pedidoCampo.value).trim();
       if (textoPedido.length < 2) return;
-      falar("pessoa", textoPedido);
+      const escolhidas = fotosEscolhidas.slice();
+      if (!jaFalou) falar("pessoa", textoComFotos(textoPedido, escolhidas));
       pedidoCampo.value = "";
-      const corpo = corpoGerar(textoPedido);
+      limparFotosEscolhidas();
+      const corpo = corpoGerar(textoPedido + textoDasEscolhidas(escolhidas));
+      gerando = true;
+      if (!imagemProjeto && !videoProjeto) colocarMidiaPrevia("", "foto");
       falar("assistente", "Estou montando o post de " + lerMarca().nome + " para " + nomeRede(redeAgenda) + ".");
       const botao = document.getElementById("enviar-chat");
       botao.disabled = true;
@@ -2771,33 +2809,562 @@
         }
         if (dados.aviso_midia) partes.push(dados.aviso_midia);
         if (artePrevia && artePrevia.aviso) partes.push(artePrevia.aviso);
-        falar("assistente", (partes.length ? partes.join(" ") + " " : "") + "O post está na prévia ao lado. Mude o texto ou a arte lá se quiser, depois publique agora ou escolha o dia para agendar.");
+        await criarRascunhoDoEstado("Primeira versão").catch(() => {});
+        falar("assistente", (partes.length ? partes.join(" ") + " " : "") + "O rascunho está aqui no estúdio. Para mudar, é só pedir (ex.: faz em amarelo, troca o título, coloca o print do app no celular): eu ajusto este mesmo post. Quando gostar, clique em Aprovar.");
       } catch (falha) {
         falar("assistente", falha.message || "Não foi possível criar agora.");
+      } finally {
+        botao.disabled = false;
+        gerando = false;
+        if (!imagemProjeto && !videoProjeto) colocarMidiaPrevia("", "foto");
+        atualizarEstudio();
+      }
+    }
+
+    async function criarImagem(textoPedido) {
+      const escolhidas = fotosEscolhidas.slice();
+      const anexo = origemFoto === "anexo" && imagemProjeto ? imagemProjeto : "";
+      falar("pessoa", textoComFotos(textoPedido, escolhidas) + (anexo ? "\n(com a foto anexada)" : ""));
+      pedidoCampo.value = "";
+      limparFotosEscolhidas();
+      gerando = true;
+      if (!anexo) colocarMidiaPrevia("", "foto");
+      const fala = falar("assistente", "Criando a imagem... (leva até 1 minuto)");
+      const botao = document.getElementById("enviar-chat");
+      botao.disabled = true;
+      try {
+        const resposta = await fetch("/rascunho/imagem", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(300000),
+          body: JSON.stringify({
+            marca_id: marcaAtual.id || 0,
+            descricao: textoPedido.slice(0, 1500),
+            fotos_ids: escolhidas.map((foto) => foto.id),
+            anexo_url: anexo,
+            formato: formatoAgenda,
+          }),
+        });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        modoImagem = false;
+        aplicarRascunho(dados.rascunho);
+        fala.textContent = "Pronto, a imagem está no rascunho. Quer um texto por cima? É só pedir (ex.: coloca o título Promoção de terça em estilo alerta). Para a legenda, peça: escreve a legenda. Quando gostar, clique em Aprovar.";
+      } catch (falha) {
+        const demorou = falha.name === "TimeoutError" || falha.name === "AbortError";
+        fala.textContent = demorou ? "A imagem demorou demais. Tente de novo." : (falha.message || "Não consegui criar a imagem agora.");
+      } finally {
+        botao.disabled = false;
+        gerando = false;
+        if (!imagemProjeto && !videoProjeto) colocarMidiaPrevia("", "foto");
+        atualizarTopoConversa();
+      }
+    }
+
+    function temConteudoNaMesa() {
+      return Boolean(rascunhoAtual || gerando || imagemProjeto || videoProjeto || document.getElementById("legenda-previa").value.trim());
+    }
+
+    function atualizarEstudio() {
+      const temBaloes = Boolean(fio.querySelector(".balao"));
+      const mesa = !tarefaAberta && temConteudoNaMesa();
+      document.getElementById("mesa-rascunho").hidden = !mesa;
+      document.getElementById("vazio-estudio").hidden = tarefaAberta || mesa || temBaloes;
+      document.getElementById("estudio-tarefa").hidden = !tarefaAberta;
+      fio.hidden = tarefaAberta || (!mesa && !temBaloes);
+      document.getElementById("area-estudio").classList.toggle("com-mesa", mesa);
+      document.getElementById("composer").hidden = tarefaAberta;
+      document.getElementById("novo-post").hidden = !(mesa || temBaloes);
+      document.getElementById("modo-composer").hidden = !modoImagem || Boolean(rascunhoAtual);
+      document.getElementById("aprovar-texto").textContent = rascunhoAtual && rascunhoAtual.agendamento_id ? "Salvar no post da fila" : "Aprovar";
+    }
+
+    function usarAtalho(qual) {
+      if (qual === "imagem") {
+        if (rascunhoAtual) iniciarNovoPost(true);
+        modoImagem = true;
+        atualizarTopoConversa();
+        pedidoCampo.focus();
+        return;
+      }
+      abrir(qual);
+    }
+
+    function urlAprovada() {
+      if (!aprovado || aprovado.video_url) return aprovado ? aprovado.video_url : "";
+      const plano = aprovado.plano_arte;
+      const vista = formatoAgenda === "ambos" ? vistaAprovada : formatoAgenda;
+      if (plano && aprovado.imagem_url === plano.feed_url && vista === "story" && plano.story_url) return plano.story_url;
+      return aprovado.imagem_url;
+    }
+
+    function desenharAprovado() {
+      const lugar = document.getElementById("foto-aprovada");
+      const legenda = document.getElementById("legenda-aprovada");
+      const vista = formatoAgenda === "ambos" ? vistaAprovada : formatoAgenda;
+      const story = vista === "story";
+      document.getElementById("previa-aprovada").classList.toggle("modo-story", story);
+      document.getElementById("canal-aprovado").textContent = story ? "Story" : "Feed";
+      const outro = document.getElementById("ver-outro-aprovado");
+      outro.hidden = formatoAgenda !== "ambos" || !aprovado;
+      outro.textContent = story ? "Ver Feed" : "Ver Story";
+      const url = urlAprovada();
+      let novo;
+      if (!url) {
+        novo = document.createElement("div");
+        novo.className = "vazio-foto";
+        novo.innerHTML = '<i class="fa-regular fa-circle-check"></i><span>Aprove um post no estúdio e ele aparece aqui, pronto para sair.</span>';
+      } else if (aprovado.video_url) {
+        novo = document.createElement("video");
+        novo.src = url;
+        novo.controls = true;
+        novo.muted = true;
+      } else {
+        novo = document.createElement("img");
+        novo.src = url;
+        novo.alt = "Post aprovado";
+        if (aprovado.plano_arte && aprovado.imagem_url === aprovado.plano_arte.feed_url) novo.className = "arte";
+      }
+      novo.id = "foto-aprovada";
+      lugar.replaceWith(novo);
+      if (document.activeElement !== legenda) legenda.value = aprovado ? aprovado.legenda || "" : "";
+      legenda.style.height = "auto";
+      legenda.style.height = legenda.scrollHeight + "px";
+    }
+
+    async function aprovarRascunho() {
+      const nota = document.getElementById("nota-mesa");
+      const botao = document.getElementById("aprovar");
+      const legenda = document.getElementById("legenda-previa").value.trim();
+      nota.hidden = true;
+      if (!legenda && !imagemProjeto && !videoProjeto) {
+        nota.textContent = "Ainda não tem nada para aprovar: escreva a legenda ou crie a imagem.";
+        nota.hidden = false;
+        return;
+      }
+      botao.disabled = true;
+      try {
+        if (rascunhoAtual) await salvarRascunho("", false).catch(() => {});
+        if (rascunhoAtual && rascunhoAtual.agendamento_id) {
+          const resposta = await fetch(`/rascunho/${rascunhoAtual.id}/salvar-fila`, { method: "POST" });
+          const dados = await lerResposta(resposta);
+          if (!resposta.ok) throw new Error(mensagemErro(dados));
+          await carregarAgenda().catch(() => {});
+          avisarAgenda(`Post da fila atualizado: ${diaCurto(dados.dia)} às ${dados.hora}.`);
+          falar("assistente", `Salvei no post da fila de ${diaCurto(dados.dia)} às ${dados.hora}. Ele sai assim no horário marcado.`);
+          return;
+        }
+        const memoria = dadosMemoriaPost();
+        aprovado = {
+          legenda,
+          imagem_url: imagemProjeto || "",
+          video_url: videoProjeto || "",
+          foto_id: memoria.foto_id || null,
+          gancho: memoria.gancho || "",
+          plano_arte: planoParaEnviar(),
+        };
+        vistaAprovada = vistaPrevia;
+        desenharAprovado();
+        falar("assistente", "Aprovado! O post foi para a Prévia à direita. Agora é só clicar em Publicar agora ou escolher o dia e Agendar.");
+        document.getElementById("previa-aprovada").scrollIntoView({ behavior: "smooth", block: "nearest" });
+      } catch (falha) {
+        nota.textContent = falha.message || "Não consegui aprovar agora.";
+        nota.hidden = false;
       } finally {
         botao.disabled = false;
       }
     }
 
-    const ICONES_IDEIA = {
-      calor: "fa-solid fa-sun",
-      chuva: "fa-solid fa-cloud-rain",
-      frio: "fa-regular fa-snowflake",
-      resultado: "fa-solid fa-chart-simple",
-      convite: "fa-solid fa-wand-magic-sparkles",
-    };
+    let rascunhoAtual = null;
+    let pedidoRascunho = 0;
+    let versaoEscolhida = 0;
+    let fotosEscolhidas = [];
+    const LIMITE_ESCOLHIDAS = 3;
 
-    function mostrarResumoDia(mostrar) {
-      document.getElementById("resumo-dia").hidden = !mostrar;
-      document.getElementById("voltar-resumo").hidden = mostrar;
-      fio.classList.toggle("com-resumo", mostrar);
+    function textoComFotos(textoPedido, escolhidas) {
+      if (!escolhidas.length) return textoPedido;
+      return textoPedido + "\nFotos da memória: " + escolhidas.map((foto) => foto.rotulo).join("; ");
     }
 
-    function quandoPost(item) {
-      const hoje = resumoAtual ? resumoAtual.hoje : diaIso(new Date());
-      const amanha = resumoAtual ? resumoAtual.amanha : "";
-      const dia = item.dia === hoje ? "Hoje" : item.dia === amanha ? "Amanhã" : diaCurto(item.dia);
-      return `${dia} · ${item.hora}`;
+    function textoDasEscolhidas(escolhidas) {
+      if (!escolhidas.length) return "";
+      return " Use no post estas fotos da Memória da marca (ids para foto_base_id): "
+        + escolhidas.map((foto) => `[${foto.id}] ${foto.rotulo}`).join("; ");
+    }
+
+    function atualizarTopoConversa() {
+      const titulo = document.getElementById("titulo-conversa");
+      const enviarChat = document.getElementById("enviar-chat");
+      if (rascunhoAtual) {
+        titulo.textContent = rascunhoAtual.agendamento_id ? "Ajustando um post da fila" : "Ajustando o rascunho";
+        enviarChat.textContent = "Ajustar";
+        pedidoCampo.placeholder = "Peça um ajuste neste post. Ex.: faz em amarelo; troca o título para Hoje tem; usa um selo de alerta";
+      } else if (modoImagem) {
+        titulo.textContent = "Criar imagem";
+        enviarChat.textContent = "Criar imagem";
+        pedidoCampo.placeholder = "Descreva a imagem. Ex.: uma caipirinha no balcão ao pôr do sol. Para partir de uma foto sua, toque em Da memória ou no ícone de foto.";
+      } else {
+        titulo.textContent = "Estúdio";
+        enviarChat.textContent = "Gerar";
+        pedidoCampo.placeholder = "Descreva a publicação. Ex.: promoção de terça para os clientes";
+      }
+      atualizarEstudio();
+    }
+
+    function marcarFormato(valor) {
+      formatoAgenda = ["feed", "story", "ambos"].includes(valor) ? valor : "feed";
+      document.querySelectorAll("[data-formato-agenda]").forEach((item) => {
+        item.classList.toggle("ativo", item.dataset.formatoAgenda === formatoAgenda);
+      });
+      aplicarVista();
+    }
+
+    function aplicarRascunho(dados) {
+      rascunhoAtual = dados || null;
+      versaoEscolhida = 0;
+      if (rascunhoAtual) {
+        escreverLegenda(rascunhoAtual.legenda || "");
+        artePrevia = rascunhoAtual.plano_arte ? { ...rascunhoAtual.plano_arte } : null;
+        if (!memoriaPrevia) memoriaPrevia = { foto_id: null, gancho: "", cena: "", referencia_id: null, angulo: "", legenda: "" };
+        memoriaPrevia.gancho = rascunhoAtual.gancho || memoriaPrevia.gancho || "";
+        memoriaPrevia.cena = rascunhoAtual.cena || memoriaPrevia.cena || "";
+        memoriaPrevia.legenda = rascunhoAtual.legenda || "";
+        memoriaPrevia.foto_id = artePrevia ? artePrevia.foto_base_id || null : null;
+        if (artePrevia && artePrevia.feed_url) {
+          imagemProjeto = artePrevia.feed_url;
+          videoProjeto = "";
+          origemFoto = "arte";
+        } else if (!["anexo", "projeto"].includes(origemFoto)) {
+          imagemProjeto = "";
+          videoProjeto = "";
+          origemFoto = artePrevia ? "arte" : "";
+        }
+        if (formatoAgenda !== rascunhoAtual.formato) vistaPrevia = "feed";
+        marcarFormato(rascunhoAtual.formato);
+        if (videoProjeto) colocarMidiaPrevia(videoProjeto, "video");
+        else colocarMidiaPrevia(imagemProjeto && artePrevia && imagemProjeto === artePrevia.feed_url ? urlArteDaVista() : imagemProjeto, "foto");
+        desenharFaixaMemoria();
+        desenharEditorArte();
+      }
+      desenharVersoes();
+      atualizarTopoConversa();
+    }
+
+    function limparPrevia() {
+      rascunhoAtual = null;
+      versaoEscolhida = 0;
+      artePrevia = null;
+      memoriaPrevia = null;
+      imagemProjeto = "";
+      videoProjeto = "";
+      origemFoto = "";
+      escreverLegenda("");
+      colocarMidiaPrevia("", "foto");
+      marcarAnexo("");
+      desenharFaixaMemoria();
+      desenharEditorArte();
+      desenharVersoes();
+      atualizarTopoConversa();
+    }
+
+    function fecharRascunhoNoServidor(registro) {
+      if (!registro) return;
+      fetch(`/rascunho/${registro.id}/fechar`, { method: "POST" }).catch(() => {});
+    }
+
+    function iniciarNovoPost(manterConversa) {
+      fecharRascunhoNoServidor(rascunhoAtual);
+      limparPrevia();
+      limparFotosEscolhidas();
+      if (!manterConversa) {
+        fio.querySelectorAll(".balao").forEach((bloco) => bloco.remove());
+        modoImagem = false;
+        tarefa.hidden = true;
+        tarefaAberta = false;
+        atualizarTopoConversa();
+      }
+    }
+
+    function corpoRascunho(descricao, novaVersao) {
+      return {
+        legenda: document.getElementById("legenda-previa").value.trim().slice(0, 5000),
+        plano_arte: artePrevia ? { ...artePrevia } : null,
+        formato: formatoAgenda,
+        descricao: (descricao || "").slice(0, 200),
+        nova_versao: Boolean(novaVersao),
+      };
+    }
+
+    async function criarRascunhoDoEstado(descricao) {
+      const corpo = corpoRascunho(descricao, true);
+      if (!corpo.legenda && !corpo.plano_arte) return;
+      const resposta = await fetch("/rascunho", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          marca_id: marcaAtual.id || 0,
+          legenda: corpo.legenda,
+          plano_arte: corpo.plano_arte,
+          formato: corpo.formato,
+          cena: memoriaPrevia ? (memoriaPrevia.cena || "").slice(0, 800) : "",
+          gancho: memoriaPrevia ? (memoriaPrevia.gancho || "").slice(0, 80) : "",
+          descricao: corpo.descricao,
+        }),
+      });
+      const dados = await lerResposta(resposta);
+      if (!resposta.ok) throw new Error(mensagemErro(dados));
+      rascunhoAtual = dados.rascunho || null;
+      desenharVersoes();
+      atualizarTopoConversa();
+    }
+
+    async function salvarRascunho(descricao, novaVersao) {
+      if (!rascunhoAtual) {
+        if (novaVersao) await criarRascunhoDoEstado(descricao);
+        return;
+      }
+      const resposta = await fetch("/rascunho/" + rascunhoAtual.id, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(corpoRascunho(descricao, novaVersao)),
+      });
+      const dados = await lerResposta(resposta);
+      if (resposta.status === 404) {
+        rascunhoAtual = null;
+        if (novaVersao) await criarRascunhoDoEstado(descricao);
+        atualizarTopoConversa();
+        return;
+      }
+      if (!resposta.ok) throw new Error(mensagemErro(dados));
+      rascunhoAtual = dados.rascunho || rascunhoAtual;
+      desenharVersoes();
+    }
+
+    async function carregarRascunho() {
+      const marcaId = marcaAtual.id || 0;
+      if (rascunhoAtual && rascunhoAtual.marca_id === marcaId) return;
+      const numero = ++pedidoRascunho;
+      if (rascunhoAtual) limparPrevia();
+      try {
+        const resposta = await fetch("/rascunho/atual?marca_id=" + marcaId);
+        const dados = await lerResposta(resposta);
+        if (numero !== pedidoRascunho || !resposta.ok || (marcaAtual.id || 0) !== marcaId) return;
+        if (dados.rascunho) aplicarRascunho(dados.rascunho);
+      } catch { /* sem rascunho guardado: a prévia começa vazia */ }
+    }
+
+    async function ajustarRascunho(textoPedido) {
+      const escolhidas = fotosEscolhidas.slice();
+      falar("pessoa", textoComFotos(textoPedido, escolhidas));
+      pedidoCampo.value = "";
+      limparFotosEscolhidas();
+      const fala = falar("assistente", "Ajustando este post... (mudança na foto pode levar até 1 minuto)");
+      const botao = document.getElementById("enviar-chat");
+      botao.disabled = true;
+      const alvo = rascunhoAtual;
+      try {
+        await salvarRascunho("", false).catch(() => {});
+        if (!rascunhoAtual) {
+          fala.remove();
+          await criarPost(textoPedido, true);
+          return;
+        }
+        const resposta = await fetch(`/rascunho/${alvo.id}/ajustar`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(300000),
+          body: JSON.stringify({ mensagem: textoPedido.slice(0, 2000), fotos_ids: escolhidas.map((foto) => foto.id) }),
+        });
+        const dados = await lerResposta(resposta);
+        if (resposta.status === 404) {
+          fala.remove();
+          limparPrevia();
+          await criarPost(textoPedido, true);
+          return;
+        }
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        if (dados.novo) {
+          fala.textContent = dados.resposta || "Certo, vou começar um post novo.";
+          iniciarNovoPost(true);
+          await criarPost(textoPedido, true);
+          return;
+        }
+        fala.textContent = dados.resposta || "Pronto.";
+        if (dados.rascunho && rascunhoAtual && rascunhoAtual.id === alvo.id) aplicarRascunho(dados.rascunho);
+      } catch (falha) {
+        const demorou = falha.name === "TimeoutError" || falha.name === "AbortError";
+        fala.textContent = demorou ? "O ajuste demorou demais. Tente de novo." : (falha.message || "Não consegui ajustar agora.");
+      } finally {
+        botao.disabled = false;
+      }
+    }
+
+    function enviarChat() {
+      const textoPedido = pedidoCampo.value.trim();
+      if (textoPedido.length < 2) return;
+      if (rascunhoAtual) ajustarRascunho(textoPedido);
+      else if (modoImagem) criarImagem(textoPedido);
+      else criarPost(textoPedido);
+    }
+
+    function desenharVersoes() {
+      const bloco = document.getElementById("versoes-rascunho");
+      const faixa = document.getElementById("faixa-versoes");
+      const painel = document.getElementById("versao-escolhida");
+      const versoes = rascunhoAtual ? rascunhoAtual.versoes || [] : [];
+      bloco.hidden = versoes.length < 2;
+      faixa.innerHTML = "";
+      if (bloco.hidden) return;
+      const story = (formatoAgenda === "ambos" ? vistaPrevia : formatoAgenda) === "story";
+      versoes.slice().reverse().forEach((versao) => {
+        const botao = document.createElement("button");
+        botao.type = "button";
+        botao.className = (versao.n === rascunhoAtual.versao_atual ? "atual" : "") + (versao.n === versaoEscolhida ? " escolhida" : "");
+        botao.title = `Versão ${versao.n}: ${versao.descricao_mudanca || ""}`;
+        const url = (story && versao.story_url) || versao.feed_url;
+        if (url) {
+          const imagem = document.createElement("img");
+          imagem.src = url;
+          imagem.alt = "";
+          imagem.loading = "lazy";
+          botao.append(imagem);
+        }
+        botao.append(elemento("small", "", String(versao.n)));
+        botao.addEventListener("click", () => {
+          versaoEscolhida = versaoEscolhida === versao.n ? 0 : versao.n;
+          document.getElementById("nota-versoes").hidden = true;
+          desenharVersoes();
+        });
+        faixa.append(botao);
+      });
+      const escolhida = versoes.find((versao) => versao.n === versaoEscolhida);
+      painel.hidden = !escolhida;
+      if (!escolhida) return;
+      const atual = escolhida.n === rascunhoAtual.versao_atual;
+      document.getElementById("versao-texto").textContent = `Versão ${escolhida.n}${atual ? " (a atual)" : ""} · ${escolhida.descricao_mudanca || "sem descrição"}`;
+      document.getElementById("voltar-versao").hidden = atual;
+    }
+
+    function limparFotosEscolhidas() {
+      fotosEscolhidas = [];
+      desenharChipsMemoria();
+      document.getElementById("picker-memoria").hidden = true;
+      document.getElementById("abrir-da-memoria").classList.remove("ativo");
+    }
+
+    function desenharChipsMemoria() {
+      const lugar = document.getElementById("chips-memoria");
+      lugar.innerHTML = "";
+      lugar.hidden = !fotosEscolhidas.length;
+      fotosEscolhidas.forEach((foto) => {
+        const chip = elemento("span", "chip-foto");
+        const imagem = document.createElement("img");
+        imagem.src = foto.miniatura_url;
+        imagem.alt = "";
+        const tirar = elemento("button", "", "×");
+        tirar.type = "button";
+        tirar.title = "Tirar esta foto da mensagem";
+        tirar.addEventListener("click", () => {
+          fotosEscolhidas = fotosEscolhidas.filter((outra) => outra.id !== foto.id);
+          desenharChipsMemoria();
+          desenharPickerMemoria();
+        });
+        chip.append(imagem, elemento("span", "", foto.rotulo), tirar);
+        lugar.append(chip);
+      });
+    }
+
+    let fotosPicker = [];
+
+    function desenharPickerMemoria() {
+      const grade = document.getElementById("picker-grade");
+      grade.innerHTML = "";
+      fotosPicker.forEach((foto) => {
+        const botao = document.createElement("button");
+        botao.type = "button";
+        const escolhida = fotosEscolhidas.some((outra) => outra.id === foto.id);
+        if (escolhida) botao.className = "escolhida";
+        const imagem = document.createElement("img");
+        imagem.src = foto.miniatura_url;
+        imagem.alt = "";
+        imagem.loading = "lazy";
+        const descricao = (foto.descricao || "").trim();
+        botao.title = descricao || nomeTipoFoto(foto.tipo);
+        botao.append(imagem, elemento("span", "", descricao ? descricao.slice(0, 60) : nomeTipoFoto(foto.tipo)));
+        botao.addEventListener("click", () => {
+          const nota = document.getElementById("picker-nota");
+          if (escolhida) {
+            fotosEscolhidas = fotosEscolhidas.filter((outra) => outra.id !== foto.id);
+          } else if (fotosEscolhidas.length >= LIMITE_ESCOLHIDAS) {
+            nota.textContent = `Dá para mandar até ${LIMITE_ESCOLHIDAS} fotos por mensagem.`;
+            return;
+          } else {
+            const rotulo = descricao ? descricao.split(/[.;]/)[0].slice(0, 40) : nomeTipoFoto(foto.tipo);
+            fotosEscolhidas.push({ id: foto.id, miniatura_url: foto.miniatura_url, rotulo });
+          }
+          nota.textContent = "Escolha até 3 fotos. Elas vão junto com a mensagem.";
+          desenharChipsMemoria();
+          desenharPickerMemoria();
+        });
+        grade.append(botao);
+      });
+    }
+
+    async function abrirPickerMemoria() {
+      const picker = document.getElementById("picker-memoria");
+      const botao = document.getElementById("abrir-da-memoria");
+      if (!picker.hidden) {
+        picker.hidden = true;
+        botao.classList.remove("ativo");
+        return;
+      }
+      const nota = document.getElementById("picker-nota");
+      picker.hidden = false;
+      botao.classList.add("ativo");
+      fotosPicker = [];
+      desenharPickerMemoria();
+      if (!marcaAtual.id) {
+        nota.textContent = "Salve a marca primeiro em Minha marca.";
+        return;
+      }
+      nota.textContent = "Carregando as fotos da memória...";
+      try {
+        const resposta = await fetch(`/memoria/${marcaAtual.id}/fotos`);
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        fotosPicker = (dados.itens || []).filter((foto) => foto.usar_em_posts);
+        nota.textContent = fotosPicker.length
+          ? "Escolha até 3 fotos. Elas vão junto com a mensagem."
+          : "Esta marca ainda não tem fotos na memória. Mande em Minha marca > Fotos da marca.";
+        desenharPickerMemoria();
+      } catch (falha) {
+        nota.textContent = falha.message || "Não consegui abrir as fotos da memória.";
+      }
+    }
+
+    async function abrirFilaComoRascunho(item, botao) {
+      const nota = document.getElementById("nota-agenda");
+      botao.disabled = true;
+      try {
+        const resposta = await fetch("/agenda/" + item.id + "/rascunho", { method: "POST" });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        aplicarRascunho(dados.rascunho);
+        diaEscolhido = item.dia;
+        const hoje = new Date();
+        const alvo = dataDoIso(item.dia);
+        mesOffset = Math.max(0, (alvo.getFullYear() - hoje.getFullYear()) * 12 + alvo.getMonth() - hoje.getMonth());
+        document.getElementById("hora-post").value = item.hora;
+        const botaoRede = document.querySelector(`[data-rede-agenda="${item.rede}"]`);
+        if (botaoRede) botaoRede.click();
+        desenharSemana();
+        falar("assistente", `Abri o post de ${diaCurto(item.dia)} às ${item.hora} na prévia. Peça os ajustes aqui no chat; quando terminar, clique em Salvar no post da fila.`);
+        nota.textContent = "Post da fila aberto na prévia para ajustar.";
+      } catch (falha) {
+        nota.textContent = falha.message || "Não consegui abrir este post.";
+      } finally {
+        botao.disabled = false;
+      }
     }
 
     function verNaAgenda(item) {
@@ -2821,199 +3388,19 @@
       }
     }
 
-    function topoCartao(icone, rotulo) {
-      const topo = elemento("p", "cartao-dia-topo");
-      const marca = document.createElement("i");
-      marca.className = icone;
-      topo.append(marca, document.createTextNode(rotulo));
-      return topo;
-    }
-
-    function fotoProximo(item) {
-      const vazio = elemento("div", "proximo-foto");
-      const icone = item.tem_video ? "fa-solid fa-film" : item.aguarda_foto ? "fa-solid fa-wand-magic-sparkles" : "fa-regular fa-image";
-      vazio.innerHTML = `<i class="${icone}"></i>`;
-      if (!item.imagem_url) return vazio;
-      const foto = document.createElement("img");
-      foto.className = "proximo-foto";
-      foto.src = item.imagem_url;
-      foto.alt = "Foto do post";
-      foto.addEventListener("error", () => foto.replaceWith(vazio));
-      return foto;
-    }
-
-    function metaPost(item) {
-      const meta = elemento("span", "meta", `${nomeRede(item.rede)} · ${nomeFormato(item.formato)}`);
-      if (item.tema) {
-        meta.append(elemento("span", "ponto " + classeTema(item.tema)), document.createTextNode(item.tema.charAt(0).toUpperCase() + item.tema.slice(1)));
-      }
-      return meta;
-    }
-
-    function botaoAgenda(item) {
-      const botao = elemento("button", "secundario", "Ver na agenda");
-      botao.type = "button";
-      botao.addEventListener("click", () => verNaAgenda(item));
-      return botao;
-    }
-
-    function desenharErroDia(erros) {
-      const lugar = document.getElementById("resumo-erro");
-      lugar.innerHTML = "";
-      lugar.hidden = !erros.length;
-      if (!erros.length) return;
-      const item = erros[0];
-      const corpo = elemento("div", "proximo-corpo");
-      corpo.append(elemento("strong", "", quandoPost(item)), metaPost(item));
-      if (item.linha) corpo.append(elemento("span", "linha-post", item.linha));
-      corpo.append(elemento("p", "motivo", item.detalhe || "Não publicou."));
-      const acoes = elemento("div", "acoes-dia");
-      acoes.append(botaoAgenda(item));
-      if (erros.length > 1) acoes.append(elemento("small", "", `Mais ${erros.length - 1} com erro na agenda.`));
-      lugar.append(topoCartao("fa-solid fa-triangle-exclamation", "Um post não saiu"), corpo, acoes);
-    }
-
-    function situacaoProximo(item) {
-      if (item.status === "publicando") return "Publicando agora.";
-      if (item.aguarda_foto) return "Foto criada perto do horário.";
-      if (item.status === "falta_imagem") return "Falta a foto. O Instagram pede uma imagem para sair sozinho.";
-      return item.detalhe || "";
-    }
-
-    async function preencherAmanha(botao, nota) {
-      const amanha = resumoAtual ? resumoAtual.amanha : diaIso(new Date(Date.now() + 86400000));
-      const hora = document.getElementById("hora-post").value;
-      if (!window.confirm(`A IA vai escrever um post de ${lerMarca().nome} para amanhã${hora ? " às " + hora : ""} e colocar na fila. Continuar?`)) return;
-      const hoje = new Date();
-      const alvo = dataDoIso(amanha);
-      mesOffset = Math.max(0, (alvo.getFullYear() - hoje.getFullYear()) * 12 + alvo.getMonth() - hoje.getMonth());
-      diaEscolhido = amanha;
-      desenharSemana();
-      botao.disabled = true;
-      botao.textContent = "Escrevendo o post";
-      const certo = await preencherDia();
-      botao.disabled = false;
-      botao.textContent = "Preencher amanhã";
-      if (!certo) nota.textContent = document.getElementById("nota-agenda").textContent;
-    }
-
-    function desenharProximo(item) {
-      const lugar = document.getElementById("resumo-proximo");
-      lugar.innerHTML = "";
-      lugar.append(topoCartao("fa-regular fa-calendar", "Próximo post"));
-      const acoes = elemento("div", "acoes-dia");
-      if (!item) {
-        lugar.append(elemento("p", "cartao-dia-vazio", "Nenhum post na fila."));
-        const preencher = elemento("button", "secundario", "Preencher amanhã");
-        preencher.type = "button";
-        const nota = elemento("small", "");
-        preencher.addEventListener("click", () => preencherAmanha(preencher, nota));
-        acoes.append(preencher, nota);
-        lugar.append(acoes);
-        return;
-      }
-      const linha = elemento("div", "proximo-post");
-      const corpo = elemento("div", "proximo-corpo");
-      corpo.append(elemento("strong", "", quandoPost(item)), metaPost(item));
-      if (item.linha) corpo.append(elemento("span", "linha-post", item.linha));
-      const situacao = situacaoProximo(item);
-      if (situacao) corpo.append(elemento("small", "", situacao));
-      linha.append(fotoProximo(item), corpo);
-      acoes.append(botaoAgenda(item));
-      if (item.status !== "publicando") {
-        const cancelar = elemento("button", "cancelar-dia", "Cancelar");
-        cancelar.type = "button";
-        cancelar.addEventListener("click", async () => {
-          if (!window.confirm("Tirar este post da fila?")) return;
-          cancelar.disabled = true;
-          await cancelarPost(item.id);
-          cancelar.disabled = false;
-        });
-        acoes.append(cancelar);
-      }
-      lugar.append(linha, acoes);
-    }
-
-    function desenharSemanaResumo(semana) {
-      const lugar = document.getElementById("resumo-semana");
-      lugar.innerHTML = "";
-      lugar.append(topoCartao("fa-solid fa-chart-simple", "Como foi a semana"));
-      const numeros = elemento("div", "numeros-semana");
-      const posts = elemento("div", "");
-      posts.append(elemento("small", "", "Posts em 7 dias"), elemento("b", "", numeroBr(semana.posts || 0)));
-      const alcance = elemento("div", "");
-      alcance.append(elemento("small", "", "Alcance somado"), elemento("b", "", numeroBr(semana.alcance_total)));
-      const melhor = elemento("div", "melhor-semana");
-      melhor.append(elemento("small", "", "Melhor post"));
-      if (semana.melhor) {
-        const legenda = (semana.melhor.legenda || "").trim();
-        melhor.append(elemento("span", "", `${numeroBr(semana.melhor.numero)} ${semana.melhor.rotulo}${legenda ? " · " + legenda : ""}`));
-        const link = linkSeguro(semana.melhor.permalink);
-        if (link) {
-          const abrirPost = elemento("a", "", "Ver no " + semana.melhor.rede);
-          abrirPost.href = link;
-          abrirPost.target = "_blank";
-          abrirPost.rel = "noopener";
-          melhor.append(abrirPost);
-        }
-      } else {
-        melhor.append(elemento("span", "", "Ainda sem números"));
-      }
-      numeros.append(posts, alcance, melhor);
-      const dica = elemento("p", "dica-semana");
-      const lampada = document.createElement("i");
-      lampada.className = "fa-regular fa-lightbulb";
-      dica.append(lampada, elemento("span", "", semana.dica || "Ainda estamos medindo. Os números aparecem uns dias depois de cada post."));
-      const todos = elemento("a", "ver-todos", "Ver todos os resultados");
-      todos.href = "#";
-      todos.addEventListener("click", (evento) => {
-        evento.preventDefault();
-        abrirResultados();
-      });
-      lugar.append(numeros, dica, todos);
-    }
-
-    function desenharIdeias() {
-      const lugar = document.getElementById("resumo-ideias");
-      if (!lugar) return;
-      const doResumo = resumoAtual && resumoAtual.marca_id === marcaAtual.id ? resumoAtual.ideias || [] : [];
-      const abertas = sugestoesDe === marcaAtual.id ? new Set(sugestoes.map((item) => item.id)) : null;
-      const ideias = doResumo.filter((ideia) => !abertas || !(ideia.sugestoes || []).length || ideia.sugestoes.some((id) => abertas.has(id)));
-      lugar.innerHTML = "";
-      ideias.forEach((ideia) => {
-        const botao = elemento("button", "chip");
-        botao.type = "button";
-        if (ideia.motivo) botao.title = ideia.motivo;
-        const icone = document.createElement("i");
-        icone.className = ICONES_IDEIA[ideia.tipo] || "fa-regular fa-calendar";
-        botao.append(icone, document.createTextNode(ideia.rotulo));
-        botao.addEventListener("click", () => usarIdeia(ideia));
-        lugar.append(botao);
-      });
-    }
-
-    function usarIdeia(ideia) {
-      if (ideia.tema && ideia.tema !== tema) {
-        const botaoTema = [...document.querySelectorAll("[data-tema]")].find((item) => item.dataset.tema === ideia.tema);
-        if (botaoTema) botaoTema.click();
-      }
-      pedidoCampo.value = (formatoAgenda === "story" ? "Crie um Story. " : "") + ideia.pedido;
-      document.getElementById("enviar-chat").click();
-    }
-
     function desenharResumoDia(dados) {
       resumoAtual = dados;
-      document.getElementById("resumo-saudacao").textContent = `${dados.saudacao}, ${dados.nome}`;
-      const partes = [dados.data_extenso];
-      if (dados.local) partes.push(dados.local);
-      else if (dados.cidade) partes.push(dados.uf ? `${dados.cidade} (${dados.uf})` : dados.cidade);
-      const comClima = (dados.abrangencia || "cidade") === "cidade";
-      if (comClima && dados.clima && dados.clima.maxima !== null && dados.clima.maxima !== undefined) partes.push(`máx. ${dados.clima.maxima} °C`);
-      document.getElementById("resumo-data").textContent = partes.join(" · ");
-      desenharErroDia(dados.erros || []);
-      desenharProximo(dados.proximo || null);
-      desenharSemanaResumo(dados.semana || {});
-      desenharIdeias();
+      const erros = dados.erros || [];
+      const alerta = document.getElementById("alerta-falha");
+      alerta.hidden = !erros.length;
+      alerta.textContent = "";
+      if (!erros.length) return;
+      const icone = document.createElement("i");
+      icone.className = "fa-solid fa-triangle-exclamation";
+      const quantos = erros.length === 1 ? "1 post não saiu" : `${erros.length} posts não saíram`;
+      alerta.append(icone, document.createTextNode(` ${quantos} — `), elemento("u", "", "ver na agenda"));
+      alerta.title = erros[0].detalhe || "";
+      alerta.onclick = () => verNaAgenda(erros[0]);
     }
 
     async function carregarResumo() {
@@ -3021,23 +3408,10 @@
       try {
         const resposta = await fetch("/resumo?marca_id=" + (marcaAtual.id || 0));
         const dados = await lerResposta(resposta);
-        if (numero !== pedidoResumo) return;
-        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        if (numero !== pedidoResumo || !resposta.ok) return;
         desenharResumoDia(dados);
-      } catch {
-        if (numero !== pedidoResumo || resumoAtual) return;
-        document.querySelectorAll("#resumo-dia .cartao-dia-vazio").forEach((item) => {
-          item.textContent = "Não consegui abrir o resumo agora.";
-        });
-      }
+      } catch { /* sem resumo, o alerta de post com erro só não aparece */ }
     }
-
-    document.getElementById("voltar-resumo").addEventListener("click", () => {
-      fio.querySelectorAll(".balao").forEach((bloco) => bloco.remove());
-      mostrarResumoDia(true);
-      fio.scrollTop = 0;
-      carregarResumo();
-    });
 
     carregarAgenda().catch(() => {
       document.getElementById("nota-agenda").textContent = "Não consegui abrir a agenda agora.";
@@ -3122,7 +3496,70 @@
 
     document.getElementById("composer").addEventListener("submit", (evento) => {
       evento.preventDefault();
-      criarPost();
+      enviarChat();
+    });
+    document.getElementById("novo-post").addEventListener("click", () => {
+      iniciarNovoPost(false);
+      pedidoCampo.focus();
+    });
+    document.getElementById("abrir-da-memoria").addEventListener("click", () => abrirPickerMemoria());
+    document.getElementById("picker-pronto").addEventListener("click", () => {
+      document.getElementById("picker-memoria").hidden = true;
+      document.getElementById("abrir-da-memoria").classList.remove("ativo");
+      pedidoCampo.focus();
+    });
+    document.addEventListener("click", (evento) => {
+      const picker = document.getElementById("picker-memoria");
+      if (picker.hidden || picker.contains(evento.target) || evento.target.closest("#abrir-da-memoria")) return;
+      if (evento.target.closest(".chip-foto")) return;
+      picker.hidden = true;
+      document.getElementById("abrir-da-memoria").classList.remove("ativo");
+    });
+    document.getElementById("voltar-versao").addEventListener("click", async () => {
+      if (!rascunhoAtual || !versaoEscolhida) return;
+      const botao = document.getElementById("voltar-versao");
+      const nota = document.getElementById("nota-versoes");
+      const numero = versaoEscolhida;
+      botao.disabled = true;
+      try {
+        const resposta = await fetch(`/rascunho/${rascunhoAtual.id}/restaurar`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ n: numero }),
+        });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        aplicarRascunho(dados.rascunho);
+        nota.textContent = `Voltei para a versão ${numero}. Ela virou a versão atual (sem gastar IA).`;
+        nota.hidden = false;
+      } catch (falha) {
+        nota.textContent = falha.message || "Não consegui voltar para essa versão.";
+        nota.hidden = false;
+      } finally {
+        botao.disabled = false;
+      }
+    });
+    document.getElementById("aprovar").addEventListener("click", () => aprovarRascunho());
+    document.getElementById("descartar").addEventListener("click", () => {
+      if (!window.confirm("Descartar este rascunho? Ele sai do estúdio.")) return;
+      iniciarNovoPost(false);
+    });
+    document.querySelectorAll("[data-atalho]").forEach((botao) => {
+      botao.addEventListener("click", () => usarAtalho(botao.dataset.atalho));
+    });
+    document.getElementById("sair-modo").addEventListener("click", () => {
+      modoImagem = false;
+      atualizarTopoConversa();
+    });
+    document.getElementById("ver-outro-aprovado").addEventListener("click", () => {
+      vistaAprovada = vistaAprovada === "story" ? "feed" : "story";
+      desenharAprovado();
+    });
+    document.getElementById("legenda-aprovada").addEventListener("input", () => {
+      const campo = document.getElementById("legenda-aprovada");
+      campo.style.height = "auto";
+      campo.style.height = campo.scrollHeight + "px";
+      if (aprovado) aprovado.legenda = campo.value;
     });
 
     let marcaSalva = 0;
@@ -3152,7 +3589,6 @@
         document.querySelectorAll("[data-tema]").forEach((item) => item.classList.remove("ativo"));
         botao.classList.add("ativo");
         atualizarMarcaVisual();
-        desenharIdeias();
       });
     });
 
@@ -3161,6 +3597,9 @@
       aplicarVista();
     });
     document.getElementById("legenda-previa").addEventListener("input", ajustarLegenda);
+    document.getElementById("legenda-previa").addEventListener("change", () => {
+      if (rascunhoAtual) salvarRascunho("", false).catch(() => {});
+    });
     document.querySelectorAll("[data-rede-agenda]").forEach((botao) => {
       botao.addEventListener("click", () => {
         redeAgenda = botao.dataset.redeAgenda;
@@ -3174,8 +3613,10 @@
         document.querySelectorAll("[data-formato-agenda]").forEach((item) => item.classList.remove("ativo"));
         botao.classList.add("ativo");
         vistaPrevia = "feed";
+        vistaAprovada = "feed";
         aplicarVista();
-        desenharIdeias();
+        desenharAprovado();
+        if (rascunhoAtual && rascunhoAtual.formato !== formatoAgenda) salvarRascunho("", false).catch(() => {});
       });
     });
     document.getElementById("semana-antes").addEventListener("click", () => {
@@ -3321,14 +3762,30 @@
         marca_id: marcaAtual.id || 0,
         titulo: publicado.titulo,
         legenda: publicado.legenda,
-        imagem_url: imagemProjeto || "",
-        video_url: videoProjeto || "",
-        ...dadosMemoriaPost(),
+        imagem_url: aprovado.imagem_url || "",
+        video_url: aprovado.video_url || "",
+        foto_id: aprovado.foto_id || null,
+        gancho: (aprovado.gancho || "").slice(0, 80),
+        plano_arte: aprovado.plano_arte ? { ...aprovado.plano_arte } : null,
       };
     }
 
+    function textoAprovado() {
+      const escrito = document.getElementById("legenda-aprovada").value.trim();
+      if (escrito) {
+        const primeira = escrito.split("\n").find((linha) => linha.trim()) || escrito;
+        return { titulo: primeira.trim().slice(0, 300), legenda: escrito };
+      }
+      if (aprovado.imagem_url || aprovado.video_url) return { titulo: "Publicação", legenda: "Publicação" };
+      return null;
+    }
+
     function conferirPost() {
-      const publicado = textoDoPost();
+      if (!aprovado) {
+        avisarAgenda("Primeiro aprove o post no estúdio (botão Aprovar). Ele aparece na Prévia e aí pode sair.", true);
+        return null;
+      }
+      const publicado = textoAprovado();
       if (!publicado) {
         avisarAgenda("Escreva a legenda na prévia ou anexe uma foto ou um vídeo.", true);
         return null;
@@ -3845,7 +4302,7 @@
         });
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
-        usarArte(dados);
+        usarArte(dados, "Arte refeita na prévia");
         const final = dados.plano_arte || {};
         let texto = "Arte refeita, sem gastar IA.";
         if (final.modelo && final.modelo !== plano.modelo) {
@@ -3880,7 +4337,7 @@
             });
             const dados = await lerResposta(resposta);
             if (!resposta.ok) throw new Error(mensagemErro(dados));
-            usarArte(dados);
+            usarArte(dados, "Foto trocada por outra da memória");
             return;
           }
           const resposta = await fetch("/memoria/imagem", {
@@ -4270,7 +4727,7 @@
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         if (dados.plano_arte) {
-          usarArte(dados);
+          usarArte(dados, "Foto criada com IA");
         } else {
           imagemProjeto = dados.foto_url;
           videoProjeto = "";
@@ -4291,7 +4748,10 @@
       }
     });
 
+    document.getElementById("estudio-tarefa").append(tarefa);
     aplicarVista();
+    atualizarTopoConversa();
+    desenharAprovado();
   </script>
 </body>
 </html>

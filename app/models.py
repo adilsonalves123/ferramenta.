@@ -167,6 +167,29 @@ class Imagem(SQLModel, table=True):
     criado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
 
 
+class Rascunho(SQLModel, table=True):
+    """O post que está na prévia: cada mensagem do chat ajusta este rascunho em vez de criar outro."""
+
+    __tablename__ = "mkt_rascunhos"
+
+    id: int | None = Field(default=None, primary_key=True)
+    marca_id: int = Field(default=0, index=True)
+    legenda: str = Field(default="", sa_type=Text)
+    titulo: str = Field(default="", sa_type=Text)
+    plano_arte: str = Field(default="", sa_type=Text)
+    formato: str = Field(default="feed", max_length=20)
+    imagem_base_id: int | None = Field(default=None)
+    imagem_final_feed_id: int | None = Field(default=None)
+    imagem_final_story_id: int | None = Field(default=None)
+    versoes: str = Field(default="[]", sa_type=Text)
+    cena: str = Field(default="", sa_type=Text)
+    gancho: str = Field(default="", max_length=80)
+    agendamento_id: int | None = Field(default=None)
+    status: str = Field(default="aberto", max_length=20)
+    criado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
+    atualizado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
+
+
 class Sugestao(SQLModel, table=True):
     __tablename__ = "mkt_sugestoes"
     __table_args__ = (

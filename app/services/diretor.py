@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import random
 import re
 import unicodedata
 
@@ -43,6 +44,9 @@ CAMPOS_GUARDADOS = (
     "modelo",
     *CAMPOS_TEXTO,
     "cor",
+    "paleta",
+    "posicao_texto",
+    "cor_livre",
     "aviso",
     "tela_app",
     "alcool",
@@ -55,30 +59,38 @@ CAMPOS_GUARDADOS = (
 
 REGRAS_ARTE = """
 
-plano_arte: você também é o diretor de arte do post. A foto da memória é material criativo: pode sair como está, ou servir de base para a IA de imagem melhorar (fundo, luz, cenário) mantendo o assunto real idêntico.
+plano_arte: você também é o diretor de arte do post, com liberdade criativa: escolha o estilo e as cores pelo assunto e pelo clima do post, não por uma regra fixa. A foto da memória é material criativo: pode sair como está, ou servir de base para a IA de imagem melhorar (fundo, luz, cenário) mantendo o assunto real idêntico.
 - ideia: 1 frase com a ideia criativa da peça.
 - foto_base_id: id de uma foto da memória com papel "pode postar como está", "base para editar" ou "a IA decide" que mostra o assunto do post. Nunca uma foto de estilo. Se nenhuma combina, null (aí a foto é criada do zero).
 - fotos_estilo_ids: até 2 ids de FOTOS DE ESTILO (ou de fotos do lugar, ou "a IA decide") que inspiram luz, cores e enquadramento. Pode ser [].
 - edicao_foto: instrução curta para a IA de imagem, dizendo o que mudar na foto base mantendo o assunto real idêntico (ex.: "fundo limpo e claro, luz suave de fim de tarde, mais profundidade"). Escreva "nenhuma" se a foto for "pode postar como está", se for captura de tela, ou se não tiver foto base e a cena bastar. Em foto "a IA decide", escreva "nenhuma" se ela já está boa para postar; senão diga o que melhorar.
-- modelo, um destes:
-  faixa: faixa inclinada com o título em cima da foto (oferta fixa, dia especial, evento);
-  selo: selo redondo grande + título embaixo (novidade, dia da semana, preço que está na memória);
-  destaque: degradê embaixo com título, subtítulo e chamada (produto, serviço, bastidores);
+- modelo (o estilo da arte), um destes. Qualquer estilo serve para qualquer assunto; escolha o que conversa com o clima do post:
+  faixa: faixa inclinada com o título atravessando a peça (energia, recado direto);
+  selo: selo redondo grande + barra com o título (novidade, dia da semana, preço que está na memória);
+  destaque: degradê com título, subtítulo e chamada (produto, serviço, bastidores);
+  alerta: painel com listras de aviso e letras grossas (urgência de verdade: últimas horas, último dia, aviso importante);
+  etiqueta: etiqueta de preço pendurada (preço ou condição que está na memória);
+  carimbo: carimbo girado de borda dupla (garantia, aprovado, original, o mais pedido);
+  neon: letreiro de neon sobre a foto escurecida (noite, festa, música, happy hour);
+  poster: tipografia enorme num bloco de cor e a foto em duas cores (evento, lançamento, frase de impacto);
+  minimal: barra limpa com letras pequenas e elegantes (marca sofisticada, produto bonito que fala por si);
   antes_depois: o problema do cliente antes x a solução depois;
   tela_app: imagem em destaque, inteira dentro de uma moldura (captura de tela, peça pronta ou produto);
   story_chamada: foto cheia, título no alto e chamada grande embaixo (convite direto, "Responda QUERO").
+- paleta, uma destas: marca (as cores da marca), urgencia (amarelo e preto), quente (laranja e marrom: comida, café, calor), fresca (verde-limão: fresco, bebida gelada, natural), fria (azul: tecnologia, limpeza, saúde), elegante (dourado e preto), doce (rosa: doces, beleza, delicadeza), natural (verde-sálvia: saúde, plantas), vibrante (magenta e roxo: festa, noite), neutra (branco e grafite: sóbrio), vermelha (vermelho forte). As cores da marca são o ponto de partida, mas troque quando o assunto pedir. Promoção não é sinônimo de vermelho nem de faixa: pense no que o post quer transmitir.
+- posicao_texto: "auto" (a arte põe o texto na parte da foto sem o produto); "topo" ou "base" só se a foto pedir.
 - titulo_arte: de 2 a 6 palavras, forte, para ler de longe. Sem emoji, sem hashtag.
 - subtitulo_arte: até 8 palavras, ou "".
 - selo: palavra curta para o selo ("Hoje", "Novo", "Sábado") ou um preço SÓ se o preço está escrito na memória. Senão "".
 - chamada: chamada para ação de até 4 palavras ("Peça já", "Saiba mais", "Chame no direct", "Responda QUERO").
 - antes: só no modelo antes_depois, a dor do cliente antes, até 8 palavras. Nos outros modelos, "".
-- cor: "destaque" para oferta e novidade (chama atenção) ou "principal" para post institucional.
+- cor: quando a paleta é "marca", qual cor da marca vai na ênfase: "destaque" ou "principal".
 - aviso: "" ou uma frase curta explicando um ajuste que você fez no pedido (ex.: por causa do CONAR).
 Regras do plano_arte:
 - Use só fatos da memória e do pedido. Não invente preço, desconto, produto, dia nem horário.
 - Oferta e promoção só se estiverem em "Promoções fixas" ou se o pedido pedir com todas as letras.
 - Captura de tela: modelo tela_app ou antes_depois, edicao_foto "nenhuma".
-- Varie o modelo e o ângulo em relação às últimas artes da marca."""
+- Varie: não repita a combinação de modelo e paleta das últimas artes da marca, nem o ângulo."""
 
 REGRAS_ARTE_ALCOOL = """
 CONAR na arte (bebida alcoólica):
@@ -113,7 +125,24 @@ COMPOSICAO = {
     "story_chamada": "Keep the top third and the bottom fifth calm and uncluttered (they will hold text); the main subject sits in the middle.",
     "selo": "Keep the top-right corner and the bottom quarter calm and uncluttered (they will hold a badge and text); the main subject slightly left of center.",
     "destaque": "Keep the bottom third calm and darker (it will hold text); the main subject sits in the upper two thirds.",
+    "alerta": "Keep the top third calm and uncluttered (it will hold a warning panel); the main subject sits in the lower two thirds.",
+    "etiqueta": "Keep the bottom third calm (it will hold a price tag and text); the main subject sits in the upper two thirds.",
+    "carimbo": "Keep the top third calm (it will hold a stamp); the main subject sits in the lower two thirds.",
+    "neon": "Moody low light; keep the bottom third dark and calm (it will hold a neon sign); the main subject sits in the upper part.",
+    "poster": "Keep the top 40% calm and simple (it will hold a big color block with huge type); the main subject sits low in the frame.",
+    "minimal": "Clean, airy composition; keep the bottom quarter calm (it will hold a slim text bar).",
 }
+PALETAS_PLANO = ("marca", *molde.PALETAS)
+ESTILOS_VARIAVEIS = ("faixa", "selo", "destaque", "alerta", "etiqueta", "carimbo", "neon", "poster", "minimal", "story_chamada")
+HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+PALETAS_DO_ASSUNTO = (
+    (re.compile(r"\b(app|sistema|aplicativo|tecnologia|celular|digital|online|site)\b"), "fria"),
+    (re.compile(r"\b(festa|noite|show|musica|balada|happy hour|dj|samba|pagode)\b"), "vibrante"),
+    (re.compile(r"\b(caipirinha|suco|gelad[oa]|drink|limao|verao|natural|salada|verde)\b"), "fresca"),
+    (re.compile(r"\b(doce|bolo|confeitaria|beleza|salao|unha|cabelo|flor)\b"), "doce"),
+    (re.compile(r"\b(cafe|pizza|lanche|hamburguer|churrasco|comida|prato|porcao|pao|padaria|feijoada|almoco)\b"), "quente"),
+    (re.compile(r"\b(ultim[oa]s?|so hoje|acaba|corre|urgente|aviso|atencao)\b"), "urgencia"),
+)
 
 
 def _sem_acento(texto: str) -> str:
@@ -227,6 +256,8 @@ def _conar(plano: dict, pedido: str, legenda: str) -> str:
 
 
 def _coerencia(plano: dict) -> None:
+    if plano.get("paleta") == "livre" and not plano.get("cor_livre"):
+        plano["paleta"] = "marca"
     if plano["modelo"] == "selo" and not plano["selo"]:
         plano["modelo"] = "destaque"
     if plano["modelo"] == "antes_depois" and not plano["antes"]:
@@ -249,6 +280,9 @@ def validar_plano(
         "ideia": _limpo(dados.get("ideia"), 220),
         "modelo": dados.get("modelo") if dados.get("modelo") in molde.MODELOS else "destaque",
         "cor": "principal" if dados.get("cor") == "principal" else "destaque",
+        "paleta": dados.get("paleta") if dados.get("paleta") in (*PALETAS_PLANO, "livre") else "marca",
+        "posicao_texto": dados.get("posicao_texto") if dados.get("posicao_texto") in molde.POSICOES_TEXTO else "auto",
+        "cor_livre": str(dados.get("cor_livre") or "").strip().upper() if HEX.match(str(dados.get("cor_livre") or "").strip()) else "",
         "edicao_foto": _limpo(dados.get("edicao_foto"), 400),
         "aviso": _limpo(dados.get("aviso"), 300),
     }
@@ -280,6 +314,44 @@ def validar_plano(
     legenda = _conar(plano, pedido, legenda)
     _coerencia(plano)
     return plano, legenda
+
+
+def tem_cores(marca: Ficha | None) -> bool:
+    return bool(marca and ((marca.cor_principal or "").strip() or (marca.cor_destaque or "").strip()))
+
+
+def _paleta_do_assunto(plano: dict) -> str:
+    texto = _sem_acento(" ".join(str(plano.get(campo) or "") for campo in ("ideia", *CAMPOS_TEXTO))).lower()
+    for padrao, paleta in PALETAS_DO_ASSUNTO:
+        if padrao.search(texto):
+            return paleta
+    return "neutra"
+
+
+def variar(plano: dict, recentes: list[tuple[str, str]], marca_tem_cores: bool = True) -> dict:
+    """Liberdade com variedade: sem cores da marca, 'marca' vira uma paleta do assunto; e a dupla
+    modelo + paleta não repete as últimas artes da marca (nem o mesmo modelo 3 vezes seguidas)."""
+    plano = dict(plano)
+    if plano.get("modelo") in ("tela_app", "antes_depois", "livre"):
+        return plano
+    if plano.get("paleta") == "marca" and not marca_tem_cores:
+        plano["paleta"] = _paleta_do_assunto(plano)
+    sorteio = random.Random(f"{plano.get('titulo_arte')}|{plano.get('ideia')}")
+    usados = set(recentes)
+    modelos = [modelo for modelo, _paleta in recentes]
+    if modelos.count(plano["modelo"]) >= 3:
+        livres = [modelo for modelo in ESTILOS_VARIAVEIS if modelo not in modelos and (modelo != "selo" or plano.get("selo"))]
+        if livres:
+            plano["modelo"] = sorteio.choice(livres)
+    if (plano["modelo"], plano.get("paleta")) in usados and plano.get("paleta") != "livre":
+        outras = [paleta for paleta in PALETAS_PLANO if (plano["modelo"], paleta) not in usados and paleta != plano.get("paleta")]
+        if not marca_tem_cores and "marca" in outras:
+            outras.remove("marca")
+        if outras:
+            preferida = _paleta_do_assunto(plano)
+            plano["paleta"] = preferida if preferida in outras else sorteio.choice(outras)
+    _coerencia(plano)
+    return plano
 
 
 def plano_padrao(legenda: str, gancho: str = "") -> dict:
@@ -464,6 +536,9 @@ def textos_do_plano(plano: dict) -> molde.Textos:
         chamada=plano.get("chamada") or "",
         antes=plano.get("antes") or "",
         cor=plano.get("cor") or "destaque",
+        paleta=plano.get("paleta") or "marca",
+        posicao=plano.get("posicao_texto") or "auto",
+        cor_livre=plano.get("cor_livre") or "",
     )
 
 

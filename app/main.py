@@ -23,6 +23,7 @@ from app.routers.legal import router as router_legal
 from app.routers.memoria import router as router_memoria
 from app.routers.novas import router as router_novas
 from app.routers.projetos import router as router_projetos
+from app.routers.rascunho import router as router_rascunho
 from app.routers.resultados import router as router_resultados
 from app.routers.resumo import router as router_resumo
 from app.routers.sugestoes import router as router_sugestoes
@@ -116,6 +117,7 @@ def create_app() -> FastAPI:
     app.include_router(router_arte)
     app.include_router(router_legal)
     app.include_router(router_memoria)
+    app.include_router(router_rascunho)
     app.include_router(router_resultados)
     app.include_router(router_resumo)
     app.include_router(router_sugestoes)

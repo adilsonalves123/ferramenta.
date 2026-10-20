@@ -360,11 +360,30 @@ async def artes_recentes(session: AsyncSession, marca_id: int, quantos: int = 5)
             continue
         if not isinstance(plano, dict):
             continue
-        linha = f"modelo {plano.get('modelo', '')} · título \"{plano.get('titulo_arte', '')}\""
+        linha = f"modelo {plano.get('modelo', '')} · paleta {plano.get('paleta') or 'marca'} · título \"{plano.get('titulo_arte', '')}\""
         if plano.get("ideia"):
             linha += f" · ideia: {str(plano['ideia'])[:120]}"
         linhas.append(linha)
     return linhas
+
+
+async def combinacoes_recentes(session: AsyncSession, marca_id: int, quantos: int = 5) -> list[tuple[str, str]]:
+    """(modelo, paleta) das últimas artes da marca, da mais nova para a mais velha."""
+    resultado = await session.exec(
+        select(Agendamento.plano_arte)
+        .where(Agendamento.marca_id == marca_id, Agendamento.plano_arte != "")
+        .order_by(col(Agendamento.id).desc())
+        .limit(quantos)
+    )
+    pares = []
+    for bruto in resultado.all():
+        try:
+            plano = json.loads(bruto or "")
+        except ValueError:
+            continue
+        if isinstance(plano, dict) and plano.get("modelo"):
+            pares.append((str(plano["modelo"]), str(plano.get("paleta") or "marca")))
+    return pares
 
 
 async def posts_recentes(session: AsyncSession, marca_id: int, quantos: int = 8) -> list[str]:
