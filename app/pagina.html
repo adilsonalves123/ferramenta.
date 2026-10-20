@@ -714,6 +714,55 @@
     .ficha-corpo input, .ficha-corpo select { padding: 9px 10px; }
     .ficha-botoes { display: flex; gap: 8px; flex-wrap: wrap; }
     .ficha-botoes button { width: auto; margin: 0; padding: 0 16px; height: 38px; }
+    .ficha-corpo textarea.curto { min-height: 64px; }
+    .ficha-corpo textarea.medio { min-height: 120px; }
+    .ficha-corpo h2 { font-size: 16px; margin: 18px 0 0; letter-spacing: -0.01em; }
+    .ficha-corpo h2 + .nota { margin-top: 0; }
+    .bloco-memoria { display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid #c7cbff; border-radius: 12px; background: #f7f8ff; }
+    .bloco-memoria h2 { margin: 0; }
+    .fotos-marca { padding-top: 0; }
+    .topo-fotos { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .topo-fotos label.enviar-fotos {
+      display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; margin: 0;
+      border-radius: 10px; background: var(--azul); color: white; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .topo-fotos label.enviar-fotos.ocupado { opacity: 0.65; cursor: wait; }
+    .grade-fotos { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+    .cartao-foto { border: 1px solid var(--linha); border-radius: 12px; background: white; overflow: hidden; display: flex; flex-direction: column; }
+    .cartao-foto img { width: 100%; height: 150px; object-fit: cover; background: #eceff3; display: block; }
+    .cartao-foto .campos-foto { padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .ficha-corpo .cartao-foto textarea { min-height: 84px; font-size: 12.5px; padding: 7px 8px; }
+    .ficha-corpo .cartao-foto input, .ficha-corpo .cartao-foto select { padding: 6px 8px; font-size: 12.5px; }
+    .cartao-foto .linha-foto { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
+    .cartao-foto label.usar { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 600; font-size: 12px; }
+    .cartao-foto label.usar input { width: auto; margin: 0; }
+    .cartao-foto .acoes-foto { display: flex; gap: 12px; }
+    .cartao-foto .acoes-foto button { border: 0; background: transparent; font: inherit; font-size: 12px; font-weight: 600; color: var(--azul); cursor: pointer; padding: 0; }
+    .cartao-foto .acoes-foto button.apagar { color: #e11d48; }
+    .cartao-foto .estado-foto { color: var(--mudo); font-size: 11.5px; min-height: 14px; }
+    .cartao-foto.desligada img { opacity: 0.45; }
+    .faixa-memoria { display: flex; align-items: center; gap: 8px; margin: 0 14px 10px; padding: 6px 8px; border: 1px solid #c7cbff; border-radius: 10px; background: var(--azul-suave); font-size: 12px; }
+    .faixa-memoria[hidden] { display: none; }
+    .faixa-memoria img { width: 34px; height: 34px; border-radius: 6px; object-fit: cover; flex: none; }
+    .post .faixa-memoria img { height: 34px; width: 34px; }
+    .faixa-memoria span { flex: 1; min-width: 0; color: var(--tinta); line-height: 1.3; }
+    .faixa-memoria span small { display: block; color: var(--mudo); }
+    .post.modo-story .faixa-memoria span { color: var(--tinta); }
+    .lista-agenda .memoria-fila { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; color: var(--azul); font-weight: 600; }
+    .lista-agenda .memoria-fila img { width: 22px; height: 22px; border-radius: 4px; object-fit: cover; }
+    .seletor-fundo { position: fixed; inset: 0; z-index: 60; background: rgba(15, 23, 42, 0.45); display: grid; place-items: center; padding: 16px; }
+    .seletor-fundo[hidden] { display: none; }
+    .seletor { width: min(720px, 100%); max-height: 86vh; overflow: auto; background: white; border-radius: 16px; padding: 18px; box-shadow: var(--sombra); display: flex; flex-direction: column; gap: 12px; }
+    .seletor-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .seletor-topo h2 { margin: 0; font-size: 16px; }
+    .seletor-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+    .seletor-grade button { border: 2px solid transparent; border-radius: 10px; background: #f6f7fb; padding: 0; cursor: pointer; text-align: left; font: inherit; overflow: hidden; }
+    .seletor-grade button.atual { border-color: var(--azul); }
+    .seletor-grade button:disabled { opacity: 0.6; cursor: wait; }
+    .seletor-grade img { width: 100%; height: 100px; object-fit: cover; display: block; }
+    .seletor-grade span { display: block; padding: 6px 8px; font-size: 11.5px; line-height: 1.3; color: var(--tinta); }
+    .seletor-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+    .seletor-acoes button { width: auto; margin: 0; padding: 0 16px; height: 38px; }
     button.apagar-marca { border: 1px solid var(--linha); background: white; color: #e11d48; border-radius: 10px; font: inherit; cursor: pointer; }
     .ponto { width: 8px; height: 8px; border-radius: 50%; flex: none; }
     .tema-bastidores { background: #7c3aed; }
@@ -974,6 +1023,11 @@
               <div class="post-conta"><strong id="nome-previa">Risca Aí</strong><span>Agora</span></div>
             </div>
             <div class="vazio-foto" id="foto-previa"><i class="fa-regular fa-image"></i><span>A imagem aparece aqui</span></div>
+            <div class="faixa-memoria" id="faixa-memoria" hidden>
+              <img id="faixa-memoria-foto" alt="Foto da memória escolhida" />
+              <span id="faixa-memoria-texto">Foto da Memória da marca</span>
+              <button class="link-mini" type="button" id="faixa-memoria-trocar">Trocar foto</button>
+            </div>
             <div class="post-acoes" aria-hidden="true">
               <i class="fa-regular fa-heart"></i>
               <i class="fa-regular fa-comment"></i>
@@ -1039,7 +1093,7 @@
           </div>
           <div class="bloco-ia">
             <p class="secao">Deixar a IA preencher o dia</p>
-            <p class="nota">A IA escreve o post com o prompt da marca e cria a foto antes do horário. Você vê na fila antes de sair.</p>
+            <p class="nota">A IA escreve o post com a Memória da marca e usa uma foto real dela; se nenhuma combinar, cria a foto antes do horário. Você vê na fila antes de sair.</p>
             <button class="secundario" type="button" id="montar-semana">Preencher este dia</button>
           </div>
           <ul class="lista-agenda" id="lista-agenda"></ul>
@@ -1054,7 +1108,7 @@
         <h1>Minha marca</h1>
       </header>
       <form id="form-ficha" class="ficha-corpo">
-        <p class="nota">Cada marca tem o seu prompt. Fica tudo gravado no servidor. Gerar e Preencher este dia usam o prompt da marca escolhida.</p>
+        <p class="nota">Cada marca tem a sua memória. Fica tudo gravado no servidor. Gerar, Preencher este dia e as sugestões usam a memória da marca escolhida.</p>
         <label for="ficha-escolha">Marca</label>
         <select id="ficha-escolha"></select>
         <label for="ficha-nome">Nome da marca</label>
@@ -1076,15 +1130,58 @@
           </div>
         </div>
         <p class="nota">A cidade traz as sugestões de feriados e do clima de lá. Deixe em branco se não quiser.</p>
-        <label for="texto-ficha">Prompt da marca</label>
-        <textarea id="texto-ficha" required minlength="20" placeholder="O que a IA deve lembrar dessa marca: o que vende, para quem, o que não pode inventar e quais fotos combinam."></textarea>
+        <div class="bloco-memoria" id="memoria-marca">
+          <h2><i class="fa-solid fa-brain"></i> Memória da marca</h2>
+          <p class="nota">A IA lê esta memória antes de escrever cada post e de escolher a foto. Ela usa só o que está aqui: não inventa produto, preço nem horário.</p>
+          <label for="memoria-oferta">O que você vende ou faz</label>
+          <textarea id="memoria-oferta" class="curto" maxlength="2000" placeholder="Ex.: Sistema para bar e restaurante controlar caixa, mesas, estoque e fiado pelo celular."></textarea>
+          <label for="memoria-itens">Produtos, pratos ou funcionalidades (um por linha; pode pôr dia e horário)</label>
+          <textarea id="memoria-itens" class="medio" maxlength="4000" placeholder="Ex.:&#10;Feijoada — sábado&#10;Fiado com nome e limite do cliente&#10;Caixa do dia fechado em 1 minuto"></textarea>
+          <label for="memoria-horarios">Horários de funcionamento</label>
+          <textarea id="memoria-horarios" class="curto" maxlength="1000" placeholder="Ex.: Ter a dom, 11h às 23h. Segunda fechado."></textarea>
+          <label for="memoria-diferenciais">Diferenciais</label>
+          <textarea id="memoria-diferenciais" class="curto" maxlength="2000" placeholder="Ex.: Funciona sem internet; suporte no WhatsApp."></textarea>
+          <label for="memoria-promocoes">Promoções fixas (se tiver)</label>
+          <textarea id="memoria-promocoes" class="curto" maxlength="2000" placeholder="Ex.: Happy hour de quinta, 18h às 20h."></textarea>
+          <label for="memoria-tom">Tom de voz</label>
+          <textarea id="memoria-tom" class="curto" maxlength="1000" placeholder="Ex.: Direto, simpático, fala como dono de bar."></textarea>
+          <label for="memoria-nunca">Nunca dizer</label>
+          <textarea id="memoria-nunca" class="curto" maxlength="2000" placeholder="Ex.: Não falar de preço do sistema. Não prometer entrega."></textarea>
+        </div>
+        <label for="texto-ficha">Outras instruções</label>
+        <textarea id="texto-ficha" required minlength="20" placeholder="O que mais a IA deve lembrar dessa marca: para quem fala, o que não pode inventar e quais fotos combinam."></textarea>
         <div class="ficha-botoes">
           <button class="principal" type="submit" id="salvar-ficha">Salvar marca</button>
           <button class="apagar-marca" type="button" id="apagar-marca">Apagar marca</button>
         </div>
         <p class="nota" id="nota-ficha"></p>
       </form>
+      <div class="ficha-corpo fotos-marca" id="fotos-marca">
+        <h2><i class="fa-regular fa-images"></i> Fotos da marca</h2>
+        <p class="nota">Mande fotos reais: prints das telas principais do app, fachada, salão, pratos, equipe. A IA lê cada foto e escreve a descrição; você pode corrigir. Os posts usam essas fotos de verdade, sem custo de IA.</p>
+        <div class="topo-fotos">
+          <label class="enviar-fotos" id="rotulo-enviar-fotos" for="enviar-fotos"><i class="fa-solid fa-upload"></i><span id="texto-enviar-fotos">Enviar fotos</span></label>
+          <input id="enviar-fotos" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden />
+          <span class="nota" id="contagem-fotos"></span>
+        </div>
+        <p class="nota" id="nota-fotos"></p>
+        <div class="grade-fotos" id="grade-fotos"></div>
+      </div>
     </section>
+
+    <div class="seletor-fundo" id="seletor-foto" hidden>
+      <div class="seletor" role="dialog" aria-modal="true" aria-labelledby="seletor-titulo">
+        <div class="seletor-topo">
+          <h2 id="seletor-titulo">Trocar foto</h2>
+          <button class="link-mini" type="button" id="fechar-seletor">Fechar</button>
+        </div>
+        <p class="nota" id="seletor-nota">Escolha uma foto da Memória da marca. Ela entra sem custo de IA.</p>
+        <div class="seletor-grade" id="seletor-grade"></div>
+        <div class="seletor-acoes">
+          <button class="secundario" type="button" id="seletor-ia"><i class="fa-solid fa-wand-magic-sparkles"></i> Criar com IA</button>
+        </div>
+      </div>
+    </div>
 
     <section id="pagina-resultados" class="pagina-projetos" hidden>
       <header class="topo-projetos">
@@ -1352,6 +1449,8 @@
     function colocarNaPrevia(projeto) {
       imagemProjeto = projeto.video_url ? "" : (projeto.imagem_url || "");
       videoProjeto = projeto.video_url || "";
+      origemFoto = "projeto";
+      memoriaPrevia = null;
       escreverLegenda(projeto.legenda ? projeto.titulo + "\n\n" + projeto.legenda : projeto.titulo);
       if (videoProjeto) colocarMidiaPrevia(videoProjeto, "video");
       else if (imagemProjeto) colocarMidiaPrevia(imagemProjeto, "foto");
@@ -1688,6 +1787,8 @@
         mostrarResultado(fotoPronta);
         imagemProjeto = fotoPronta.foto_url || "";
         videoProjeto = "";
+        origemFoto = "ia";
+        memoriaPrevia = null;
         if (document.getElementById("legenda-previa")) mostrarPrevia(fotoPronta, imagemProjeto);
       } catch (falha) {
         window.clearTimeout(pulsoMiniatura);
@@ -1757,6 +1858,8 @@
     let tema = "";
     let imagemProjeto = "";
     let videoProjeto = "";
+    let origemFoto = "";
+    let memoriaPrevia = null;
     let diaEscolhido = "";
     let mesOffset = 0;
     let redeAgenda = "Ambos";
@@ -2010,6 +2113,15 @@
         const estado = document.createElement("span");
         estado.textContent = textoStatus(item);
         corpo.append(titulo, estado);
+        if (item.foto_id && item.memoria_miniatura) {
+          const chip = elemento("span", "memoria-fila");
+          const mini = document.createElement("img");
+          mini.src = item.memoria_miniatura;
+          mini.alt = "";
+          mini.loading = "lazy";
+          chip.append(mini, document.createTextNode("Foto da Memória da marca"));
+          corpo.append(chip);
+        }
         if (item.imagem_url) {
           const miniatura = document.createElement("img");
           miniatura.className = "miniatura-fila";
@@ -2034,7 +2146,7 @@
             trocar.type = "button";
             trocar.className = "trocar-foto";
             trocar.textContent = "Trocar foto";
-            trocar.addEventListener("click", () => trocarFoto(item.id, trocar));
+            trocar.addEventListener("click", () => trocarFotoFila(item, trocar));
             corpo.append(trocar);
           }
           const escolha = document.createElement("select");
@@ -2147,9 +2259,29 @@
       }
     }
 
+    function trocarFotoFila(item, botao) {
+      abrirSeletor({
+        marcaId: item.marca_id || marcaAtual.id,
+        atual: item.foto_id,
+        podeIA: item.pode_criar_ia,
+        aoIA: () => trocarFoto(item.id, botao),
+        aoEscolher: async (fotoId) => {
+          const resposta = await fetch("/agenda/" + item.id + "/foto-memoria", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ foto_id: fotoId }),
+          });
+          const dados = await lerResposta(resposta);
+          if (!resposta.ok) throw new Error(mensagemErro(dados));
+          await carregarAgenda();
+          document.getElementById("nota-agenda").textContent = "Foto trocada por uma da Memória da marca.";
+        },
+      });
+    }
+
     async function trocarFoto(id, botao) {
       const nota = document.getElementById("nota-agenda");
-      if (!window.confirm("Criar outra foto para este post?")) return;
+      if (!window.confirm("Criar outra foto com IA para este post?")) return;
       botao.disabled = true;
       botao.textContent = "Criando a foto";
       try {
@@ -2294,6 +2426,44 @@
         produto_servico: (memoria ? `${base} Ficha: ${memoria}` : base).slice(0, 4000),
         acao: "texto",
         tema,
+        marca_id: marca.id || 0,
+        dia: diaEscolhido || diaIso(new Date()),
+        hora: document.getElementById("hora-post").value || "",
+      };
+    }
+
+    function desenharFaixaMemoria() {
+      const faixa = document.getElementById("faixa-memoria");
+      const foto = document.getElementById("faixa-memoria-foto");
+      const textoFaixa = document.getElementById("faixa-memoria-texto");
+      const botaoFaixa = document.getElementById("faixa-memoria-trocar");
+      faixa.hidden = !memoriaPrevia || Boolean(videoProjeto);
+      if (faixa.hidden) return;
+      const comFoto = origemFoto === "memoria" && memoriaPrevia.foto_id;
+      foto.hidden = !comFoto;
+      if (comFoto) foto.src = `/memoria/foto/${memoriaPrevia.foto_id}.jpg?mini=1`;
+      textoFaixa.textContent = "";
+      textoFaixa.append(document.createTextNode(comFoto ? "Foto da Memória da marca" : "Foto sem a Memória da marca"));
+      if (memoriaPrevia.angulo) textoFaixa.append(elemento("small", "", "Ângulo: " + memoriaPrevia.angulo));
+      botaoFaixa.textContent = comFoto ? "Trocar foto" : "Escolher da memória";
+    }
+
+    function usarFotoMemoriaNaPrevia(dados, fotoId) {
+      imagemProjeto = dados.foto_url;
+      videoProjeto = "";
+      origemFoto = "memoria";
+      if (!memoriaPrevia) memoriaPrevia = { foto_id: null, gancho: "", cena: "", referencia_id: null, angulo: "", legenda: "" };
+      memoriaPrevia.foto_id = fotoId;
+      colocarMidiaPrevia(dados.foto_url, "foto");
+      marcarAnexo("Foto da Memória da marca.");
+      desenharFaixaMemoria();
+    }
+
+    function dadosMemoriaPost() {
+      if (!memoriaPrevia) return { foto_id: null, gancho: "" };
+      return {
+        foto_id: origemFoto === "memoria" ? memoriaPrevia.foto_id || null : null,
+        gancho: (memoriaPrevia.gancho || "").slice(0, 80),
       };
     }
 
@@ -2321,7 +2491,29 @@
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         mostrarPrevia(dados);
-        falar("assistente", "O post está na prévia ao lado. Mude o texto lá se quiser, depois publique agora ou escolha o dia para agendar.");
+        memoriaPrevia = {
+          foto_id: dados.foto_id || null,
+          gancho: dados.gancho || "",
+          cena: dados.cena || "",
+          referencia_id: dados.referencia_id || null,
+          angulo: dados.angulo || "",
+          legenda: document.getElementById("legenda-previa").value.trim(),
+        };
+        const podeTrocar = !videoProjeto && origemFoto !== "anexo" && origemFoto !== "projeto";
+        if (dados.foto_url && dados.foto_id && podeTrocar) {
+          usarFotoMemoriaNaPrevia(dados, dados.foto_id);
+        } else if (podeTrocar && origemFoto === "memoria") {
+          imagemProjeto = "";
+          origemFoto = "";
+          colocarMidiaPrevia("", "foto");
+          marcarAnexo("");
+        }
+        desenharFaixaMemoria();
+        const partes = [];
+        if (dados.angulo) partes.push("Ângulo: " + dados.angulo + ".");
+        if (dados.foto_id && origemFoto === "memoria") partes.push("Usei uma foto da Memória da marca.");
+        else if (podeTrocar && !imagemProjeto) partes.push("Nenhuma foto da memória combinou: crie a foto com IA ou escolha uma da memória.");
+        falar("assistente", (partes.length ? partes.join(" ") + " " : "") + "O post está na prévia ao lado. Mude o texto lá se quiser, depois publique agora ou escolha o dia para agendar.");
       } catch (falha) {
         falar("assistente", falha.message || "Não foi possível criar agora.");
       } finally {
@@ -2776,6 +2968,7 @@
       try {
         const form = new FormData();
         form.append("arquivo", arquivo, arquivo.name);
+        form.append("marca_id", String(marcaAtual.id || 0));
         const resposta = await fetch("/anexo", { method: "POST", body: form });
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
@@ -2788,7 +2981,10 @@
           videoProjeto = "";
           marcarAnexo("Foto anexada.");
         }
+        origemFoto = "anexo";
+        if (memoriaPrevia) memoriaPrevia.foto_id = null;
         colocarMidiaPrevia(dados.url, dados.tipo === "video" ? "video" : "foto");
+        desenharFaixaMemoria();
       } catch (falha) {
         imagemProjeto = "";
         videoProjeto = "";
@@ -2826,6 +3022,7 @@
             legenda: publicado.legenda,
             imagem_url: imagemProjeto,
             video_url: videoProjeto,
+            ...dadosMemoriaPost(),
           }),
         });
         const dados = await lerResposta(resposta);
@@ -2878,6 +3075,7 @@
             legenda: publicado.legenda,
             imagem_url: imagemProjeto,
             video_url: videoProjeto,
+            ...dadosMemoriaPost(),
           }),
         });
         const dados = await lerResposta(resposta);
@@ -2917,8 +3115,281 @@
       document.getElementById("ficha-cidade").value = achada ? achada.cidade || "" : "";
       document.getElementById("ficha-uf").value = achada ? achada.uf || "" : "";
       document.getElementById("texto-ficha").value = achada ? achada.texto : "";
+      const memoria = (achada && achada.memoria) || {};
+      CAMPOS_MEMORIA.forEach((campo) => {
+        document.getElementById("memoria-" + campo).value = memoria[campo] || "";
+      });
       document.getElementById("apagar-marca").hidden = !achada || marcas.length <= 1;
+      carregarFotosMarca(achada ? achada.id : 0);
     }
+
+    const CAMPOS_MEMORIA = ["oferta", "itens", "horarios", "diferenciais", "promocoes", "tom", "nunca"];
+    const TIPOS_FOTO = ["print do app", "prato", "fachada", "ambiente", "equipe", "produto", "outro"];
+    let fotosMarcaDe = 0;
+    let pedidoFotos = 0;
+
+    async function carregarFotosMarca(marcaId) {
+      const numero = ++pedidoFotos;
+      fotosMarcaDe = marcaId;
+      const grade = document.getElementById("grade-fotos");
+      const nota = document.getElementById("nota-fotos");
+      const campo = document.getElementById("enviar-fotos");
+      grade.innerHTML = "";
+      nota.textContent = "";
+      document.getElementById("contagem-fotos").textContent = "";
+      campo.disabled = !marcaId;
+      document.getElementById("rotulo-enviar-fotos").classList.toggle("ocupado", !marcaId);
+      if (!marcaId) {
+        nota.textContent = "Salve a marca primeiro. Depois mande as fotos.";
+        return;
+      }
+      try {
+        const resposta = await fetch(`/memoria/${marcaId}/fotos`);
+        const dados = await lerResposta(resposta);
+        if (numero !== pedidoFotos) return;
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        desenharFotosMarca(dados);
+      } catch (falha) {
+        if (numero === pedidoFotos) nota.textContent = falha.message || "Não consegui abrir as fotos.";
+      }
+    }
+
+    function desenharFotosMarca(dados) {
+      const grade = document.getElementById("grade-fotos");
+      const itens = dados.itens || [];
+      grade.innerHTML = "";
+      document.getElementById("contagem-fotos").textContent = `${itens.length} de ${dados.limite || 60} fotos`;
+      if (!itens.length) {
+        grade.append(elemento("p", "nota", "Nenhuma foto ainda. Para um app: 4 a 8 prints das telas principais. Para restaurante: fachada, salão, pratos e equipe."));
+        return;
+      }
+      itens.forEach((foto) => grade.append(cartaoFotoMarca(foto, dados.tipos || TIPOS_FOTO)));
+    }
+
+    function cartaoFotoMarca(foto, tipos) {
+      const cartao = elemento("div", "cartao-foto" + (foto.usar_em_posts ? "" : " desligada"));
+      const imagem = document.createElement("img");
+      imagem.src = foto.miniatura_url;
+      imagem.alt = foto.descricao || "Foto da marca";
+      imagem.loading = "lazy";
+      const campos = elemento("div", "campos-foto");
+      const tipo = document.createElement("select");
+      tipos.forEach((valor) => {
+        const opcao = document.createElement("option");
+        opcao.value = valor;
+        opcao.textContent = valor.charAt(0).toUpperCase() + valor.slice(1);
+        tipo.append(opcao);
+      });
+      tipo.value = foto.tipo || "outro";
+      tipo.setAttribute("aria-label", "Tipo da foto");
+      const descricao = document.createElement("textarea");
+      descricao.maxLength = 1500;
+      descricao.value = foto.descricao || "";
+      descricao.placeholder = "O que a foto mostra e o que isso resolve para o cliente.";
+      descricao.setAttribute("aria-label", "Descrição da foto");
+      const tags = document.createElement("input");
+      tags.maxLength = 500;
+      tags.value = foto.tags || "";
+      tags.placeholder = "Palavras-chave, separadas por vírgula";
+      tags.setAttribute("aria-label", "Palavras-chave");
+      const linha = elemento("div", "linha-foto");
+      const usar = elemento("label", "usar");
+      const caixa = document.createElement("input");
+      caixa.type = "checkbox";
+      caixa.checked = Boolean(foto.usar_em_posts);
+      usar.append(caixa, document.createTextNode("Usar nos posts"));
+      const acoes = elemento("div", "acoes-foto");
+      const ler = elemento("button", "", "Ler de novo");
+      ler.type = "button";
+      ler.title = "A IA lê a foto de novo e reescreve a descrição";
+      const apagar = elemento("button", "apagar", "Apagar");
+      apagar.type = "button";
+      acoes.append(ler, apagar);
+      linha.append(usar, acoes);
+      const estado = elemento("span", "estado-foto", foto.descricao ? "" : "Sem descrição: escreva o que a foto mostra.");
+      campos.append(tipo, descricao, tags, linha, estado);
+      cartao.append(imagem, campos);
+
+      async function salvar() {
+        estado.textContent = "Salvando...";
+        try {
+          const resposta = await fetch("/memoria/fotos/" + foto.id, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ descricao: descricao.value.trim(), tags: tags.value.trim(), tipo: tipo.value, usar_em_posts: caixa.checked }),
+          });
+          const dados = await lerResposta(resposta);
+          if (!resposta.ok) throw new Error(mensagemErro(dados));
+          cartao.classList.toggle("desligada", !dados.usar_em_posts);
+          estado.textContent = "Salvo.";
+        } catch (falha) {
+          estado.textContent = falha.message || "Não consegui salvar.";
+        }
+      }
+      [tipo, descricao, tags, caixa].forEach((campo) => campo.addEventListener("change", salvar));
+      ler.addEventListener("click", async () => {
+        ler.disabled = true;
+        estado.textContent = "A IA está lendo a foto...";
+        try {
+          const resposta = await fetch("/memoria/fotos/" + foto.id + "/analisar", { method: "POST" });
+          const dados = await lerResposta(resposta);
+          if (!resposta.ok) throw new Error(mensagemErro(dados));
+          descricao.value = dados.descricao || "";
+          tags.value = dados.tags || "";
+          tipo.value = dados.tipo || "outro";
+          estado.textContent = "Lida de novo. Corrija se quiser.";
+        } catch (falha) {
+          estado.textContent = falha.message || "A IA não conseguiu ler agora.";
+        } finally {
+          ler.disabled = false;
+        }
+      });
+      apagar.addEventListener("click", async () => {
+        if (!window.confirm("Apagar esta foto da memória? Posts que já estão na fila continuam com a foto deles.")) return;
+        apagar.disabled = true;
+        try {
+          const resposta = await fetch("/memoria/fotos/" + foto.id, { method: "DELETE" });
+          const dados = await lerResposta(resposta);
+          if (!resposta.ok) throw new Error(mensagemErro(dados));
+          await carregarFotosMarca(fotosMarcaDe);
+          carregarAgenda().catch(() => {});
+        } catch (falha) {
+          estado.textContent = falha.message || "Não consegui apagar.";
+          apagar.disabled = false;
+        }
+      });
+      return cartao;
+    }
+
+    document.getElementById("enviar-fotos").addEventListener("change", async () => {
+      const campo = document.getElementById("enviar-fotos");
+      const arquivos = [...campo.files];
+      campo.value = "";
+      const nota = document.getElementById("nota-fotos");
+      const marcaId = fotosMarcaDe;
+      if (!arquivos.length || !marcaId) return;
+      const rotulo = document.getElementById("rotulo-enviar-fotos");
+      const texto = document.getElementById("texto-enviar-fotos");
+      const avisos = [];
+      rotulo.classList.add("ocupado");
+      campo.disabled = true;
+      let ultima = null;
+      for (let i = 0; i < arquivos.length; i += 1) {
+        const arquivo = arquivos[i];
+        if (!["image/jpeg", "image/png", "image/webp"].includes(arquivo.type)) {
+          avisos.push(`${arquivo.name}: envie em JPG, PNG ou WebP.`);
+          continue;
+        }
+        if (arquivo.size > 8 * 1024 * 1024) {
+          avisos.push(`${arquivo.name}: a foto precisa ter até 8 MB.`);
+          continue;
+        }
+        texto.textContent = `Enviando ${i + 1} de ${arquivos.length}`;
+        nota.textContent = "A IA está lendo a foto para escrever a descrição...";
+        try {
+          const form = new FormData();
+          form.append("arquivos", arquivo, arquivo.name);
+          const resposta = await fetch(`/memoria/${marcaId}/fotos`, { method: "POST", body: form });
+          const dados = await lerResposta(resposta);
+          if (!resposta.ok) throw new Error(mensagemErro(dados));
+          ultima = dados;
+          (dados.avisos || []).forEach((aviso) => avisos.push(aviso));
+          if (fotosMarcaDe === marcaId) desenharFotosMarca(dados);
+        } catch (falha) {
+          avisos.push(`${arquivo.name}: ${falha.message || "não entrou."}`);
+          if (/já tem \d+ fotos/.test(falha.message || "")) break;
+        }
+      }
+      texto.textContent = "Enviar fotos";
+      rotulo.classList.remove("ocupado");
+      campo.disabled = false;
+      if (fotosMarcaDe !== marcaId) return;
+      nota.textContent = avisos.length
+        ? avisos.join(" ")
+        : (ultima ? "Fotos guardadas e lidas pela IA. Confira as descrições: elas guiam os posts." : "");
+    });
+
+    let seletorAtual = null;
+
+    function fecharSeletor() {
+      document.getElementById("seletor-foto").hidden = true;
+      seletorAtual = null;
+    }
+
+    async function abrirSeletor(opcoes) {
+      seletorAtual = opcoes;
+      const fundo = document.getElementById("seletor-foto");
+      const grade = document.getElementById("seletor-grade");
+      const nota = document.getElementById("seletor-nota");
+      const botaoIA = document.getElementById("seletor-ia");
+      botaoIA.hidden = !opcoes.podeIA;
+      grade.innerHTML = "";
+      nota.textContent = "Carregando as fotos da memória...";
+      fundo.hidden = false;
+      try {
+        const resposta = await fetch(`/memoria/${opcoes.marcaId || 0}/fotos`);
+        const dados = await lerResposta(resposta);
+        if (seletorAtual !== opcoes) return;
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        const usaveis = (dados.itens || []).filter((foto) => foto.usar_em_posts);
+        nota.textContent = usaveis.length
+          ? "Escolha uma foto da Memória da marca. Ela entra sem custo de IA."
+          : "Esta marca ainda não tem fotos na memória. Mande em Minha marca > Fotos da marca.";
+        usaveis.forEach((foto) => {
+          const botao = document.createElement("button");
+          botao.type = "button";
+          if (foto.id === opcoes.atual) botao.className = "atual";
+          const imagem = document.createElement("img");
+          imagem.src = foto.miniatura_url;
+          imagem.alt = "";
+          imagem.loading = "lazy";
+          const legenda = (foto.descricao || foto.tipo || "").slice(0, 70);
+          botao.append(imagem, elemento("span", "", `${foto.tipo} · ${legenda}`));
+          botao.addEventListener("click", async () => {
+            grade.querySelectorAll("button").forEach((item) => { item.disabled = true; });
+            nota.textContent = "Montando a foto do post...";
+            try {
+              await opcoes.aoEscolher(foto.id);
+              fecharSeletor();
+            } catch (falha) {
+              nota.textContent = falha.message || "Não consegui usar essa foto.";
+              grade.querySelectorAll("button").forEach((item) => { item.disabled = false; });
+            }
+          });
+          grade.append(botao);
+        });
+      } catch (falha) {
+        if (seletorAtual === opcoes) nota.textContent = falha.message || "Não consegui abrir as fotos da memória.";
+      }
+    }
+
+    document.getElementById("fechar-seletor").addEventListener("click", fecharSeletor);
+    document.getElementById("seletor-foto").addEventListener("click", (evento) => {
+      if (evento.target.id === "seletor-foto") fecharSeletor();
+    });
+    document.getElementById("seletor-ia").addEventListener("click", () => {
+      const opcoes = seletorAtual;
+      fecharSeletor();
+      if (opcoes && opcoes.aoIA) opcoes.aoIA();
+    });
+    document.getElementById("faixa-memoria-trocar").addEventListener("click", () => {
+      abrirSeletor({
+        marcaId: marcaAtual.id,
+        atual: origemFoto === "memoria" && memoriaPrevia ? memoriaPrevia.foto_id : null,
+        podeIA: true,
+        aoIA: () => document.getElementById("criar-foto").click(),
+        aoEscolher: async (fotoId) => {
+          const resposta = await fetch("/memoria/imagem", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ marca_id: marcaAtual.id, foto_id: fotoId, gancho: memoriaPrevia ? memoriaPrevia.gancho || "" : "" }),
+          });
+          const dados = await lerResposta(resposta);
+          if (!resposta.ok) throw new Error(mensagemErro(dados));
+          usarFotoMemoriaNaPrevia(dados, fotoId);
+        },
+      });
+    });
 
     async function abrirFicha(id) {
       document.getElementById("pagina-ficha").hidden = false;
@@ -3149,6 +3620,7 @@
         cidade: document.getElementById("ficha-cidade").value.trim(),
         uf: document.getElementById("ficha-uf").value.trim().toUpperCase(),
         texto: document.getElementById("texto-ficha").value.trim(),
+        memoria: Object.fromEntries(CAMPOS_MEMORIA.map((campo) => [campo, document.getElementById("memoria-" + campo).value.trim()])),
       };
       if (corpo.nome.length < 2) {
         nota.textContent = "Escreva o nome da marca.";
@@ -3163,7 +3635,7 @@
         return;
       }
       if (corpo.texto.length < 20) {
-        nota.textContent = "Escreva o prompt com pelo menos algumas frases.";
+        nota.textContent = "Escreva as outras instruções com pelo menos algumas frases.";
         return;
       }
       const botao = document.getElementById("salvar-ficha");
@@ -3270,18 +3742,27 @@
       icone.replaceWith(giro);
       botao.disabled = true;
       rotulo.textContent = "Criando a foto";
+      const mesmaLegenda = memoriaPrevia && memoriaPrevia.legenda === legenda;
       try {
         const resposta = await fetch("/foto-legenda", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: AbortSignal.timeout(180000),
-          body: JSON.stringify({ legenda: legenda.slice(0, 5000), marca_id: marcaAtual.id }),
+          body: JSON.stringify({
+            legenda: legenda.slice(0, 5000),
+            marca_id: marcaAtual.id,
+            cena: mesmaLegenda ? (memoriaPrevia.cena || "").slice(0, 800) : "",
+            referencia_id: mesmaLegenda ? memoriaPrevia.referencia_id || null : null,
+          }),
         });
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         imagemProjeto = dados.foto_url;
         videoProjeto = "";
+        origemFoto = "ia";
+        if (memoriaPrevia) memoriaPrevia.foto_id = null;
         colocarMidiaPrevia(dados.foto_url, "foto");
+        desenharFaixaMemoria();
         marcarAnexo("Foto criada com IA.");
       } catch (falha) {
         const demorou = falha.name === "TimeoutError" || falha.name === "AbortError";

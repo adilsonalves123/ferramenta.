@@ -348,8 +348,6 @@ def _publicar_alvo(
     alvo: str, conta: ContaRede, texto: str, imagem_url: str, video_url: str, foto_story: str = ""
 ) -> tuple[str, str]:
     """Publica um alvo ('Rede:formato') e devolve (id criado na rede, formato publicado)."""
-    from app.services.midia import arquivo_story
-
     rede, formato = alvo.split(":", 1)
     video = video_url.strip()
     imagem = imagem_url.strip()
@@ -360,12 +358,12 @@ def _publicar_alvo(
             if video and not imagem:
                 raise RuntimeError("O Story do Facebook sai com foto.")
             return publicar_facebook_story(
-                conta.externo_id, conta.token, endereco_publico(foto_story or arquivo_story(imagem))
+                conta.externo_id, conta.token, endereco_publico(foto_story or imagem)
             ), "story"
         if video and video.lower().split("?", 1)[0].endswith(".mp4"):
             return publicar_instagram_story_video(conta.externo_id, conta.token, endereco_publico(video)), "story"
         return publicar_instagram_story(
-            conta.externo_id, conta.token, endereco_publico(foto_story or arquivo_story(imagem))
+            conta.externo_id, conta.token, endereco_publico(foto_story or imagem)
         ), "story"
     return _publicar_rede(rede, conta, texto, imagem, video)
 
@@ -402,18 +400,48 @@ def _usa_foto(alvo: str, imagem_url: str, video_url: str) -> bool:
     return not video
 
 
-def fotos_com_marca(alvos: list[str], imagem_url: str, video_url: str, marca_dagua: str) -> tuple[str, str]:
-    """Foto do feed e do Story com a marca d'água. Vídeo segue sem marca d'água."""
-    from app.services.midia import foto_com_marca
+async def _variante(base_url: str, chave: str, marca_id: int, desenhar) -> str:
+    """Foto derivada (feed com marca d'água, Story) guardada no banco; reaproveita a que já foi feita."""
+    from app.services.imagens import achar_variante, bytes_da_url, guardar_figura, id_da_url
+
+    base_id = id_da_url(base_url)
+    if base_id is not None:
+        pronta = await achar_variante(base_id, chave)
+        if pronta:
+            return pronta
+    dados = await bytes_da_url(base_url)
+    figura = await asyncio.to_thread(desenhar, dados)
+    return await guardar_figura(figura, marca_id, chave.split(":", 1)[0], base_id, chave)
+
+
+async def fotos_com_marca(
+    alvos: list[str],
+    imagem_url: str,
+    video_url: str,
+    marca_dagua: str,
+    gancho: str = "",
+    story_base: str = "",
+    marca_id: int = 0,
+) -> tuple[str, str]:
+    """Foto do feed com a marca d'água e o Story 1080x1920 (fundo desfocado, gancho e chamada).
+    Vídeo segue sem marca d'água."""
+    from app.services import arte
+    from app.services.memoria import CTA_STORY
 
     feed, story = imagem_url, ""
-    if not marca_dagua.strip():
-        return feed, story
     usados = [alvo for alvo in alvos if _usa_foto(alvo, imagem_url, video_url)]
-    if any(alvo.endswith(":feed") for alvo in usados):
-        feed = foto_com_marca(imagem_url, marca_dagua)
+    marca_dagua = marca_dagua.strip()
+    if marca_dagua and any(alvo.endswith(":feed") for alvo in usados):
+        chave = "feed:" + hashlib.sha1(marca_dagua.encode()).hexdigest()[:16]
+        feed = await _variante(
+            imagem_url, chave, marca_id, lambda dados: arte.carimbar(arte.abrir(dados), marca_dagua)
+        )
     if any(alvo.endswith(":story") for alvo in usados):
-        story = foto_com_marca(imagem_url, marca_dagua, story=True)
+        base = story_base or imagem_url
+        chave = "story:" + hashlib.sha1(f"{gancho}|{CTA_STORY}|{marca_dagua}|{base}".encode()).hexdigest()[:16]
+        story = await _variante(
+            base, chave, marca_id, lambda dados: arte.story(arte.abrir(dados), gancho, CTA_STORY, marca_dagua)
+        )
     return feed, story
 
 
@@ -603,7 +631,10 @@ async def publicar_agora(
     formato: str = "feed",
     marca_id: int = 0,
     tema: str = "",
+    gancho: str = "",
+    foto_id: int | None = None,
 ) -> tuple[str, str]:
+    from app.services.memoria import base_do_story
     from app.services.resultados import anotar_publicacao
 
     formato = formato if formato in {"feed", "story", "ambos"} else "feed"
@@ -620,7 +651,9 @@ async def publicar_agora(
     site, marca_dagua = await dados_marca(session, marca)
     texto = com_site(texto_do_post(titulo, legenda), site)
     try:
-        foto_feed, foto_story = await asyncio.to_thread(fotos_com_marca, alvos, imagem_url, video_url, marca_dagua)
+        foto_feed, foto_story = await fotos_com_marca(
+            alvos, imagem_url, video_url, marca_dagua, gancho, await base_do_story(session, foto_id), marca
+        )
     except Exception as erro:
         return "erro", (erro_marca(erro) + " Nada foi publicado.")[:300]
     erros: list[str] = []
@@ -670,37 +703,62 @@ ANTECEDENCIA_FOTO = timedelta(hours=3)
 LIMITE_FOTOS = 3
 
 
-def foto_sumiu(imagem_url: str) -> bool:
-    """True quando a foto é do /midia deste servidor e o arquivo não está mais no disco."""
-    from app.services.midia import PASTA_MIDIA
+async def foto_sumiu(imagem_url: str) -> bool:
+    """True quando a foto do post não existe mais (no banco, ou no disco antigo /midia)."""
+    from app.services.imagens import existe
 
-    caminho = imagem_url.strip().split("?", 1)[0]
-    base = get_settings().app_url.rstrip("/")
-    if base and caminho.startswith(base + "/midia/"):
-        caminho = caminho[len(base) :]
-    if not caminho.startswith("/midia/"):
+    if not imagem_url.strip():
         return False
-    partes = caminho.strip("/").split("/")
-    if len(partes) != 3 or ".." in partes:
+    return not await existe(imagem_url)
+
+
+async def _refaz_foto(item: Agendamento) -> bool:
+    if item.video_url or not ((item.cena or "").strip() or item.foto_id):
         return False
-    return not (PASTA_MIDIA / partes[1] / partes[2]).is_file()
+    return await foto_sumiu(item.imagem_url or "")
 
 
-def _refaz_foto(item: Agendamento) -> bool:
-    return bool((item.cena or "").strip()) and not item.video_url and foto_sumiu(item.imagem_url or "")
+async def _foto_da_memoria(session: AsyncSession, item: Agendamento) -> str:
+    """Monta a foto do post com a foto real da memória. Devolve '' se a foto não existe mais."""
+    from app.services.memoria import imagem_da_memoria
+
+    if not item.foto_id:
+        return ""
+    marca = await session.get(Ficha, await marca_efetiva(session, item.marca_id))
+    try:
+        return (await imagem_da_memoria(session, item.foto_id, item.gancho or "", marca))[:500]
+    except Exception:
+        return ""
 
 
 async def _gerar_foto(session: AsyncSession, item: Agendamento, automatica: bool = False) -> str:
-    """Cria a foto da cena do post (conta uma tentativa). Devolve o erro, ou '' quando deu certo.
+    """Faz a foto do post. Com foto da memória, usa a foto real (sem IA, sem custo).
+    Sem ela, cria com IA (conta uma tentativa), com a foto real do lugar como referência.
+    Devolve o erro, ou '' quando deu certo.
 
-    Na do robô (automatica), acertar zera a conta: o disco do servidor some a cada deploy e
-    refazer uma foto que sumiu não pode gastar as tentativas do post."""
+    Na do robô (automatica), acertar zera a conta: refazer uma foto que sumiu não pode gastar
+    as tentativas do post."""
+    from app.services.memoria import bytes_referencia
     from app.services.midia import foto_da_cena
 
+    if item.foto_id:
+        url = await _foto_da_memoria(session, item)
+        if url:
+            item.imagem_url = url
+            item.detalhe = ""
+            await session.commit()
+            return ""
+        item.foto_id = None
+    if not (item.cena or "").strip():
+        item.detalhe = "A foto da memória saiu. Escolha outra em Trocar foto."
+        await session.commit()
+        return item.detalhe
     item.tentativas = (item.tentativas or 0) + 1
     await session.commit()
     try:
-        item.imagem_url = (await foto_da_cena(item.cena))[:500]
+        marca = await marca_efetiva(session, item.marca_id)
+        referencia = await bytes_referencia(session, marca, item.referencia_id, item.cena)
+        item.imagem_url = (await foto_da_cena(item.cena, referencia, marca))[:500]
         item.detalhe = ""
         if automatica:
             item.tentativas = 0
@@ -756,9 +814,9 @@ async def preparar_fotos(session: AsyncSession) -> None:
     for item in resultado.all():
         if momento(item.dia, item.hora) > limite:
             continue
-        if item.video_url or not (item.cena or "").strip():
+        if item.video_url or not ((item.cena or "").strip() or item.foto_id):
             continue
-        if item.imagem_url and not foto_sumiu(item.imagem_url):
+        if item.imagem_url and not await foto_sumiu(item.imagem_url):
             continue
         if item.rede in REDES_PUBLICAVEIS:
             formato = (item.formato or "feed").strip().lower()
@@ -818,8 +876,10 @@ async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
         item.status = "manual"
         item.detalhe = "Essa rede ainda não publica sozinha."
         return
+    from app.services.memoria import base_do_story
+
     alvos = alvos_de(item.rede, formato)
-    if _refaz_foto(item):
+    if await _refaz_foto(item):
         item.imagem_url = ""
         if await _gerar_foto(session, item, automatica=True):
             item.status = "na_fila"
@@ -835,6 +895,7 @@ async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
     feitos = _feitos(item)
     marca = await marca_efetiva(session, item.marca_id)
     site, marca_dagua = await dados_marca(session, marca)
+    story_base = await base_do_story(session, item.foto_id)
     texto = com_site(texto_do_post(item.titulo, item.legenda), site)
     pendentes = [alvo for alvo in alvos if alvo not in feitos]
     faltam = await contas_faltando(session, pendentes, marca)
@@ -845,8 +906,8 @@ async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
         item.detalhe = " ".join(avisos_conta)[:300]
         return
     try:
-        foto_feed, foto_story = await asyncio.to_thread(
-            fotos_com_marca, prontos, item.imagem_url, item.video_url, marca_dagua
+        foto_feed, foto_story = await fotos_com_marca(
+            prontos, item.imagem_url, item.video_url, marca_dagua, item.gancho or "", story_base, marca
         )
     except Exception as erro:
         item.tentativas_marca = (item.tentativas_marca or 0) + 1

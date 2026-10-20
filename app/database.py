@@ -85,6 +85,14 @@ async def criar_tabelas() -> None:
         await conexao.execute(
             text("ALTER TABLE mkt_agendamentos ADD COLUMN IF NOT EXISTS marca_id INTEGER NOT NULL DEFAULT 0")
         )
+        await conexao.execute(text("ALTER TABLE mkt_agendamentos ADD COLUMN IF NOT EXISTS foto_id INTEGER NULL"))
+        await conexao.execute(
+            text("ALTER TABLE mkt_agendamentos ADD COLUMN IF NOT EXISTS referencia_id INTEGER NULL")
+        )
+        await conexao.execute(
+            text("ALTER TABLE mkt_agendamentos ADD COLUMN IF NOT EXISTS gancho VARCHAR(80) NOT NULL DEFAULT ''")
+        )
+        await conexao.execute(text("ALTER TABLE mkt_ficha ADD COLUMN IF NOT EXISTS memoria TEXT NOT NULL DEFAULT ''"))
         await conexao.execute(text("ALTER TABLE mkt_ficha ADD COLUMN IF NOT EXISTS nome VARCHAR(120) NOT NULL DEFAULT ''"))
         await conexao.execute(
             text("ALTER TABLE mkt_ficha ADD COLUMN IF NOT EXISTS publico VARCHAR(200) NOT NULL DEFAULT ''")

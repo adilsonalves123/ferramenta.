@@ -2,11 +2,21 @@ from datetime import datetime, timedelta, timezone
 
 from openai import APIError
 from pydantic import BaseModel
+from sqlalchemy import delete
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import get_settings
-from app.models import Agendamento, ContaRede, Ficha, Publicacao, Sugestao, agora
+from app.models import Agendamento, ContaRede, Ficha, Imagem, MemoriaFoto, Publicacao, Sugestao, agora
+from app.services.memoria import (
+    ContextoMemoria,
+    gravar_fatos,
+    imagem_da_memoria,
+    limpar_gancho,
+    montar_contexto,
+    nome_do_dia,
+    posts_recentes,
+)
 from app.services.openai_campanha import REGRAS_ALCOOL, cliente_openai, com_moderacao, fala_de_alcool
 
 ZONA = timezone(timedelta(hours=-3))
@@ -31,6 +41,10 @@ class PosteGerado(BaseModel):
     titulo: str
     legenda: str
     cena: str
+    angulo: str
+    gancho: str
+    foto_id: int | None
+    referencia_id: int | None
 
 
 class PacoteSemana(BaseModel):
@@ -73,7 +87,13 @@ async def marca_por_id(session: AsyncSession, marca_id: int) -> Ficha | None:
 
 
 async def criar_marca(
-    session: AsyncSession, nome: str, publico: str, texto: str, site: str = "", marca_dagua: str = ""
+    session: AsyncSession,
+    nome: str,
+    publico: str,
+    texto: str,
+    site: str = "",
+    marca_dagua: str = "",
+    memoria: dict[str, str] | None = None,
 ) -> Ficha:
     registro = Ficha(
         nome=nome.strip()[:120],
@@ -82,6 +102,8 @@ async def criar_marca(
         marca_dagua=marca_dagua.strip()[:60],
         texto=texto.strip(),
     )
+    if memoria is not None:
+        gravar_fatos(registro, memoria)
     session.add(registro)
     await session.commit()
     await session.refresh(registro)
@@ -96,6 +118,7 @@ async def atualizar_marca(
     texto: str,
     site: str = "",
     marca_dagua: str = "",
+    memoria: dict[str, str] | None = None,
 ) -> Ficha | None:
     resultado = await session.exec(select(Ficha).where(Ficha.id == marca_id))
     registro = resultado.first()
@@ -106,6 +129,8 @@ async def atualizar_marca(
     registro.site = site.strip()[:200]
     registro.marca_dagua = marca_dagua.strip()[:60]
     registro.texto = texto.strip()
+    if memoria is not None:
+        gravar_fatos(registro, memoria)
     registro.atualizado_em = agora()
     await session.commit()
     await session.refresh(registro)
@@ -135,6 +160,8 @@ async def apagar_marca(session: AsyncSession, marca_id: int) -> None:
     sugestoes = await session.exec(select(Sugestao).where(Sugestao.marca_id == marca_id))
     for sugestao in sugestoes.all():
         await session.delete(sugestao)
+    await session.exec(delete(MemoriaFoto).where(MemoriaFoto.marca_id == marca_id))
+    await session.exec(delete(Imagem).where(Imagem.marca_id == marca_id))
     await session.delete(alvo)
     await session.commit()
 
@@ -150,23 +177,40 @@ TEMAS = {
 
 
 async def escrever_semana(
-    ficha: str, quantidade: int, tema: str = "", site: str = "", contexto: str = ""
+    ficha: str,
+    quantidade: int,
+    tema: str = "",
+    site: str = "",
+    contexto: str = "",
+    memoria: ContextoMemoria | None = None,
+    quando: list[str] | None = None,
+    recentes: list[str] | None = None,
 ) -> list[PosteGerado]:
+    memoria = memoria or ContextoMemoria()
     guia = TEMAS.get(tema.strip().lower(), "")
     pedido_tema = f"\nTema de todas as publicações: {guia}" if guia else ""
     if site.strip():
         pedido_tema += "\nNão escreva o site nem link na legenda: o site da marca entra sozinho no final."
     if contexto.strip():
         pedido_tema += f"\nMotivo deste post: {contexto.strip()[:1500]}"
-    alcool = fala_de_alcool(ficha) or fala_de_alcool(contexto)
+    if quando:
+        pedido_tema += "\nDia de cada publicação, na ordem:\n" + "\n".join(
+            f"{numero}. {texto}" for numero, texto in enumerate(quando, start=1)
+        )
+    if recentes:
+        pedido_tema += "\nPosts recentes desta marca (não repita o ângulo nem o gancho):\n" + "\n".join(
+            f"- {linha}" for linha in recentes
+        )
+    bloco_memoria = f"\n\n{memoria.texto[:14000]}" if memoria.tem_memoria else ""
+    alcool = fala_de_alcool(ficha) or fala_de_alcool(contexto) or fala_de_alcool(memoria.texto)
     resposta = await cliente_openai().with_options(timeout=90).chat.completions.parse(
         model=get_settings().openai_model,
         messages=[
-            {"role": "system", "content": SISTEMA + (REGRAS_ALCOOL if alcool else "")},
+            {"role": "system", "content": SISTEMA + memoria.regras() + (REGRAS_ALCOOL if alcool else "")},
             {
                 "role": "user",
                 "content": (
-                    f"Ficha do negócio:\n{ficha.strip()[:6000]}\n\n"
+                    f"Ficha do negócio:\n{ficha.strip()[:6000]}{bloco_memoria}\n\n"
                     f"Crie exatamente {quantidade} publicações diferentes, nesta ordem.{pedido_tema}"
                 ),
             },
@@ -187,7 +231,15 @@ async def escrever_semana(
         raise ValueError("A semana veio sem texto.")
     if alcool:
         posts = [item.model_copy(update={"legenda": com_moderacao(item.legenda)}) for item in posts]
-    return posts[:quantidade]
+    validados = []
+    for item in posts[:quantidade]:
+        foto_id, referencia_id = memoria.validar(item.foto_id, item.referencia_id)
+        validados.append(
+            item.model_copy(
+                update={"foto_id": foto_id, "referencia_id": referencia_id, "gancho": limpar_gancho(item.gancho)}
+            )
+        )
+    return validados
 
 
 def _data_dia(dia: str):
@@ -233,8 +285,13 @@ async def montar_dias(
     if (marca.publico or "").strip():
         cabecalho += f" Público: {marca.publico}."
     ficha = f"{cabecalho}\n{(marca.texto or '').strip()}".strip()
+    memoria = await montar_contexto(session, marca)
+    recentes = await posts_recentes(session, marca.id or 0)
+    quando = [f"{nome_do_dia(dia)} às {hora}" for dia, hora in pedidos]
     try:
-        posts = await escrever_semana(ficha, len(pedidos), tema, marca.site or "", contexto)
+        posts = await escrever_semana(
+            ficha, len(pedidos), tema, marca.site or "", contexto, memoria, quando, recentes
+        )
     except APIError as erro:
         detalhe = str(erro)
         if "insufficient_quota" in detalhe or "credit_balance" in detalhe:
@@ -252,6 +309,9 @@ async def montar_dias(
             titulo=post.titulo.strip()[:300],
             legenda=post.legenda.strip(),
             cena=post.cena.strip()[:800],
+            foto_id=post.foto_id,
+            referencia_id=post.referencia_id,
+            gancho=post.gancho[:80],
             status="na_fila",
         )
         session.add(registro)
@@ -259,7 +319,20 @@ async def montar_dias(
     await session.commit()
     for registro in criados:
         await session.refresh(registro)
-    aviso = f"Post de {marca.nome} na fila. A foto é criada até 3 horas antes do horário. Você pode revisar e cancelar antes de sair."
+    da_memoria = 0
+    for registro in criados:
+        if not registro.foto_id:
+            continue
+        try:
+            registro.imagem_url = (await imagem_da_memoria(session, registro.foto_id, registro.gancho, marca))[:500]
+            da_memoria += 1
+        except Exception:
+            registro.foto_id = None
+    await session.commit()
+    if da_memoria == len(criados):
+        aviso = f"Post de {marca.nome} na fila, com foto da Memória da marca. Você pode revisar, trocar a foto e cancelar antes de sair."
+    else:
+        aviso = f"Post de {marca.nome} na fila. A foto é criada até 3 horas antes do horário. Você pode revisar e cancelar antes de sair."
     if len(criados) < len(pedidos):
         aviso = "Parte dos dias entrou na fila. " + aviso
     if repetidos:

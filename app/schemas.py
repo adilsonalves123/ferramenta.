@@ -22,15 +22,66 @@ class PedidoCampanha(BaseModel):
     foto_base64: str = Field(default="", max_length=6_000_000)
     brief_foto: str = Field(default="", max_length=800)
     tema: str = Field(default="", max_length=30)
+    marca_id: int = 0
+    dia: str = Field(default="", max_length=10)
+    hora: str = Field(default="", max_length=5)
 
 
 class PedidoFotoLegenda(BaseModel):
     legenda: str = Field(min_length=2, max_length=5000)
     marca_id: int = 0
+    cena: str = Field(default="", max_length=800)
+    referencia_id: int | None = None
 
 
 class RespostaFoto(BaseModel):
     foto_url: str
+
+
+class FatosMarca(BaseModel):
+    oferta: str = Field(default="", max_length=2000)
+    itens: str = Field(default="", max_length=4000)
+    horarios: str = Field(default="", max_length=1000)
+    diferenciais: str = Field(default="", max_length=2000)
+    promocoes: str = Field(default="", max_length=2000)
+    tom: str = Field(default="", max_length=1000)
+    nunca: str = Field(default="", max_length=2000)
+
+
+class ItemFotoMemoria(BaseModel):
+    id: int
+    url: str
+    miniatura_url: str
+    largura: int = 0
+    altura: int = 0
+    descricao: str = ""
+    tags: str = ""
+    tipo: str = "outro"
+    usar_em_posts: bool = True
+
+
+class RespostaFotosMemoria(BaseModel):
+    itens: list[ItemFotoMemoria]
+    limite: int
+    tipos: list[str]
+    avisos: list[str] = Field(default_factory=list)
+
+
+class PedidoFotoMemoria(BaseModel):
+    descricao: str = Field(default="", max_length=1500)
+    tags: str = Field(default="", max_length=500)
+    tipo: str = Field(default="outro", max_length=30)
+    usar_em_posts: bool = True
+
+
+class PedidoImagemMemoria(BaseModel):
+    marca_id: int = 0
+    foto_id: int
+    gancho: str = Field(default="", max_length=80)
+
+
+class PedidoFotoAgenda(BaseModel):
+    foto_id: int | None = None
 
 
 class RoteiroVideo(BaseModel):
@@ -51,6 +102,16 @@ class CampanhaGerada(BaseModel):
     legenda_redes: str
 
 
+class CampanhaMemoria(BaseModel):
+    titulo_anuncio: str
+    legenda_redes: str
+    cena: str
+    angulo: str
+    gancho: str
+    foto_id: int | None
+    referencia_id: int | None
+
+
 class CampanhaCompleta(CampanhaGerada):
     roteiro_video: RoteiroVideo = Field(default_factory=RoteiroVideo)
     google_meu_negocio: GoogleMeuNegocio = Field(default_factory=GoogleMeuNegocio)
@@ -58,6 +119,12 @@ class CampanhaCompleta(CampanhaGerada):
     audio_url: str | None = None
     video_url: str | None = None
     aviso_midia: str | None = None
+    cena: str = ""
+    angulo: str = ""
+    gancho: str = ""
+    foto_id: int | None = None
+    referencia_id: int | None = None
+    memoria_miniatura: str = ""
 
 
 class MensagemCriacao(BaseModel):
@@ -134,6 +201,8 @@ class PedidoPublicarAgora(BaseModel):
     legenda: str = Field(min_length=1)
     imagem_url: str = Field(default="", max_length=500)
     video_url: str = Field(default="", max_length=500)
+    foto_id: int | None = None
+    gancho: str = Field(default="", max_length=80)
 
 
 class RespostaPublicacao(BaseModel):
@@ -149,6 +218,7 @@ class PedidoMarca(BaseModel):
     cidade: str = Field(default="", max_length=120)
     uf: str = Field(default="", max_length=2)
     texto: str = Field(min_length=20, max_length=8000)
+    memoria: FatosMarca | None = None
 
 
 class ItemMarca(BaseModel):
@@ -163,6 +233,7 @@ class ItemMarca(BaseModel):
     longitude: float | None = None
     aviso_local: str = ""
     texto: str
+    memoria: FatosMarca = Field(default_factory=FatosMarca)
 
 
 class RespostaMarcas(BaseModel):
@@ -233,6 +304,8 @@ class PedidoAgenda(BaseModel):
     legenda: str = Field(min_length=1)
     imagem_url: str = Field(default="", max_length=500)
     video_url: str = Field(default="", max_length=500)
+    foto_id: int | None = None
+    gancho: str = Field(default="", max_length=80)
 
     def hora_normalizada(self) -> str:
         partes = self.hora.strip().split(":")
@@ -262,6 +335,10 @@ class ItemAgenda(BaseModel):
     aguarda_foto: bool = False
     imagem_url: str = ""
     pode_trocar_foto: bool = False
+    pode_criar_ia: bool = False
+    foto_id: int | None = None
+    gancho: str = ""
+    memoria_miniatura: str = ""
 
 
 class EstadoRede(BaseModel):

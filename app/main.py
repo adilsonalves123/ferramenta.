@@ -1,5 +1,6 @@
 import asyncio
 import os
+import time
 from contextlib import asynccontextmanager
 from html import escape
 from pathlib import Path
@@ -18,17 +19,21 @@ from app.services.resultados import medir_rodada
 from app.routers.agenda import router as router_agenda
 from app.routers.campanhas import router
 from app.routers.legal import router as router_legal
+from app.routers.memoria import router as router_memoria
 from app.routers.novas import router as router_novas
 from app.routers.projetos import router as router_projetos
 from app.routers.resultados import router as router_resultados
 from app.routers.resumo import router as router_resumo
 from app.routers.sugestoes import router as router_sugestoes
+from app.services.imagens import limpar_antigas
 from app.services.midia import PASTA_MIDIA
 
 PAGINA = Path(__file__).with_name("pagina.html")
 PASTA_QUADROS = Path(__file__).resolve().parent.parent / "quadros"
 
 trava_robo = asyncio.Lock()
+LIMPEZA_A_CADA = 6 * 3600
+ultima_limpeza: float | None = None
 
 
 def robo_desligado() -> bool:
@@ -36,10 +41,19 @@ def robo_desligado() -> bool:
 
 
 async def rodada() -> None:
+    global ultima_limpeza
     async with trava_robo:
         async with get_sessionmaker()() as session:
             await preparar_fotos(session)
             await publicar_vencidos(session)
+            if ultima_limpeza is None or time.monotonic() - ultima_limpeza > LIMPEZA_A_CADA:
+                ultima_limpeza = time.monotonic()
+                try:
+                    await limpar_antigas(session)
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    await session.rollback()
             try:
                 await medir_rodada(session)
             except asyncio.CancelledError:
@@ -99,6 +113,7 @@ def create_app() -> FastAPI:
     app.include_router(router_projetos)
     app.include_router(router_agenda)
     app.include_router(router_legal)
+    app.include_router(router_memoria)
     app.include_router(router_resultados)
     app.include_router(router_resumo)
     app.include_router(router_sugestoes)
@@ -122,8 +137,21 @@ def create_app() -> FastAPI:
                 "marca_dagua": "A marca d'água pode ter até 60 letras.",
                 "cidade": "A cidade pode ter até 120 letras.",
                 "uf": "Escreva a sigla do estado com 2 letras, por exemplo SP.",
-                "texto": "O prompt precisa ter entre 20 e 8000 letras.",
+                "texto": "As outras instruções precisam ter entre 20 e 8000 letras.",
+                "oferta": "O que você vende ou faz pode ter até 2000 letras.",
+                "itens": "A lista de produtos, pratos ou funcionalidades pode ter até 4000 letras.",
+                "horarios": "Os horários podem ter até 1000 letras.",
+                "diferenciais": "Os diferenciais podem ter até 2000 letras.",
+                "promocoes": "As promoções fixas podem ter até 2000 letras.",
+                "tom": "O tom de voz pode ter até 1000 letras.",
+                "nunca": "O Nunca dizer pode ter até 2000 letras.",
             }.get(campo, "Não consegui salvar a marca. Confira os campos.")
+            return JSONResponse(status_code=422, content={"detail": detalhe})
+        if request.url.path.startswith("/memoria"):
+            detalhe = {
+                "descricao": "A descrição pode ter até 1500 letras.",
+                "tags": "As palavras-chave podem ter até 500 letras.",
+            }.get(campo, "Não consegui salvar a foto. Confira os campos.")
             return JSONResponse(status_code=422, content={"detail": detalhe})
         if tipo == "string_too_long" and campo in {"produto", "produto_servico"}:
             detalhe = "O texto ficou longo demais. Encurte um pouco e tente de novo."

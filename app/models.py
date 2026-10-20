@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Text, UniqueConstraint
+from sqlalchemy import DateTime, LargeBinary, Text, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -43,6 +43,9 @@ class Agendamento(SQLModel, table=True):
     formato: str = Field(default="feed", max_length=20)
     tema: str = Field(default="", max_length=30)
     marca_id: int = Field(default=0)
+    foto_id: int | None = Field(default=None)
+    referencia_id: int | None = Field(default=None)
+    gancho: str = Field(default="", max_length=80)
     feito: str = Field(default="", max_length=80)
     status: str = Field(default="na_fila", max_length=20)
     detalhe: str = Field(default="", sa_type=Text)
@@ -113,7 +116,40 @@ class Ficha(SQLModel, table=True):
     longitude: float | None = Field(default=None)
     clima_status: str = Field(default="", max_length=300)
     texto: str = Field(sa_type=Text)
+    memoria: str = Field(default="", sa_type=Text)
     atualizado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
+
+
+class MemoriaFoto(SQLModel, table=True):
+    __tablename__ = "mkt_memoria_fotos"
+
+    id: int | None = Field(default=None, primary_key=True)
+    marca_id: int = Field(index=True)
+    arquivo: bytes = Field(sa_type=LargeBinary)
+    miniatura: bytes = Field(default=b"", sa_type=LargeBinary)
+    largura: int = Field(default=0)
+    altura: int = Field(default=0)
+    descricao: str = Field(default="", sa_type=Text)
+    tags: str = Field(default="", sa_type=Text)
+    tipo: str = Field(default="outro", max_length=30)
+    usar_em_posts: bool = Field(default=True)
+    criado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
+
+
+class Imagem(SQLModel, table=True):
+    """Foto de post guardada no banco: o disco do servidor é apagado a cada deploy."""
+
+    __tablename__ = "mkt_imagens"
+
+    id: int | None = Field(default=None, primary_key=True)
+    marca_id: int = Field(default=0, index=True)
+    arquivo: bytes = Field(sa_type=LargeBinary)
+    largura: int = Field(default=0)
+    altura: int = Field(default=0)
+    origem: str = Field(default="", max_length=20)
+    base_id: int | None = Field(default=None, index=True)
+    variante: str = Field(default="", max_length=80)
+    criado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
 
 
 class Sugestao(SQLModel, table=True):

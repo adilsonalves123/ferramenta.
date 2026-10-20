@@ -1,19 +1,21 @@
 from html import escape
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import get_settings
 from app.database import get_session
-from app.models import Agendamento
+from app.models import Agendamento, Ficha, MemoriaFoto
 from app.schemas import (
     EstadoRede,
+    FatosMarca,
     ItemAgenda,
     PedidoAgenda,
     ItemMarca,
     PedidoFormato,
+    PedidoFotoAgenda,
     PedidoMarca,
     PedidoPagina,
     PedidoPublicarAgora,
@@ -26,7 +28,9 @@ from app.schemas import (
     PosteSemana,
 )
 from app.services.calendario import ajustar_local, aviso_local, mudar_status, uf_valida
-from app.services.midia import salvar_anexo
+from app.services.imagens import url_memoria
+from app.services.memoria import imagem_da_memoria, ler_fatos, limpar_gancho
+from app.services.midia import anexar
 from app.services.publicar import (
     escolher_pagina_facebook,
     estado_contas,
@@ -82,6 +86,8 @@ def _pagina_falta() -> str:
 
 
 def _item(registro: Agendamento) -> ItemAgenda:
+    tem_cena = bool((registro.cena or "").strip())
+    aberto = registro.status in {"na_fila", "falta_imagem"}
     return ItemAgenda(
         id=registro.id or 0,
         dia=registro.dia,
@@ -93,9 +99,13 @@ def _item(registro: Agendamento) -> ItemAgenda:
         titulo=registro.titulo,
         status=registro.status,
         detalhe=registro.detalhe,
-        aguarda_foto=bool((registro.cena or "").strip()) and not registro.imagem_url and not registro.video_url,
+        aguarda_foto=tem_cena and not registro.imagem_url and not registro.video_url,
         imagem_url=registro.imagem_url or "",
-        pode_trocar_foto=bool((registro.cena or "").strip()) and not registro.video_url and bool(registro.imagem_url),
+        pode_trocar_foto=aberto and not registro.video_url,
+        pode_criar_ia=aberto and tem_cena and not registro.video_url,
+        foto_id=registro.foto_id,
+        gancho=registro.gancho or "",
+        memoria_miniatura=url_memoria(registro.foto_id, mini=True) if registro.foto_id else "",
     )
 
 
@@ -106,17 +116,24 @@ def _estado(conta) -> EstadoRede:
 
 
 @router.post("/anexo")
-async def post_anexo(arquivo: UploadFile = File()) -> dict[str, str]:
+async def post_anexo(arquivo: UploadFile = File(), marca_id: int = Form(0)) -> dict[str, str]:
     dados = await arquivo.read(25_000_001)
     if len(dados) > 25_000_000:
         raise HTTPException(status_code=422, detail="O vídeo precisa ter até 25 MB.")
     if (arquivo.content_type or "").lower() == "video/webm" or (arquivo.filename or "").lower().endswith(".webm"):
         raise HTTPException(status_code=422, detail="Envie o vídeo em MP4.")
     try:
-        url, tipo = salvar_anexo(dados)
+        url, tipo = await anexar(dados, marca_id)
     except ValueError as erro:
         raise HTTPException(status_code=422, detail=str(erro)) from erro
     return {"url": url, "tipo": tipo}
+
+
+async def _foto_da_marca(session: AsyncSession, foto_id: int | None, marca_id: int) -> int | None:
+    if not foto_id:
+        return None
+    foto = await session.get(MemoriaFoto, foto_id)
+    return foto_id if foto is not None and foto.marca_id == marca_id else None
 
 
 @router.get("/agenda", response_model=RespostaAgenda)
@@ -153,7 +170,9 @@ async def post_agenda(
         formato=pedido.formato if pedido.formato in {"feed", "story", "ambos"} else "feed",
         tema=pedido.tema.strip()[:30],
         marca_id=pedido.marca_id,
+        gancho=limpar_gancho(pedido.gancho),
     )
+    registro.foto_id = await _foto_da_marca(session, pedido.foto_id, await marca_efetiva(session, pedido.marca_id))
     session.add(registro)
     formato = registro.formato or "feed"
     precisa_foto = formato in {"story", "ambos"} or registro.rede in {"Instagram", "Ambos"}
@@ -191,6 +210,8 @@ async def post_publicar_agora(
         pedido.formato,
         pedido.marca_id,
         pedido.tema.strip()[:30],
+        limpar_gancho(pedido.gancho),
+        await _foto_da_marca(session, pedido.foto_id, await marca_efetiva(session, pedido.marca_id)),
     )
     return RespostaPublicacao(status=status, detalhe=detalhe)
 
@@ -208,6 +229,7 @@ def _marca(registro, aviso: str = "") -> ItemMarca:
         longitude=registro.longitude,
         aviso_local=aviso or aviso_local(registro),
         texto=registro.texto or "",
+        memoria=FatosMarca(**ler_fatos(registro)),
     )
 
 
@@ -226,7 +248,15 @@ async def get_marcas(session: AsyncSession = Depends(get_session)) -> RespostaMa
 @router.post("/marcas", response_model=ItemMarca)
 async def post_marca(pedido: PedidoMarca, session: AsyncSession = Depends(get_session)) -> ItemMarca:
     uf = _uf_do_pedido(pedido)
-    registro = await criar_marca(session, pedido.nome, pedido.publico, pedido.texto, pedido.site, pedido.marca_dagua)
+    registro = await criar_marca(
+        session,
+        pedido.nome,
+        pedido.publico,
+        pedido.texto,
+        pedido.site,
+        pedido.marca_dagua,
+        pedido.memoria.model_dump() if pedido.memoria else None,
+    )
     aviso = await ajustar_local(session, registro, pedido.cidade, uf)
     return _marca(registro, aviso)
 
@@ -239,7 +269,14 @@ async def put_marca(
 ) -> ItemMarca:
     uf = _uf_do_pedido(pedido)
     registro = await atualizar_marca(
-        session, marca_id, pedido.nome, pedido.publico, pedido.texto, pedido.site, pedido.marca_dagua
+        session,
+        marca_id,
+        pedido.nome,
+        pedido.publico,
+        pedido.texto,
+        pedido.site,
+        pedido.marca_dagua,
+        pedido.memoria.model_dump() if pedido.memoria else None,
     )
     if registro is None:
         raise HTTPException(status_code=404, detail="Essa marca não existe mais.")
@@ -302,14 +339,55 @@ async def put_formato_agenda(
     return _item(registro)
 
 
+async def _trocar_por_ia(session: AsyncSession, registro: Agendamento) -> None:
+    antes = registro.foto_id
+    registro.foto_id = None
+    falha = await trocar_foto(session, registro)
+    if falha:
+        registro.foto_id = antes
+        await session.commit()
+        raise HTTPException(status_code=422, detail=falha)
+
+
 @router.post("/agenda/{item_id}/trocar-foto", response_model=ItemAgenda)
 async def post_trocar_foto(item_id: int, session: AsyncSession = Depends(get_session)) -> ItemAgenda:
     registro = await session.get(Agendamento, item_id)
     if registro is None:
         raise HTTPException(status_code=404, detail="Esse post não está na fila.")
-    falha = await trocar_foto(session, registro)
-    if falha:
-        raise HTTPException(status_code=422, detail=falha)
+    await _trocar_por_ia(session, registro)
+    await session.refresh(registro)
+    return _item(registro)
+
+
+@router.post("/agenda/{item_id}/foto-memoria", response_model=ItemAgenda)
+async def post_foto_memoria_agenda(
+    item_id: int, pedido: PedidoFotoAgenda, session: AsyncSession = Depends(get_session)
+) -> ItemAgenda:
+    """Troca a foto do post por outra foto da memória (sem custo) ou, com foto_id vazio, cria com IA."""
+    registro = await session.get(Agendamento, item_id)
+    if registro is None:
+        raise HTTPException(status_code=404, detail="Esse post não está na fila.")
+    if registro.status not in {"na_fila", "falta_imagem"}:
+        raise HTTPException(status_code=422, detail="Esse post não está mais na fila.")
+    if registro.video_url:
+        raise HTTPException(status_code=422, detail="Este post sai com vídeo.")
+    if not pedido.foto_id:
+        await _trocar_por_ia(session, registro)
+        await session.refresh(registro)
+        return _item(registro)
+    marca = await session.get(Ficha, await marca_efetiva(session, registro.marca_id))
+    if await _foto_da_marca(session, pedido.foto_id, marca.id if marca else 0) is None:
+        raise HTTPException(status_code=404, detail="Essa foto não está na memória desta marca.")
+    try:
+        url = await imagem_da_memoria(session, pedido.foto_id, registro.gancho or "", marca)
+    except Exception as erro:
+        raise HTTPException(status_code=422, detail=str(erro)[:200] or "Não consegui usar essa foto.") from erro
+    registro.foto_id = pedido.foto_id
+    registro.imagem_url = url[:500]
+    registro.detalhe = ""
+    if registro.status == "falta_imagem":
+        registro.status = "na_fila"
+    await session.commit()
     await session.refresh(registro)
     return _item(registro)
 

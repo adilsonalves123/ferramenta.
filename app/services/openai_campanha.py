@@ -4,7 +4,7 @@ from functools import lru_cache
 from openai import APIError, AsyncOpenAI
 
 from app.config import get_settings
-from app.schemas import CampanhaGerada, PedidoCampanha
+from app.schemas import CampanhaGerada, CampanhaMemoria, PedidoCampanha
 
 SISTEMA = """Você escreve campanhas de marketing em português do Brasil para pequenos negócios.
 Use só o nicho e o produto informados. Não invente preço, cidade, telefone, avaliação, horário de funcionamento ou promessa que não dê para cumprir.
@@ -49,6 +49,10 @@ def cliente_openai() -> AsyncOpenAI:
     return AsyncOpenAI(api_key=get_settings().openai_api_key, timeout=60)
 
 
+CAMPOS_POST = """
+cena: descrição de uma fotografia realista para o post, sem texto escrito, letras, números ou tela acesa com palavras."""
+
+
 async def gerar_campanha(pedido: PedidoCampanha) -> CampanhaGerada:
     alcool = fala_de_alcool(f"{pedido.nicho} {pedido.produto}")
     resposta = await cliente_openai().chat.completions.parse(
@@ -61,6 +65,36 @@ async def gerar_campanha(pedido: PedidoCampanha) -> CampanhaGerada:
             },
         ],
         response_format=CampanhaGerada,
+    )
+    mensagem = resposta.choices[0].message
+    if mensagem.refusal:
+        raise ValueError(mensagem.refusal)
+    if mensagem.parsed is None:
+        raise ValueError("A IA não devolveu a campanha no formato esperado.")
+    if alcool:
+        return mensagem.parsed.model_copy(update={"legenda_redes": com_moderacao(mensagem.parsed.legenda_redes)})
+    return mensagem.parsed
+
+
+async def gerar_campanha_memoria(
+    pedido: PedidoCampanha, regras: str, memoria: str, quando: str = "", recentes: list[str] | None = None
+) -> CampanhaMemoria:
+    """Campanha da marca escolhida, presa à Memória da marca: escolhe a foto, o ângulo e o gancho."""
+    alcool = fala_de_alcool(f"{pedido.nicho} {pedido.produto} {memoria}")
+    partes = [f"Nicho: {pedido.nicho.strip()}", f"Produto ou serviço: {pedido.produto.strip()}"]
+    if quando:
+        partes.append(f"Dia do post: {quando}.")
+    if memoria.strip():
+        partes.append(memoria.strip()[:14000])
+    if recentes:
+        partes.append("Posts recentes desta marca (não repita o ângulo):\n" + "\n".join(f"- {linha}" for linha in recentes))
+    resposta = await cliente_openai().with_options(timeout=90).chat.completions.parse(
+        model=get_settings().openai_model,
+        messages=[
+            {"role": "system", "content": SISTEMA + CAMPOS_POST + regras + (REGRAS_ALCOOL if alcool else "")},
+            {"role": "user", "content": "\n\n".join(partes)},
+        ],
+        response_format=CampanhaMemoria,
     )
     mensagem = resposta.choices[0].message
     if mensagem.refusal:
