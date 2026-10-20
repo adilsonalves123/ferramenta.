@@ -732,9 +732,73 @@
       cursor: pointer;
     }
     .galeria-vazia { grid-column: 1 / -1; text-align: center; color: var(--mudo); padding: 64px 16px; font-size: 16px; }
+    .marca-resultados { color: var(--mudo); font-size: 13px; font-weight: 600; }
+    button.secundario.atualizar-resultados {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: auto;
+      height: 36px;
+      margin-left: auto;
+      padding: 0 14px;
+      font-size: 13px;
+    }
+    button.secundario.atualizar-resultados:disabled { opacity: 0.65; cursor: wait; }
+    .resultados-corpo { padding: 24px 28px 40px; max-width: 1080px; }
+    .resumo-resultados { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .cartao-resumo {
+      min-width: 0;
+      padding: 16px 18px;
+      border: 1px solid var(--linha);
+      border-radius: 14px;
+      background: linear-gradient(180deg, #fff, #eef2ff);
+    }
+    .cartao-resumo:nth-child(2) { background: linear-gradient(180deg, #fff, #ecfeff); }
+    .cartao-resumo:nth-child(3) { background: linear-gradient(180deg, #fff, #fff7ed); }
+    .cartao-resumo small { display: block; color: var(--mudo); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+    .cartao-resumo b { display: block; margin-top: 6px; font-size: 28px; letter-spacing: -0.03em; font-weight: 600; }
+    .cartao-resumo span { display: block; margin-top: 4px; color: var(--mudo); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cartao-resumo a { color: var(--azul); font-weight: 600; font-size: 12.5px; text-decoration: none; }
+    .aviso-resultados { margin: 14px 2px 0; color: #b45309; font-size: 13px; }
+    .lista-resultados { display: grid; gap: 12px; margin-top: 18px; }
+    .post-resultado {
+      display: grid;
+      grid-template-columns: 88px minmax(0, 1fr);
+      gap: 14px;
+      padding: 12px;
+      border: 1px solid var(--linha);
+      border-radius: 14px;
+      background: white;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    }
+    .post-resultado .miniatura {
+      width: 88px;
+      height: 88px;
+      border-radius: 10px;
+      object-fit: cover;
+      display: grid;
+      place-items: center;
+      color: var(--mudo);
+      font-size: 20px;
+      background: linear-gradient(160deg, #e0e7ff, #fce7f3);
+    }
+    .resultado-topo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--mudo); font-size: 12px; }
+    .resultado-topo strong { color: var(--tinta); font-weight: 600; }
+    .resultado-topo .fa-instagram { color: #e1306c; }
+    .resultado-topo .fa-facebook { color: #1877f2; }
+    .resultado-legenda { margin: 4px 0 8px; font-size: 13.5px; line-height: 1.4; overflow-wrap: anywhere; }
+    .numeros { display: flex; flex-wrap: wrap; gap: 6px; }
+    .numero { padding: 4px 8px; border: 1px solid var(--linha); border-radius: 8px; background: var(--fundo); color: var(--mudo); font-size: 12px; }
+    .numero b { margin-right: 4px; color: var(--tinta); font-weight: 600; }
+    .resultado-rodape { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 8px; font-size: 12px; color: var(--mudo); }
+    .resultado-rodape a { color: var(--azul); font-weight: 600; text-decoration: none; }
+    .resultado-rodape a:hover { text-decoration: underline; }
+    .resultado-rodape .falta { color: #b45309; font-weight: 600; }
     @media (max-width: 800px) {
       .escolha-projetos, .grade-capas, .galeria { grid-template-columns: 1fr; padding: 20px; }
       .vista-projetos { padding: 20px; }
+      .resumo-resultados { grid-template-columns: 1fr; }
+      .resultados-corpo { padding: 20px; }
     }
   </style>
 </head>
@@ -767,6 +831,7 @@
         <div class="atalhos">
           <button class="atalho" type="button" id="abrir-projetos"><i class="fa-solid fa-folder-open"></i>Projetos</button>
           <button class="atalho" type="button" id="abrir-ficha"><i class="fa-solid fa-book"></i>Minha marca</button>
+          <button class="atalho" type="button" id="abrir-resultados"><i class="fa-solid fa-chart-simple"></i>Resultados</button>
         </div>
         <p class="legal"><a href="/privacidade" target="_blank" rel="noopener">Privacidade</a> · <a href="/termos" target="_blank" rel="noopener">Termos</a></p>
       </aside>
@@ -889,6 +954,21 @@
         </div>
         <p class="nota" id="nota-ficha"></p>
       </form>
+    </section>
+
+    <section id="pagina-resultados" class="pagina-projetos" hidden>
+      <header class="topo-projetos">
+        <button class="voltar" type="button" id="voltar-resultados">Voltar</button>
+        <h1>Resultados</h1>
+        <span class="marca-resultados" id="marca-resultados"></span>
+        <button class="secundario atualizar-resultados" type="button" id="atualizar-resultados"><i class="fa-solid fa-rotate"></i><span id="atualizar-resultados-texto">Atualizar números</span></button>
+      </header>
+      <div class="resultados-corpo">
+        <div class="resumo-resultados" id="resumo-resultados"></div>
+        <p class="nota aviso-resultados" id="aviso-resultados" hidden></p>
+        <div class="lista-resultados" id="lista-resultados"></div>
+        <p class="nota">Os números chegam sozinhos: o Story é medido 2 horas depois de sair; Feed e Reels, 2 dias e 7 dias depois.</p>
+      </div>
     </section>
 
     <section id="pagina-projetos" class="pagina-projetos" hidden>
@@ -2199,6 +2279,7 @@
           body: JSON.stringify({
             rede: redeAgenda,
             formato: formatoAgenda,
+            tema,
             marca_id: marcaAtual.id,
             titulo: publicado.titulo,
             legenda: publicado.legenda,
@@ -2307,6 +2388,201 @@
         nota.textContent = falha.message || "Não consegui abrir as marcas.";
       }
     }
+
+    const FORMATOS_RESULTADO = { feed: "Feed", reels: "Reels", story: "Story", carrossel: "Carrossel", video: "Vídeo" };
+
+    function numeroBr(valor) {
+      return valor === null || valor === undefined ? "—" : Number(valor).toLocaleString("pt-BR");
+    }
+
+    function linkSeguro(endereco) {
+      return /^https:\/\//i.test(String(endereco || "")) ? endereco : "";
+    }
+
+    function classeTema(valor) {
+      return "tema-" + String(valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function elemento(tag, classe, conteudo) {
+      const novo = document.createElement(tag);
+      if (classe) novo.className = classe;
+      if (conteudo !== undefined) novo.textContent = conteudo;
+      return novo;
+    }
+
+    function miniaturaResultado(item) {
+      const vazio = elemento("div", "miniatura");
+      vazio.innerHTML = item.formato === "reels" || item.formato === "video"
+        ? '<i class="fa-solid fa-film"></i>'
+        : '<i class="fa-regular fa-image"></i>';
+      if (!item.imagem_url) return vazio;
+      const foto = document.createElement("img");
+      foto.className = "miniatura";
+      foto.src = item.imagem_url;
+      foto.alt = "Foto do post";
+      foto.loading = "lazy";
+      foto.referrerPolicy = "no-referrer";
+      foto.addEventListener("error", () => foto.replaceWith(vazio));
+      return foto;
+    }
+
+    function cartaoResumo(rotulo, valor, detalhe) {
+      const cartao = elemento("div", "cartao-resumo");
+      cartao.append(elemento("small", "", rotulo), elemento("b", "", valor));
+      if (detalhe) cartao.append(detalhe);
+      return cartao;
+    }
+
+    function desenharResumo(resumo) {
+      const lugar = document.getElementById("resumo-resultados");
+      lugar.innerHTML = "";
+      lugar.append(
+        cartaoResumo("Posts nos últimos 30 dias", numeroBr(resumo.posts_30_dias), elemento("span", "", "Instagram e Facebook")),
+        cartaoResumo(
+          "Alcance médio",
+          numeroBr(resumo.alcance_medio),
+          elemento("span", "", resumo.alcance_medio === null ? "Aparece depois da primeira medição" : "pessoas por post"),
+        ),
+      );
+      const melhor = resumo.melhor;
+      if (!melhor) {
+        lugar.append(cartaoResumo("Melhor post", "—", elemento("span", "", "Ainda sem números")));
+        return;
+      }
+      const detalhe = elemento("span", "", `${melhor.rotulo} · ${melhor.legenda || melhor.rede}`);
+      const cartao = cartaoResumo("Melhor post", numeroBr(melhor.numero), detalhe);
+      const link = linkSeguro(melhor.permalink);
+      if (link) {
+        const abrirPost = elemento("a", "", "Ver no " + melhor.rede);
+        abrirPost.href = link;
+        abrirPost.target = "_blank";
+        abrirPost.rel = "noopener";
+        cartao.append(abrirPost);
+      }
+      lugar.append(cartao);
+    }
+
+    function itemResultado(item) {
+      const linha = elemento("article", "post-resultado");
+      const corpo = elemento("div", "");
+      const topo = elemento("div", "resultado-topo");
+      const icone = document.createElement("i");
+      icone.className = item.rede === "Facebook" ? "fa-brands fa-facebook" : "fa-brands fa-instagram";
+      topo.append(icone, elemento("strong", "", `${item.dia} · ${item.hora}`));
+      topo.append(elemento("span", "", `· ${item.rede} · ${FORMATOS_RESULTADO[item.formato] || "Feed"}`));
+      if (item.tema) {
+        topo.append(elemento("span", "ponto " + classeTema(item.tema)), elemento("span", "", item.tema.charAt(0).toUpperCase() + item.tema.slice(1)));
+      }
+      corpo.append(topo, elemento("p", "resultado-legenda", item.legenda || "(sem legenda)"));
+      const numeros = elemento("div", "numeros");
+      if (item.estado === "medindo" || item.estado === "aviso") {
+        numeros.append(elemento("span", "numero", item.estado === "medindo" ? "Medindo…" : item.detalhe));
+      } else {
+        const facebook = item.rede === "Facebook";
+        const lista = [
+          ["Alcance", item.alcance],
+          ["Visualizações", item.visualizacoes],
+          [facebook ? "Reações" : "Curtidas", item.curtidas],
+          ["Comentários", item.comentarios],
+          ["Salvos", item.salvos],
+          ["Compartilhamentos", item.compartilhamentos],
+        ];
+        lista.forEach(([rotulo, valor]) => {
+          if (facebook && (rotulo === "Salvos" || (rotulo === "Comentários" && valor === null))) return;
+          const caixa = elemento("span", "numero");
+          caixa.append(elemento("b", "", numeroBr(valor)), document.createTextNode(rotulo));
+          numeros.append(caixa);
+        });
+      }
+      corpo.append(numeros);
+      const rodape = elemento("div", "resultado-rodape");
+      const link = linkSeguro(item.permalink);
+      if (link) {
+        const abrirPost = elemento("a", "", "Ver no " + item.rede);
+        abrirPost.href = link;
+        abrirPost.target = "_blank";
+        abrirPost.rel = "noopener";
+        rodape.append(abrirPost);
+      }
+      if (item.estado === "sem_permissao") rodape.append(elemento("span", "falta", item.detalhe));
+      else if (item.estado === "medido" && item.detalhe) rodape.append(elemento("span", "", item.detalhe));
+      if (item.medido_em) rodape.append(elemento("span", "", "Medido em " + item.medido_em));
+      if (rodape.childNodes.length) corpo.append(rodape);
+      linha.append(miniaturaResultado(item), corpo);
+      return linha;
+    }
+
+    function desenharResultados(dados) {
+      desenharResumo(dados.resumo || { posts_30_dias: 0, alcance_medio: null, melhor: null });
+      const avisos = [];
+      if (dados.aviso) avisos.push(dados.aviso);
+      if (!dados.contas_ligadas) avisos.push("Ligue o Instagram ou o Facebook desta marca para ver os resultados.");
+      if ((dados.falta_permissao || []).length) {
+        avisos.push("Falta permissão de métricas no " + dados.falta_permissao.join(" e no ") + ": ligue a conta de novo em Contas. Curtidas e comentários continuam aparecendo.");
+      }
+      const aviso = document.getElementById("aviso-resultados");
+      aviso.textContent = avisos.join(" ");
+      aviso.hidden = !avisos.length;
+      const lista = document.getElementById("lista-resultados");
+      lista.innerHTML = "";
+      if (!(dados.itens || []).length) {
+        lista.append(elemento("div", "galeria-vazia", "Nenhum post publicado ainda. Os posts desta marca aparecem aqui depois que saírem."));
+        return;
+      }
+      dados.itens.forEach((item) => lista.append(itemResultado(item)));
+    }
+
+    let pedidoResultados = 0;
+
+    async function carregarResultados(atualizar) {
+      const numero = ++pedidoResultados;
+      const botao = document.getElementById("atualizar-resultados");
+      const rotulo = document.getElementById("atualizar-resultados-texto");
+      const aviso = document.getElementById("aviso-resultados");
+      if (atualizar) {
+        botao.disabled = true;
+        rotulo.textContent = "Atualizando";
+      }
+      try {
+        const resposta = atualizar
+          ? await fetch("/resultados/atualizar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ marca_id: marcaAtual.id || 0 }),
+          })
+          : await fetch("/resultados?marca_id=" + (marcaAtual.id || 0));
+        const dados = await lerResposta(resposta);
+        if (numero !== pedidoResultados) return null;
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        desenharResultados(dados);
+        return dados;
+      } catch (falha) {
+        if (numero === pedidoResultados) {
+          aviso.textContent = falha.message || "Não consegui abrir os resultados.";
+          aviso.hidden = false;
+        }
+        return null;
+      } finally {
+        botao.disabled = false;
+        rotulo.textContent = "Atualizar números";
+      }
+    }
+
+    async function abrirResultados() {
+      document.getElementById("pagina-resultados").hidden = false;
+      document.getElementById("marca-resultados").textContent = lerMarca().nome;
+      document.getElementById("lista-resultados").innerHTML = "";
+      document.getElementById("resumo-resultados").innerHTML = "";
+      document.getElementById("aviso-resultados").hidden = true;
+      const dados = await carregarResultados(false);
+      if (dados && dados.contas_ligadas && !(dados.itens || []).length) await carregarResultados(true);
+    }
+
+    document.getElementById("abrir-resultados").addEventListener("click", () => abrirResultados());
+    document.getElementById("atualizar-resultados").addEventListener("click", () => carregarResultados(true));
+    document.getElementById("voltar-resultados").addEventListener("click", () => {
+      document.getElementById("pagina-resultados").hidden = true;
+    });
 
     document.getElementById("abrir-ficha").addEventListener("click", () => abrirFicha(marcaAtual.id));
     document.getElementById("ficha-escolha").addEventListener("change", (evento) => {

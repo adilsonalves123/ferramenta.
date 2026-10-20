@@ -128,6 +128,7 @@ class ItemProjeto(BaseModel):
 class PedidoPublicarAgora(BaseModel):
     rede: str = Field(min_length=2, max_length=20)
     formato: str = "feed"
+    tema: str = Field(default="", max_length=30)
     marca_id: int = 0
     titulo: str = Field(min_length=1, max_length=300)
     legenda: str = Field(min_length=1)
@@ -262,3 +263,48 @@ class RespostaPaginas(BaseModel):
 class PedidoPagina(BaseModel):
     pagina_id: str = Field(min_length=2, max_length=40)
     marca_id: int = 0
+
+
+class PedidoResultados(BaseModel):
+    marca_id: int = 0
+
+
+class ItemResultado(BaseModel):
+    id: int
+    rede: str
+    formato: str
+    tema: str = ""
+    dia: str
+    hora: str
+    legenda: str = ""
+    imagem_url: str = ""
+    permalink: str = ""
+    alcance: int | None = None
+    visualizacoes: int | None = None
+    curtidas: int | None = None
+    comentarios: int | None = None
+    salvos: int | None = None
+    compartilhamentos: int | None = None
+    estado: str
+    detalhe: str = ""
+    medido_em: str = ""
+
+
+class MelhorResultado(ItemResultado):
+    numero: int
+    rotulo: str
+
+
+class ResumoResultados(BaseModel):
+    posts_30_dias: int
+    alcance_medio: int | None = None
+    melhor: MelhorResultado | None = None
+
+
+class RespostaResultados(BaseModel):
+    marca_id: int
+    itens: list[ItemResultado]
+    resumo: ResumoResultados
+    contas_ligadas: bool
+    falta_permissao: list[str] = Field(default_factory=list)
+    aviso: str = ""

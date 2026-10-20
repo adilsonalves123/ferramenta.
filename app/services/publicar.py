@@ -42,11 +42,11 @@ def endereco_publico(caminho: str) -> str:
     return get_settings().app_url.rstrip("/") + caminho
 
 
-def _pedir(url: str, dados: dict | None = None) -> dict:
+def _pedir(url: str, dados: dict | None = None, timeout: int = 40) -> dict:
     corpo = urllib.parse.urlencode(dados).encode() if dados is not None else None
     pedido = urllib.request.Request(url, data=corpo)
     try:
-        with urllib.request.urlopen(pedido, timeout=40) as resposta:
+        with urllib.request.urlopen(pedido, timeout=timeout) as resposta:
             return json.loads(resposta.read().decode())
     except urllib.error.HTTPError as erro:
         texto = erro.read().decode()
@@ -105,7 +105,7 @@ def url_oauth_facebook(marca_id: int) -> str:
             "client_id": ajustes.meta_app_id,
             "redirect_uri": url_retorno(),
             "state": criar_state_facebook(marca_id),
-            "scope": "pages_show_list,pages_read_engagement,pages_manage_posts",
+            "scope": "pages_show_list,pages_read_engagement,pages_manage_posts,read_insights",
             "response_type": "code",
         }
     )
@@ -119,7 +119,7 @@ def url_oauth(marca_id: int) -> str:
             "client_id": ajustes.instagram_app_id,
             "redirect_uri": url_retorno(),
             "state": criar_state(marca_id),
-            "scope": "instagram_business_basic,instagram_business_content_publish",
+            "scope": "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights",
             "response_type": "code",
         }
     )
@@ -196,25 +196,31 @@ def nomes_paginas(token: str) -> list[dict[str, str]]:
     ]
 
 
-def publicar_facebook(pagina_id: str, token: str, texto: str) -> None:
-    _pedir(
+def publicar_facebook(pagina_id: str, token: str, texto: str) -> str:
+    """Devolve o id do post ({pagina}_{post})."""
+    criado = _pedir(
         f"https://graph.facebook.com/{VERSAO}/{pagina_id}/feed",
         {"message": texto[:5000], "access_token": token},
     )
+    return str(criado.get("id") or "")
 
 
-def publicar_facebook_foto(pagina_id: str, token: str, texto: str, imagem_url: str) -> None:
-    _pedir(
+def publicar_facebook_foto(pagina_id: str, token: str, texto: str, imagem_url: str) -> str:
+    """Devolve o post_id (o 'id' da resposta é o da foto, não o do post)."""
+    criado = _pedir(
         f"https://graph.facebook.com/{VERSAO}/{pagina_id}/photos",
         {"url": imagem_url, "caption": texto[:5000], "access_token": token},
     )
+    return str(criado.get("post_id") or criado.get("id") or "")
 
 
-def publicar_facebook_video(pagina_id: str, token: str, texto: str, video_url: str) -> None:
-    _pedir(
+def publicar_facebook_video(pagina_id: str, token: str, texto: str, video_url: str) -> str:
+    """Devolve o id do vídeo; a resposta de /videos não traz o post_id."""
+    criado = _pedir(
         f"https://graph.facebook.com/{VERSAO}/{pagina_id}/videos",
         {"file_url": video_url, "description": texto[:5000], "access_token": token},
     )
+    return str(criado.get("id") or "")
 
 
 ESPERA_FOTO = [2] * 12
@@ -237,7 +243,16 @@ def _esperar_midia(criacao: str, token: str, o_que: str, video: bool = False) ->
     raise RuntimeError(f"O Instagram ainda está preparando {o_que}. Tente de novo em instantes.")
 
 
-def publicar_instagram(conta_id: str, token: str, texto: str, imagem_url: str) -> None:
+def _publicar_criacao(conta_id: str, token: str, criacao: str) -> str:
+    """media_publish devolve o id da mídia publicada."""
+    publicado = _pedir(
+        f"https://graph.instagram.com/{VERSAO}/{conta_id}/media_publish",
+        {"creation_id": criacao, "access_token": token},
+    )
+    return str(publicado.get("id") or "")
+
+
+def publicar_instagram(conta_id: str, token: str, texto: str, imagem_url: str) -> str:
     criado = _pedir(
         f"https://graph.instagram.com/{VERSAO}/{conta_id}/media",
         {"image_url": imagem_url, "caption": texto[:2200], "access_token": token},
@@ -246,13 +261,10 @@ def publicar_instagram(conta_id: str, token: str, texto: str, imagem_url: str) -
     if not criacao:
         raise RuntimeError("O Instagram não preparou a imagem.")
     _esperar_midia(criacao, token, "a foto")
-    _pedir(
-        f"https://graph.instagram.com/{VERSAO}/{conta_id}/media_publish",
-        {"creation_id": criacao, "access_token": token},
-    )
+    return _publicar_criacao(conta_id, token, criacao)
 
 
-def publicar_instagram_video(conta_id: str, token: str, texto: str, video_url: str) -> None:
+def publicar_instagram_video(conta_id: str, token: str, texto: str, video_url: str) -> str:
     criado = _pedir(
         f"https://graph.instagram.com/{VERSAO}/{conta_id}/media",
         {
@@ -266,32 +278,27 @@ def publicar_instagram_video(conta_id: str, token: str, texto: str, video_url: s
     if not criacao:
         raise RuntimeError("O Instagram não preparou o vídeo.")
     _esperar_midia(criacao, token, "o vídeo", video=True)
-    _pedir(
-        f"https://graph.instagram.com/{VERSAO}/{conta_id}/media_publish",
-        {"creation_id": criacao, "access_token": token},
-    )
+    return _publicar_criacao(conta_id, token, criacao)
 
 
-def _publicar_rede(rede: str, conta: ContaRede, texto: str, imagem_url: str, video_url: str) -> None:
+def _publicar_rede(rede: str, conta: ContaRede, texto: str, imagem_url: str, video_url: str) -> tuple[str, str]:
+    """Publica no feed e devolve (id criado na rede, formato: feed, reels ou video)."""
     video = video_url.strip()
     imagem = imagem_url.strip()
     if video and not video.lower().split("?", 1)[0].endswith(".mp4"):
         raise RuntimeError("Para publicar o vídeo, envie um arquivo MP4.")
     if rede == "Facebook":
         if video:
-            publicar_facebook_video(conta.externo_id, conta.token, texto, endereco_publico(video))
-        elif imagem:
-            publicar_facebook_foto(conta.externo_id, conta.token, texto, endereco_publico(imagem))
-        else:
-            publicar_facebook(conta.externo_id, conta.token, texto)
-        return
+            return publicar_facebook_video(conta.externo_id, conta.token, texto, endereco_publico(video)), "video"
+        if imagem:
+            return publicar_facebook_foto(conta.externo_id, conta.token, texto, endereco_publico(imagem)), "feed"
+        return publicar_facebook(conta.externo_id, conta.token, texto), "feed"
     if video:
-        publicar_instagram_video(conta.externo_id, conta.token, texto, endereco_publico(video))
-        return
-    publicar_instagram(conta.externo_id, conta.token, texto, endereco_publico(imagem))
+        return publicar_instagram_video(conta.externo_id, conta.token, texto, endereco_publico(video)), "reels"
+    return publicar_instagram(conta.externo_id, conta.token, texto, endereco_publico(imagem)), "feed"
 
 
-def publicar_instagram_story(conta_id: str, token: str, imagem_url: str) -> None:
+def publicar_instagram_story(conta_id: str, token: str, imagem_url: str) -> str:
     criado = _pedir(
         f"https://graph.instagram.com/{VERSAO}/{conta_id}/media",
         {"media_type": "STORIES", "image_url": imagem_url, "access_token": token},
@@ -300,13 +307,10 @@ def publicar_instagram_story(conta_id: str, token: str, imagem_url: str) -> None
     if not criacao:
         raise RuntimeError("O Instagram não preparou o Story.")
     _esperar_midia(criacao, token, "o Story")
-    _pedir(
-        f"https://graph.instagram.com/{VERSAO}/{conta_id}/media_publish",
-        {"creation_id": criacao, "access_token": token},
-    )
+    return _publicar_criacao(conta_id, token, criacao)
 
 
-def publicar_instagram_story_video(conta_id: str, token: str, video_url: str) -> None:
+def publicar_instagram_story_video(conta_id: str, token: str, video_url: str) -> str:
     criado = _pedir(
         f"https://graph.instagram.com/{VERSAO}/{conta_id}/media",
         {"media_type": "STORIES", "video_url": video_url, "access_token": token},
@@ -315,13 +319,11 @@ def publicar_instagram_story_video(conta_id: str, token: str, video_url: str) ->
     if not criacao:
         raise RuntimeError("O Instagram não preparou o Story.")
     _esperar_midia(criacao, token, "o Story", video=True)
-    _pedir(
-        f"https://graph.instagram.com/{VERSAO}/{conta_id}/media_publish",
-        {"creation_id": criacao, "access_token": token},
-    )
+    return _publicar_criacao(conta_id, token, criacao)
 
 
-def publicar_facebook_story(pagina_id: str, token: str, imagem_url: str) -> None:
+def publicar_facebook_story(pagina_id: str, token: str, imagem_url: str) -> str:
+    """photo_stories responde {success, post_id}; devolve o post_id."""
     foto = _pedir(
         f"https://graph.facebook.com/{VERSAO}/{pagina_id}/photos",
         {"url": imagem_url, "published": "false", "access_token": token},
@@ -329,10 +331,11 @@ def publicar_facebook_story(pagina_id: str, token: str, imagem_url: str) -> None
     photo_id = str(foto.get("id") or "")
     if not photo_id:
         raise RuntimeError("O Facebook não preparou a foto do Story.")
-    _pedir(
+    story = _pedir(
         f"https://graph.facebook.com/{VERSAO}/{pagina_id}/photo_stories",
         {"photo_id": photo_id, "access_token": token},
     )
+    return str(story.get("post_id") or "")
 
 
 def alvos_de(rede: str, formato: str) -> list[str]:
@@ -343,7 +346,8 @@ def alvos_de(rede: str, formato: str) -> list[str]:
 
 def _publicar_alvo(
     alvo: str, conta: ContaRede, texto: str, imagem_url: str, video_url: str, foto_story: str = ""
-) -> None:
+) -> tuple[str, str]:
+    """Publica um alvo ('Rede:formato') e devolve (id criado na rede, formato publicado)."""
     from app.services.midia import arquivo_story
 
     rede, formato = alvo.split(":", 1)
@@ -355,16 +359,15 @@ def _publicar_alvo(
         if rede == "Facebook":
             if video and not imagem:
                 raise RuntimeError("O Story do Facebook sai com foto.")
-            publicar_facebook_story(
+            return publicar_facebook_story(
                 conta.externo_id, conta.token, endereco_publico(foto_story or arquivo_story(imagem))
-            )
-            return
+            ), "story"
         if video and video.lower().split("?", 1)[0].endswith(".mp4"):
-            publicar_instagram_story_video(conta.externo_id, conta.token, endereco_publico(video))
-            return
-        publicar_instagram_story(conta.externo_id, conta.token, endereco_publico(foto_story or arquivo_story(imagem)))
-        return
-    _publicar_rede(rede, conta, texto, imagem, video)
+            return publicar_instagram_story_video(conta.externo_id, conta.token, endereco_publico(video)), "story"
+        return publicar_instagram_story(
+            conta.externo_id, conta.token, endereco_publico(foto_story or arquivo_story(imagem))
+        ), "story"
+    return _publicar_rede(rede, conta, texto, imagem, video)
 
 
 LIMITE_LEGENDA = 2200
@@ -599,7 +602,10 @@ async def publicar_agora(
     video_url: str = "",
     formato: str = "feed",
     marca_id: int = 0,
+    tema: str = "",
 ) -> tuple[str, str]:
+    from app.services.resultados import anotar_publicacao
+
     formato = formato if formato in {"feed", "story", "ambos"} else "feed"
     if rede not in REDES_PUBLICAVEIS:
         return "manual", "Essa rede ainda não publica sozinha."
@@ -625,12 +631,28 @@ async def publicar_agora(
             erros.append(falta_conta(nome))
             continue
         try:
-            await asyncio.to_thread(_publicar_alvo, alvo, conta, texto, foto_feed, video_url, foto_story)
+            externo_id, publicado_como = await asyncio.to_thread(
+                _publicar_alvo, alvo, conta, texto, foto_feed, video_url, foto_story
+            )
         except Exception as erro:
             erros.append(_erro_foto(erro)[:180])
+            continue
+        await anotar_publicacao(
+            marca, nome, publicado_como, externo_id, conta.token, texto,
+            _foto_do_alvo(alvo, foto_feed, foto_story, imagem_url, video_url), tema,
+            pagina_id=conta.externo_id,
+        )
     if erros:
         return "erro", " ".join(erros)[:300]
     return "publicado", ""
+
+
+def _foto_do_alvo(alvo: str, foto_feed: str, foto_story: str, imagem_url: str, video_url: str) -> str:
+    if not _usa_foto(alvo, imagem_url, video_url):
+        return ""
+    if alvo.endswith(":story"):
+        return foto_story or imagem_url
+    return foto_feed or imagem_url
 
 
 def _erro_foto(erro: Exception) -> str:
@@ -768,6 +790,8 @@ def _falhou_publicar(item: Agendamento, motivo: str) -> None:
 
 async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
     """Publica um post já reservado como 'publicando' e deixa o status final no item."""
+    from app.services.resultados import anotar_publicacao
+
     formato = (item.formato or "feed").strip().lower()
     if formato not in {"feed", "story", "ambos"}:
         formato = "feed"
@@ -825,7 +849,7 @@ async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
             avisos_conta.append(falta_conta(nome))
             continue
         try:
-            await asyncio.to_thread(
+            externo_id, publicado_como = await asyncio.to_thread(
                 _publicar_alvo,
                 alvo,
                 conta,
@@ -844,6 +868,11 @@ async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
         if alvo == "Facebook:feed":
             item.ok_facebook = True
         await session.commit()
+        await anotar_publicacao(
+            marca, nome, publicado_como, externo_id, conta.token, texto,
+            _foto_do_alvo(alvo, foto_feed, foto_story, item.imagem_url, item.video_url),
+            item.tema or "", item.id, pagina_id=conta.externo_id,
+        )
     if all(alvo in feitos for alvo in alvos):
         item.status = "publicado"
         item.detalhe = ""

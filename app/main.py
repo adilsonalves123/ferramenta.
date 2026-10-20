@@ -13,11 +13,13 @@ from fastapi.staticfiles import StaticFiles
 from app.config import get_settings
 from app.database import criar_tabelas, fechar_engine, get_sessionmaker
 from app.services.publicar import preparar_fotos, publicar_vencidos, soltar_presos
+from app.services.resultados import medir_rodada
 from app.routers.agenda import router as router_agenda
 from app.routers.campanhas import router
 from app.routers.legal import router as router_legal
 from app.routers.novas import router as router_novas
 from app.routers.projetos import router as router_projetos
+from app.routers.resultados import router as router_resultados
 from app.services.midia import PASTA_MIDIA
 
 PAGINA = Path(__file__).with_name("pagina.html")
@@ -35,6 +37,12 @@ async def rodada() -> None:
         async with get_sessionmaker()() as session:
             await preparar_fotos(session)
             await publicar_vencidos(session)
+            try:
+                await medir_rodada(session)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                await session.rollback()
 
 
 async def vigia() -> None:
@@ -82,6 +90,7 @@ def create_app() -> FastAPI:
     app.include_router(router_projetos)
     app.include_router(router_agenda)
     app.include_router(router_legal)
+    app.include_router(router_resultados)
     PASTA_MIDIA.mkdir(parents=True, exist_ok=True)
     PASTA_QUADROS.mkdir(parents=True, exist_ok=True)
     app.mount("/midia", StaticFiles(directory=PASTA_MIDIA), name="midia")

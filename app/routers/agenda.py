@@ -188,6 +188,7 @@ async def post_publicar_agora(
         pedido.video_url,
         pedido.formato,
         pedido.marca_id,
+        pedido.tema.strip()[:30],
     )
     return RespostaPublicacao(status=status, detalhe=detalhe)
 

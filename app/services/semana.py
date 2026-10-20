@@ -6,7 +6,7 @@ from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import get_settings
-from app.models import Agendamento, ContaRede, Ficha, agora
+from app.models import Agendamento, ContaRede, Ficha, Publicacao, agora
 from app.services.openai_campanha import cliente_openai
 
 ZONA = timezone(timedelta(hours=-3))
@@ -128,6 +128,9 @@ async def apagar_marca(session: AsyncSession, marca_id: int) -> None:
     contas = await session.exec(select(ContaRede).where(ContaRede.marca_id == marca_id))
     for conta in contas.all():
         await session.delete(conta)
+    publicacoes = await session.exec(select(Publicacao).where(Publicacao.marca_id == marca_id))
+    for publicacao in publicacoes.all():
+        await session.delete(publicacao)
     await session.delete(alvo)
     await session.commit()
 

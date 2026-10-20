@@ -119,31 +119,40 @@ conta própria.</p>
 
 <h2>2. Dados do Instagram que acessamos</h2>
 <p>Quando você clica em ligar o Instagram, você entra pelo login oficial do Instagram e autoriza as permissões
-<code>instagram_business_basic</code> e <code>instagram_business_content_publish</code>. Com isso guardamos:</p>
+<code>instagram_business_basic</code>, <code>instagram_business_content_publish</code> e
+<code>instagram_business_manage_insights</code>. Com isso guardamos:</p>
 <ul>
   <li>o ID da sua conta profissional do Instagram e o ID de usuário que o Instagram cria para este app;</li>
   <li>o nome de usuário (@) da conta, para mostrar qual conta está ligada;</li>
-  <li>o token de acesso que o Instagram entrega, usado só para publicar os seus posts.</li>
+  <li>o token de acesso que o Instagram entrega, usado para publicar os seus posts e ler os resultados deles;</li>
+  <li>dos posts da sua conta: o ID, o link, a data, o começo da legenda, a miniatura e os números de cada post
+  (alcance, visualizações, curtidas, comentários, salvos e compartilhamentos), para mostrar na tela
+  <strong>Resultados</strong>.</li>
 </ul>
 
 <h2>3. Dados do Facebook que acessamos</h2>
 <p>Quando você liga o Facebook, você entra pelo Login do Facebook e autoriza <code>pages_show_list</code>,
-<code>pages_read_engagement</code> e <code>pages_manage_posts</code>. Com isso guardamos:</p>
+<code>pages_read_engagement</code>, <code>pages_manage_posts</code> e <code>read_insights</code>. Com isso guardamos:</p>
 <ul>
   <li>o ID de usuário que o Facebook cria para este app;</li>
   <li>a lista das Páginas que você administra (ID e nome), só para você escolher em qual publicar;</li>
   <li>o ID e o nome da Página escolhida;</li>
-  <li>o token de acesso do usuário e o token da Página, usados só para publicar os seus posts.</li>
+  <li>o token de acesso do usuário e o token da Página, usados para publicar os seus posts e ler os resultados deles;</li>
+  <li>dos posts da Página: o ID, o link, a data, o começo do texto, a miniatura e os números de cada post
+  (alcance, visualizações, reações e compartilhamentos), para mostrar na tela
+  <strong>Resultados</strong>.</li>
 </ul>
 
 <h2>4. O que não acessamos</h2>
-<p>Não vemos nem guardamos a sua senha. Não lemos mensagens, comentários, curtidas, seguidores, lista de amigos,
-dados de anúncios nem posts antigos. Não usamos os seus dados para anúncios.</p>
+<p>Não vemos nem guardamos a sua senha. Não lemos mensagens, o texto dos comentários, quem curtiu, a lista de
+seguidores, a lista de amigos nem dados de anúncios. Dos comentários e das curtidas guardamos só a contagem. Não
+usamos os seus dados para anúncios.</p>
 
 <h2>5. Para que usamos os dados</h2>
 <ul>
   <li>Mostrar no {produto} qual conta e qual Página estão ligadas.</li>
   <li>Publicar no feed e nos stories os posts (texto, foto ou vídeo) que você criou e mandou publicar ou agendou.</li>
+  <li>Mostrar para você, na tela <strong>Resultados</strong>, como foi cada post publicado.</li>
 </ul>
 <p>Não vendemos, não alugamos e não compartilhamos esses dados. Eles passam apenas pelos serviços que fazem o
 {produto} funcionar: a hospedagem do site e o banco de dados. Os textos e imagens podem ser criados com ajuda de

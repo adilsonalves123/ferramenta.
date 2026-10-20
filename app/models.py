@@ -75,6 +75,30 @@ class ContaRede(SQLModel, table=True):
     atualizado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
 
 
+class Publicacao(SQLModel, table=True):
+    __tablename__ = "mkt_publicacoes"
+    __table_args__ = (UniqueConstraint("rede", "externo_id", name="ux_mkt_publicacoes_rede_externo"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    agendamento_id: int | None = Field(default=None, index=True)
+    marca_id: int = Field(default=0, index=True)
+    rede: str = Field(max_length=20)
+    formato: str = Field(default="feed", max_length=20)
+    externo_id: str = Field(max_length=80)
+    permalink: str = Field(default="", max_length=500)
+    legenda: str = Field(default="", max_length=300)
+    imagem_url: str = Field(default="", sa_type=Text)
+    tema: str = Field(default="", max_length=30)
+    hora: str = Field(default="", max_length=5)
+    publicado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
+    metricas: str = Field(default="", sa_type=Text)
+    medido_em: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    medicoes: int = Field(default=0)
+    proxima_medicao: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), index=True)
+    detalhe: str = Field(default="", sa_type=Text)
+    criado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
+
+
 class Ficha(SQLModel, table=True):
     __tablename__ = "mkt_ficha"
 

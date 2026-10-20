@@ -10,7 +10,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import get_settings
-from app.models import ContaRede
+from app.models import ContaRede, Publicacao
 from app.services.publicar import ZONA, juntar_ids, perfil_instagram, usuario_facebook
 
 SIGLAS = {"instagram": "ig", "facebook": "fb"}
@@ -100,12 +100,20 @@ async def apagar_contas_meta(session: AsyncSession, redes: list[str], usuario: s
         grupos: dict[int, list[ContaRede]] = {}
         for conta in resultado.all():
             grupos.setdefault(conta.marca_id, []).append(conta)
-        for contas in grupos.values():
+        for marca_id, contas in grupos.items():
             if not await _e_do_usuario(contas, rede, usuario):
                 continue
             for conta in contas:
                 await session.delete(conta)
                 apagadas += 1
+            publicacoes = await session.exec(
+                select(Publicacao).where(
+                    Publicacao.marca_id == marca_id,
+                    Publicacao.rede == ("Instagram" if rede == "instagram" else "Facebook"),
+                )
+            )
+            for publicacao in publicacoes.all():
+                await session.delete(publicacao)
     await session.commit()
     return apagadas
 
