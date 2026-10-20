@@ -3,7 +3,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database import get_session
 from app.schemas import ItemSugestao, RespostaSugestoes
-from app.services.calendario import garantir_sugestoes, listar_sugestoes, mudar_status
+from app.services.calendario import alcance, garantir_sugestoes, listar_sugestoes, mudar_status
 from app.services.semana import marca_por_id
 
 router = APIRouter()
@@ -21,11 +21,13 @@ async def _resposta(session: AsyncSession, marca_id: int, forcar: bool) -> Respo
         if marca is None:
             raise HTTPException(status_code=404, detail="Essa marca não existe mais.") from None
     itens = await listar_sugestoes(session, marca.id or 0)
+    modo = alcance(marca)
     return RespostaSugestoes(
         marca_id=marca.id or 0,
+        abrangencia=modo,
         cidade=marca.cidade or "",
         uf=marca.uf or "",
-        clima_status=marca.clima_status or "",
+        clima_status=(marca.clima_status or "") if modo == "cidade" else "",
         itens=[
             ItemSugestao(
                 id=item.id or 0,

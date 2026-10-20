@@ -215,6 +215,7 @@ class PedidoMarca(BaseModel):
     publico: str = Field(default="", max_length=200)
     site: str = Field(default="", max_length=200)
     marca_dagua: str = Field(default="", max_length=60)
+    abrangencia: str = Field(default="cidade", pattern=r"^(cidade|estado|brasil)$")
     cidade: str = Field(default="", max_length=120)
     uf: str = Field(default="", max_length=2)
     texto: str = Field(min_length=20, max_length=8000)
@@ -227,6 +228,7 @@ class ItemMarca(BaseModel):
     publico: str
     site: str = ""
     marca_dagua: str = ""
+    abrangencia: str = "cidade"
     cidade: str = ""
     uf: str = ""
     latitude: float | None = None
@@ -287,6 +289,7 @@ class ItemSugestao(BaseModel):
 
 class RespostaSugestoes(BaseModel):
     marca_id: int
+    abrangencia: str = "cidade"
     cidade: str = ""
     uf: str = ""
     clima_status: str = ""
@@ -464,6 +467,8 @@ class IdeiaResumo(BaseModel):
 class RespostaResumo(BaseModel):
     marca_id: int
     nome: str
+    abrangencia: str = "cidade"
+    local: str = ""
     cidade: str = ""
     uf: str = ""
     hoje: str

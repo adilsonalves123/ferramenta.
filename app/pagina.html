@@ -1119,8 +1119,14 @@
         <input id="ficha-site" maxlength="200" placeholder="Ex.: https://www.riscaai.com.br" />
         <label for="ficha-marca-dagua">Marca d'água (texto no canto de toda foto)</label>
         <input id="ficha-marca-dagua" maxlength="60" placeholder="Ex.: Risca Aí" />
-        <div class="ficha-local">
-          <div>
+        <p class="secao">Alcance da marca</p>
+        <div class="atalhos em-linha" id="ficha-alcance">
+          <button class="chip ativo" type="button" data-alcance="cidade">Minha cidade</button>
+          <button class="chip" type="button" data-alcance="estado">Meu estado</button>
+          <button class="chip" type="button" data-alcance="brasil">Brasil todo</button>
+        </div>
+        <div class="ficha-local" id="ficha-local">
+          <div id="ficha-cidade-campo">
             <label for="ficha-cidade">Cidade</label>
             <input id="ficha-cidade" maxlength="120" placeholder="Ex.: Lençóis Paulista" />
           </div>
@@ -1129,7 +1135,7 @@
             <input id="ficha-uf" maxlength="2" placeholder="SP" autocapitalize="characters" />
           </div>
         </div>
-        <p class="nota">A cidade traz as sugestões de feriados e do clima de lá. Deixe em branco se não quiser.</p>
+        <p class="nota" id="nota-alcance">A cidade traz as sugestões de feriados e do clima de lá. Deixe em branco se não quiser.</p>
         <div class="bloco-memoria" id="memoria-marca">
           <h2><i class="fa-solid fa-brain"></i> Memória da marca</h2>
           <p class="nota">A IA lê esta memória antes de escrever cada post e de escolher a foto. Ela usa só o que está aqui: não inventa produto, preço nem horário.</p>
@@ -2747,8 +2753,10 @@
       resumoAtual = dados;
       document.getElementById("resumo-saudacao").textContent = `${dados.saudacao}, ${dados.nome}`;
       const partes = [dados.data_extenso];
-      if (dados.cidade) partes.push(dados.uf ? `${dados.cidade} (${dados.uf})` : dados.cidade);
-      if (dados.clima && dados.clima.maxima !== null && dados.clima.maxima !== undefined) partes.push(`máx. ${dados.clima.maxima} °C`);
+      if (dados.local) partes.push(dados.local);
+      else if (dados.cidade) partes.push(dados.uf ? `${dados.cidade} (${dados.uf})` : dados.cidade);
+      const comClima = (dados.abrangencia || "cidade") === "cidade";
+      if (comClima && dados.clima && dados.clima.maxima !== null && dados.clima.maxima !== undefined) partes.push(`máx. ${dados.clima.maxima} °C`);
       document.getElementById("resumo-data").textContent = partes.join(" · ");
       desenharErroDia(dados.erros || []);
       desenharProximo(dados.proximo || null);
@@ -3091,6 +3099,26 @@
     });
 
     let fichaEditando = 0;
+    let alcanceFicha = "cidade";
+    const NOTAS_ALCANCE = {
+      cidade: "A cidade traz as sugestões de feriados e do clima de lá. Deixe em branco se não quiser.",
+      estado: "Sugestões com os feriados nacionais e do seu estado e as datas comemorativas. Sem clima.",
+      brasil: "Sugestões só com feriados nacionais e datas comemorativas. Sem clima e sem citar cidade nos posts.",
+    };
+
+    function aplicarAlcance(modo) {
+      alcanceFicha = NOTAS_ALCANCE[modo] ? modo : "cidade";
+      document.querySelectorAll("[data-alcance]").forEach((botao) => {
+        botao.classList.toggle("ativo", botao.dataset.alcance === alcanceFicha);
+      });
+      document.getElementById("ficha-local").hidden = alcanceFicha === "brasil";
+      document.getElementById("ficha-cidade-campo").hidden = alcanceFicha !== "cidade";
+      document.getElementById("nota-alcance").textContent = NOTAS_ALCANCE[alcanceFicha];
+    }
+
+    document.querySelectorAll("[data-alcance]").forEach((botao) => {
+      botao.addEventListener("click", () => aplicarAlcance(botao.dataset.alcance));
+    });
 
     function preencherFicha(id) {
       fichaEditando = id;
@@ -3114,6 +3142,7 @@
       document.getElementById("ficha-marca-dagua").value = achada ? achada.marca_dagua || "" : "";
       document.getElementById("ficha-cidade").value = achada ? achada.cidade || "" : "";
       document.getElementById("ficha-uf").value = achada ? achada.uf || "" : "";
+      aplicarAlcance(achada ? achada.abrangencia || "cidade" : "cidade");
       document.getElementById("texto-ficha").value = achada ? achada.texto : "";
       const memoria = (achada && achada.memoria) || {};
       CAMPOS_MEMORIA.forEach((campo) => {
@@ -3617,6 +3646,7 @@
         publico: document.getElementById("ficha-publico").value.trim(),
         site: document.getElementById("ficha-site").value.trim(),
         marca_dagua: document.getElementById("ficha-marca-dagua").value.trim(),
+        abrangencia: alcanceFicha,
         cidade: document.getElementById("ficha-cidade").value.trim(),
         uf: document.getElementById("ficha-uf").value.trim().toUpperCase(),
         texto: document.getElementById("texto-ficha").value.trim(),
@@ -3626,11 +3656,15 @@
         nota.textContent = "Escreva o nome da marca.";
         return;
       }
-      if (corpo.uf && !/^[A-Z]{2}$/.test(corpo.uf)) {
+      if (alcanceFicha === "estado" && !corpo.uf) {
+        nota.textContent = "Escreva a sigla do estado, por exemplo SP.";
+        return;
+      }
+      if (alcanceFicha !== "brasil" && corpo.uf && !/^[A-Z]{2}$/.test(corpo.uf)) {
         nota.textContent = "Escreva a sigla do estado com 2 letras, por exemplo SP.";
         return;
       }
-      if (corpo.cidade && !corpo.uf) {
+      if (alcanceFicha === "cidade" && corpo.cidade && !corpo.uf) {
         nota.textContent = "Escreva também o estado da cidade, por exemplo SP.";
         return;
       }

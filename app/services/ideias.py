@@ -13,6 +13,7 @@ from app.services.calendario import (
     Perfil,
     aviso_da_marca,
     chave_perfil,
+    cidade_da_marca,
     no_dia,
     perfil_da_marca,
 )
@@ -205,7 +206,7 @@ def ideia_de_convite(marca: Ficha, perfil: Perfil, hoje: date, aviso: str) -> di
             "sugestoes": [],
         }
     if chave == "casa":
-        cidade = (marca.cidade or "").strip()
+        cidade = cidade_da_marca(marca)
         onde = f" de {cidade}" if cidade else ""
         artigo = "o" if alvo.weekday() >= 5 else "a"
         return {

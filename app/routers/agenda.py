@@ -27,7 +27,7 @@ from app.schemas import (
     RespostaSemana,
     PosteSemana,
 )
-from app.services.calendario import ajustar_local, aviso_local, mudar_status, uf_valida
+from app.services.calendario import ajustar_local, alcance, aviso_local, mudar_status, uf_valida
 from app.services.imagens import url_memoria
 from app.services.memoria import imagem_da_memoria, ler_fatos, limpar_gancho
 from app.services.midia import anexar
@@ -223,6 +223,7 @@ def _marca(registro, aviso: str = "") -> ItemMarca:
         publico=registro.publico or "",
         site=registro.site or "",
         marca_dagua=registro.marca_dagua or "",
+        abrangencia=alcance(registro),
         cidade=registro.cidade or "",
         uf=registro.uf or "",
         latitude=registro.latitude,
@@ -234,10 +235,15 @@ def _marca(registro, aviso: str = "") -> ItemMarca:
 
 
 def _uf_do_pedido(pedido: PedidoMarca) -> str:
+    if pedido.abrangencia == "brasil":
+        return ""
     try:
-        return uf_valida(pedido.uf)
+        uf = uf_valida(pedido.uf)
     except ValueError as erro:
         raise HTTPException(status_code=422, detail=str(erro)) from erro
+    if pedido.abrangencia == "estado" and not uf:
+        raise HTTPException(status_code=422, detail="Escreva a sigla do estado, por exemplo SP.")
+    return uf
 
 
 @router.get("/marcas", response_model=RespostaMarcas)
@@ -257,7 +263,7 @@ async def post_marca(pedido: PedidoMarca, session: AsyncSession = Depends(get_se
         pedido.marca_dagua,
         pedido.memoria.model_dump() if pedido.memoria else None,
     )
-    aviso = await ajustar_local(session, registro, pedido.cidade, uf)
+    aviso = await ajustar_local(session, registro, pedido.cidade, uf, pedido.abrangencia)
     return _marca(registro, aviso)
 
 
@@ -280,7 +286,7 @@ async def put_marca(
     )
     if registro is None:
         raise HTTPException(status_code=404, detail="Essa marca não existe mais.")
-    aviso = await ajustar_local(session, registro, pedido.cidade, uf)
+    aviso = await ajustar_local(session, registro, pedido.cidade, uf, pedido.abrangencia)
     return _marca(registro, aviso)
 
 

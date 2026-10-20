@@ -120,6 +120,9 @@ async def criar_tabelas() -> None:
         await conexao.execute(
             text("ALTER TABLE mkt_ficha ADD COLUMN IF NOT EXISTS clima_status VARCHAR(300) NOT NULL DEFAULT ''")
         )
+        await conexao.execute(
+            text("ALTER TABLE mkt_ficha ADD COLUMN IF NOT EXISTS abrangencia VARCHAR(10) NOT NULL DEFAULT 'cidade'")
+        )
         if not ja_tinha_site:
             await conexao.execute(
                 text(

@@ -110,6 +110,7 @@ class Ficha(SQLModel, table=True):
     publico: str = Field(default="", max_length=200)
     site: str = Field(default="", max_length=200)
     marca_dagua: str = Field(default="", max_length=60)
+    abrangencia: str = Field(default="cidade", max_length=10)
     cidade: str = Field(default="", max_length=120)
     uf: str = Field(default="", max_length=2)
     latitude: float | None = Field(default=None)

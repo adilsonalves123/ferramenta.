@@ -25,6 +25,9 @@ from app.services.calendario_dados import (
 )
 
 ZONA = timezone(timedelta(hours=-3))
+ALCANCES = ("cidade", "estado", "brasil")
+UF_DO = {"AC", "AP", "AM", "CE", "ES", "MA", "PA", "PR", "PI", "RJ", "RN", "RS", "TO"}
+UF_DA = {"BA", "PB"}
 JANELA = 14
 SEMANA = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
 CLIMA_BLOQUEADO = "Clima desligado: ative a Weather API no Google Cloud e libere na chave"
@@ -104,6 +107,40 @@ class Perfil:
 
 def hoje_local() -> date:
     return datetime.now(ZONA).date()
+
+
+def alcance(marca: Ficha) -> str:
+    """Até onde a marca vende: só a cidade dela, o estado todo ou o Brasil todo."""
+    valor = (marca.abrangencia or "").strip().lower()
+    return valor if valor in ALCANCES else "cidade"
+
+
+def cidade_da_marca(marca: Ficha) -> str:
+    return (marca.cidade or "").strip() if alcance(marca) == "cidade" else ""
+
+
+def uf_da_marca(marca: Ficha) -> str:
+    return (marca.uf or "").strip().upper() if alcance(marca) != "brasil" else ""
+
+
+def no_estado(uf: str) -> str:
+    if uf == "DF":
+        return "no Distrito Federal"
+    artigo = "do" if uf in UF_DO else ("da" if uf in UF_DA else "de")
+    return f"no estado {artigo} {UFS.get(uf, uf)}"
+
+
+def local_da_marca(marca: Ficha) -> str:
+    modo = alcance(marca)
+    if modo == "brasil":
+        return "Brasil"
+    uf = uf_da_marca(marca)
+    if modo == "estado":
+        return UFS.get(uf, uf)
+    cidade = cidade_da_marca(marca)
+    if cidade and uf:
+        return f"{cidade} ({uf})"
+    return cidade
 
 
 def _pedir_json(url: str, metodo: str = "GET", corpo: dict | None = None, cabecalhos: dict | None = None) -> object:
@@ -285,8 +322,8 @@ def aviso_da_marca(perfil: Perfil) -> str:
 
 
 async def eventos_do_periodo(marca: Ficha, inicio: date, fim: date) -> list[Evento]:
-    cidade = (marca.cidade or "").strip()
-    uf = (marca.uf or "").strip().upper()
+    cidade = cidade_da_marca(marca)
+    uf = uf_da_marca(marca)
     segmentos = segmentos_da_marca(marca)
     eventos: list[Evento] = []
     for ano in sorted({inicio.year, fim.year}):
@@ -456,9 +493,14 @@ def _dm(data: date) -> str:
     return data.strftime("%d/%m")
 
 
-def _onde(marca: Ficha) -> str:
-    cidade = (marca.cidade or "").strip()
-    uf = (marca.uf or "").strip().upper()
+def _onde(marca: Ficha, tipo: str = "", nome: str = "") -> str:
+    modo = alcance(marca)
+    if modo == "brasil":
+        return " em todo o Brasil" if tipo == "feriado" and "brasil" not in sem_acento(nome) else ""
+    uf = uf_da_marca(marca)
+    if modo == "estado":
+        return f" {no_estado(uf)}" if uf else ""
+    cidade = cidade_da_marca(marca)
     if cidade and uf:
         return f" em {cidade} ({uf})"
     if cidade:
@@ -541,7 +583,7 @@ def montar_sugestoes(
         nome_tipo = "Feriado" if evento.tipo == "feriado" else ("Aniversário da cidade" if evento.tipo == "cidade" else "Data")
         titulo = f"{ROTULO_TIPO[evento.tipo]} · {evento.nome} · {_dm(evento.data)}"
         semana_evento = SEMANA[evento.data.weekday()]
-        base = f"{nome_tipo}: {evento.nome}{onde}, {semana_evento} {_dm(evento.data)}."
+        base = f"{nome_tipo}: {evento.nome}{_onde(marca, evento.tipo, evento.nome)}, {semana_evento} {_dm(evento.data)}."
         jeito = angulo(evento.tipo, perfil)
         extra = f" Ângulo: {jeito}." if jeito else ""
         if evento.antecipar or evento.tipo == "feriado":
@@ -585,7 +627,9 @@ async def calcular(marca: Ficha, hoje: date | None = None) -> tuple[list[dict], 
     hora = momento.hour if hoje == momento.date() else 0
     eventos = await eventos_do_periodo(marca, hoje, hoje + timedelta(days=JANELA + 5))
     clima: list[DiaClima] = []
-    if marca.latitude is not None and marca.longitude is not None:
+    if alcance(marca) != "cidade":
+        status = ""
+    elif marca.latitude is not None and marca.longitude is not None:
         clima, status = await previsao(marca.latitude, marca.longitude)
     elif (marca.cidade or "").strip():
         status = "Clima desligado: a localização da cidade não foi encontrada. Salve a marca de novo com Cidade e Estado."
@@ -603,10 +647,14 @@ async def gerar_sugestoes(session: AsyncSession, marca: Ficha, hoje: date | None
         marca.clima_status = status[:300]
         session.add(marca)
     if itens:
+        novas = insert(Sugestao).values(
+            [{**item, "marca_id": marca_id, "status": "nova", "criado_em": agora()} for item in itens]
+        )
         await session.exec(
-            insert(Sugestao)
-            .values([{**item, "marca_id": marca_id, "status": "nova", "criado_em": agora()} for item in itens])
-            .on_conflict_do_nothing(constraint="ux_mkt_sugestoes_chave")
+            novas.on_conflict_do_update(
+                constraint="ux_mkt_sugestoes_chave",
+                set_={"detalhe": novas.excluded.detalhe, "data_evento": novas.excluded.data_evento},
+            )
         )
     chaves = {(item["dia_sugerido"], item["tipo"], item["titulo"]) for item in itens}
     abertas = await session.exec(
@@ -717,18 +765,32 @@ async def localizar(cidade: str, uf: str) -> tuple[float | None, float | None, s
         return None, None, "Cidade salva, mas não achei a localização dela no Google. Confira o nome e o estado; o clima fica desligado até lá."
 
 
-async def ajustar_local(session: AsyncSession, marca: Ficha, cidade: str, uf: str) -> str:
+async def ajustar_local(
+    session: AsyncSession, marca: Ficha, cidade: str, uf: str, abrangencia: str = "cidade"
+) -> str:
+    """No alcance estado ou Brasil a cidade guardada fica para quando o dono voltar para Minha cidade."""
+    modo = abrangencia if abrangencia in ALCANCES else "cidade"
     cidade = " ".join((cidade or "").split())[:120]
     uf = uf_valida(uf)
-    mudou = cidade != (marca.cidade or "") or uf != (marca.uf or "")
-    marca.cidade = cidade
-    marca.uf = uf
+    mudou = modo != alcance(marca)
+    marca.abrangencia = modo
     aviso = ""
-    if not cidade:
+    if modo == "cidade":
+        mudou_local = cidade != (marca.cidade or "") or uf != (marca.uf or "")
+        mudou = mudou or mudou_local
+        marca.cidade = cidade
+        marca.uf = uf
+        if not cidade:
+            marca.latitude = None
+            marca.longitude = None
+        elif mudou_local or marca.latitude is None or marca.longitude is None:
+            marca.latitude, marca.longitude, aviso = await localizar(cidade, uf)
+    elif modo == "estado" and uf != (marca.uf or ""):
+        marca.uf = uf
+        marca.cidade = ""
         marca.latitude = None
         marca.longitude = None
-    elif mudou or marca.latitude is None or marca.longitude is None:
-        marca.latitude, marca.longitude, aviso = await localizar(cidade, uf)
+        mudou = True
     if mudou:
         marca.clima_status = ""
     session.add(marca)
@@ -739,7 +801,7 @@ async def ajustar_local(session: AsyncSession, marca: Ficha, cidade: str, uf: st
 
 
 def aviso_local(marca: Ficha) -> str:
-    if (marca.cidade or "").strip() and (marca.latitude is None or marca.longitude is None):
+    if cidade_da_marca(marca) and (marca.latitude is None or marca.longitude is None):
         return "A localização desta cidade ainda não foi encontrada; o clima fica desligado para esta marca."
     return ""
 

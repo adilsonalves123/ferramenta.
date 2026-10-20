@@ -135,6 +135,7 @@ def create_app() -> FastAPI:
                 "publico": "O público pode ter até 200 letras.",
                 "site": "O site pode ter até 200 letras.",
                 "marca_dagua": "A marca d'água pode ter até 60 letras.",
+                "abrangencia": "Escolha o alcance da marca: Minha cidade, Meu estado ou Brasil todo.",
                 "cidade": "A cidade pode ter até 120 letras.",
                 "uf": "Escreva a sigla do estado com 2 letras, por exemplo SP.",
                 "texto": "As outras instruções precisam ter entre 20 e 8000 letras.",

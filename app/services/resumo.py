@@ -8,12 +8,16 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.models import Agendamento, Publicacao, agora
 from app.services.calendario import (
     ZONA,
+    alcance as alcance_da_marca,
     chave_clima,
+    cidade_da_marca,
     clima_guardado,
     clima_volta_sozinho,
     garantir_sugestoes,
     listar_sugestoes,
+    local_da_marca,
     previsao,
+    uf_da_marca,
 )
 from app.services.ideias import montar_ideias, nome_tema, publicacoes_recentes
 from app.services.publicar import texto_do_post
@@ -172,8 +176,10 @@ async def montar_resumo(session: AsyncSession, marca_id: int) -> dict:
     resposta: dict = {
         "marca_id": ident,
         "nome": ((marca.nome if marca else "") or "").strip() or "Risca Aí",
-        "cidade": (marca.cidade or "").strip() if marca else "",
-        "uf": (marca.uf or "").strip().upper() if marca else "",
+        "abrangencia": alcance_da_marca(marca) if marca else "cidade",
+        "local": local_da_marca(marca) if marca else "",
+        "cidade": cidade_da_marca(marca) if marca else "",
+        "uf": uf_da_marca(marca) if marca else "",
         "hoje": hoje.isoformat(),
         "amanha": (hoje + timedelta(days=1)).isoformat(),
         "saudacao": saudacao(momento),
@@ -189,7 +195,10 @@ async def montar_resumo(session: AsyncSession, marca_id: int) -> dict:
             marca = await marca_por_id(session, marca_id)
             if marca is None:
                 return resposta
-    local = (marca.latitude, marca.longitude, marca.clima_status or "")
+    if alcance_da_marca(marca) == "cidade":
+        local = (marca.latitude, marca.longitude, marca.clima_status or "")
+    else:
+        local = (None, None, "")
     try:
         resposta["proximo"], resposta["erros"] = await _fila(session, ident, hoje)
     except Exception:
