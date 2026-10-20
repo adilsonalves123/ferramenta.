@@ -25,6 +25,7 @@ from app.schemas import (
     RespostaSemana,
     PosteSemana,
 )
+from app.services.calendario import ajustar_local, aviso_local, mudar_status, uf_valida
 from app.services.midia import salvar_anexo
 from app.services.publicar import (
     escolher_pagina_facebook,
@@ -193,15 +194,27 @@ async def post_publicar_agora(
     return RespostaPublicacao(status=status, detalhe=detalhe)
 
 
-def _marca(registro) -> ItemMarca:
+def _marca(registro, aviso: str = "") -> ItemMarca:
     return ItemMarca(
         id=registro.id or 0,
         nome=registro.nome or "",
         publico=registro.publico or "",
         site=registro.site or "",
         marca_dagua=registro.marca_dagua or "",
+        cidade=registro.cidade or "",
+        uf=registro.uf or "",
+        latitude=registro.latitude,
+        longitude=registro.longitude,
+        aviso_local=aviso or aviso_local(registro),
         texto=registro.texto or "",
     )
+
+
+def _uf_do_pedido(pedido: PedidoMarca) -> str:
+    try:
+        return uf_valida(pedido.uf)
+    except ValueError as erro:
+        raise HTTPException(status_code=422, detail=str(erro)) from erro
 
 
 @router.get("/marcas", response_model=RespostaMarcas)
@@ -211,9 +224,10 @@ async def get_marcas(session: AsyncSession = Depends(get_session)) -> RespostaMa
 
 @router.post("/marcas", response_model=ItemMarca)
 async def post_marca(pedido: PedidoMarca, session: AsyncSession = Depends(get_session)) -> ItemMarca:
-    return _marca(
-        await criar_marca(session, pedido.nome, pedido.publico, pedido.texto, pedido.site, pedido.marca_dagua)
-    )
+    uf = _uf_do_pedido(pedido)
+    registro = await criar_marca(session, pedido.nome, pedido.publico, pedido.texto, pedido.site, pedido.marca_dagua)
+    aviso = await ajustar_local(session, registro, pedido.cidade, uf)
+    return _marca(registro, aviso)
 
 
 @router.put("/marcas/{marca_id}", response_model=ItemMarca)
@@ -222,12 +236,14 @@ async def put_marca(
     pedido: PedidoMarca,
     session: AsyncSession = Depends(get_session),
 ) -> ItemMarca:
+    uf = _uf_do_pedido(pedido)
     registro = await atualizar_marca(
         session, marca_id, pedido.nome, pedido.publico, pedido.texto, pedido.site, pedido.marca_dagua
     )
     if registro is None:
         raise HTTPException(status_code=404, detail="Essa marca não existe mais.")
-    return _marca(registro)
+    aviso = await ajustar_local(session, registro, pedido.cidade, uf)
+    return _marca(registro, aviso)
 
 
 @router.delete("/marcas/{marca_id}")
@@ -316,9 +332,12 @@ async def post_semana(
             pedido.formato if pedido.formato in {"feed", "story", "ambos"} else "feed",
             pedido.tema.strip()[:30],
             pedido.marca_id,
+            pedido.contexto,
         )
     except ValueError as erro:
         raise HTTPException(status_code=422, detail=str(erro)) from erro
+    if pedido.sugestao_id and criados:
+        await mudar_status(session, pedido.sugestao_id, criados[0].marca_id, "usada")
     return RespostaSemana(
         itens=[
             PosteSemana(dia=item.dia, hora=item.hora, titulo=item.titulo, legenda=item.legenda)

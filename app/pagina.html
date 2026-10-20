@@ -363,6 +363,24 @@
     button.dia.passado { color: #b7c0ce; cursor: default; }
     button.dia.passado:hover { background: transparent; }
     .dia-vazio { aspect-ratio: 1; }
+    button.dia { position: relative; }
+    .dia-ponto { position: absolute; bottom: 2px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: #f59e0b; }
+    .dia-ponto.clima { background: #0ea5e9; }
+    button.dia.escolhido .dia-ponto { background: white; }
+    .bloco-sugestoes { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--linha); }
+    .sugestoes-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .cartao-agenda .sugestoes-topo .secao { margin: 0; }
+    .lista-sugestoes { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
+    .lista-sugestoes li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--linha); border-radius: 8px; font-size: 12px; line-height: 1.35; }
+    .lista-sugestoes strong { font-weight: 600; overflow-wrap: anywhere; }
+    .lista-sugestoes span { display: block; color: var(--mudo); }
+    .lista-sugestoes .acoes-sugestao { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+    .lista-sugestoes button { border: 0; background: transparent; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; color: var(--azul); }
+    .lista-sugestoes button.dispensar { color: var(--mudo); font-weight: 500; }
+    .lista-sugestoes button:disabled { opacity: 0.6; cursor: wait; }
+    #nota-sugestoes { margin-top: 6px; }
+    .ficha-local { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 10px; }
+    .ficha-local > div { min-width: 0; }
     .nota { color: var(--mudo); font-size: 12px; line-height: 1.4; margin: 10px 2px 0; }
     .hora-linha { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
     .hora-linha label { margin: 0; font-size: 13px; }
@@ -883,6 +901,14 @@
           </div>
           <div class="cal-nomes" aria-hidden="true"><span>dom</span><span>seg</span><span>ter</span><span>qua</span><span>qui</span><span>sex</span><span>sáb</span></div>
           <div class="semana" id="semana"></div>
+          <div class="bloco-sugestoes" id="bloco-sugestoes">
+            <div class="sugestoes-topo">
+              <p class="secao">Sugestões</p>
+              <button class="link-mini" type="button" id="mais-sugestoes" hidden>Ver todas</button>
+            </div>
+            <ul class="lista-sugestoes" id="lista-sugestoes"></ul>
+            <p class="nota" id="nota-sugestoes"></p>
+          </div>
           <div class="hora-linha">
             <label for="hora-post">Horário</label>
             <input id="hora-post" type="time" value="09:00" required />
@@ -946,6 +972,17 @@
         <input id="ficha-site" maxlength="200" placeholder="Ex.: https://www.riscaai.com.br" />
         <label for="ficha-marca-dagua">Marca d'água (texto no canto de toda foto)</label>
         <input id="ficha-marca-dagua" maxlength="60" placeholder="Ex.: Risca Aí" />
+        <div class="ficha-local">
+          <div>
+            <label for="ficha-cidade">Cidade</label>
+            <input id="ficha-cidade" maxlength="120" placeholder="Ex.: Lençóis Paulista" />
+          </div>
+          <div>
+            <label for="ficha-uf">Estado (UF)</label>
+            <input id="ficha-uf" maxlength="2" placeholder="SP" autocapitalize="characters" />
+          </div>
+        </div>
+        <p class="nota">A cidade traz as sugestões de feriados e do clima de lá. Deixe em branco se não quiser.</p>
         <label for="texto-ficha">Prompt da marca</label>
         <textarea id="texto-ficha" required minlength="20" placeholder="O que a IA deve lembrar dessa marca: o que vende, para quem, o que não pode inventar e quais fotos combinam."></textarea>
         <div class="ficha-botoes">
@@ -1633,6 +1670,107 @@
     let formatoAgenda = "feed";
     let agendaItens = [];
     let metaPronta = false;
+    let sugestoes = [];
+    let sugestoesAbertas = false;
+    let pedidoSugestoes = 0;
+    const DIAS_CURTOS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+
+    function dataDoIso(iso) {
+      const [ano, mes, dia] = iso.split("-").map(Number);
+      return new Date(ano, mes - 1, dia);
+    }
+
+    function diaCurto(iso) {
+      const data = dataDoIso(iso);
+      return `${DIAS_CURTOS[data.getDay()]} ${iso.slice(8)}/${iso.slice(5, 7)}`;
+    }
+
+    function desenharSugestoes(clima) {
+      const lista = document.getElementById("lista-sugestoes");
+      const nota = document.getElementById("nota-sugestoes");
+      const mais = document.getElementById("mais-sugestoes");
+      lista.innerHTML = "";
+      const visiveis = sugestoesAbertas ? sugestoes : sugestoes.slice(0, 4);
+      mais.hidden = sugestoes.length <= 4;
+      mais.textContent = sugestoesAbertas ? "Ver menos" : `Ver todas (${sugestoes.length})`;
+      if (!sugestoes.length) {
+        const vazio = document.createElement("li");
+        vazio.innerHTML = "<span>Nenhuma sugestão para os próximos 14 dias.</span>";
+        lista.appendChild(vazio);
+      }
+      visiveis.forEach((item) => {
+        const linha = document.createElement("li");
+        const corpo = document.createElement("div");
+        const titulo = document.createElement("strong");
+        titulo.textContent = item.titulo;
+        const quando = document.createElement("span");
+        quando.textContent = item.dia_sugerido === diaIso(new Date()) ? "Post para hoje" : "Post para " + diaCurto(item.dia_sugerido);
+        corpo.append(titulo, quando);
+        const acoes = document.createElement("div");
+        acoes.className = "acoes-sugestao";
+        const criar = document.createElement("button");
+        criar.type = "button";
+        criar.textContent = "Criar post";
+        criar.addEventListener("click", () => usarSugestao(item, criar));
+        const dispensar = document.createElement("button");
+        dispensar.type = "button";
+        dispensar.className = "dispensar";
+        dispensar.textContent = "Dispensar";
+        dispensar.addEventListener("click", () => dispensarSugestao(item, dispensar));
+        acoes.append(criar, dispensar);
+        linha.append(corpo, acoes);
+        lista.appendChild(linha);
+      });
+      if (clima !== undefined) nota.textContent = clima && clima !== "ok" ? clima : "";
+    }
+
+    async function carregarSugestoes(atualizar) {
+      const numero = ++pedidoSugestoes;
+      const marcaId = marcaAtual.id || 0;
+      const resposta = atualizar
+        ? await fetch("/sugestoes/atualizar?marca_id=" + marcaId, { method: "POST" })
+        : await fetch("/sugestoes?marca_id=" + marcaId);
+      const dados = await lerResposta(resposta);
+      if (numero !== pedidoSugestoes) return;
+      if (!resposta.ok) {
+        document.getElementById("nota-sugestoes").textContent = mensagemErro(dados);
+        return;
+      }
+      sugestoes = dados.itens || [];
+      desenharSugestoes(dados.clima_status || "");
+      desenharSemana();
+    }
+
+    async function dispensarSugestao(item, botao) {
+      botao.disabled = true;
+      try {
+        const resposta = await fetch(`/sugestoes/${item.id}/dispensar?marca_id=${marcaAtual.id || 0}`, { method: "POST" });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        sugestoes = sugestoes.filter((outra) => outra.id !== item.id);
+        desenharSugestoes();
+        desenharSemana();
+      } catch (falha) {
+        document.getElementById("nota-sugestoes").textContent = falha.message || "Não consegui dispensar.";
+        botao.disabled = false;
+      }
+    }
+
+    async function usarSugestao(item, botao) {
+      const hoje = new Date();
+      const alvo = dataDoIso(item.dia_sugerido);
+      mesOffset = Math.max(0, (alvo.getFullYear() - hoje.getFullYear()) * 12 + alvo.getMonth() - hoje.getMonth());
+      diaEscolhido = item.dia_sugerido;
+      desenharSemana();
+      botao.disabled = true;
+      const certo = await preencherDia({ contexto: item.detalhe, sugestao_id: item.id });
+      botao.disabled = false;
+      if (certo) {
+        sugestoes = sugestoes.filter((outra) => outra.id !== item.id);
+        desenharSugestoes();
+        desenharSemana();
+      }
+    }
 
     function lerMarca() {
       const nome = (marcaAtual.nome || "").trim() || "Risca Aí";
@@ -1657,6 +1795,7 @@
       if (achada) marcaAtual = achada;
       atualizarMarcaVisual();
       desenharListaMarcas();
+      carregarSugestoes(false).catch(() => {});
     }
 
     function desenharListaMarcas() {
@@ -1859,6 +1998,13 @@
         botao.className = "dia" + (diaEscolhido === iso ? " escolhido" : "") + (tem ? " tem" : "") + (bloqueado ? " passado" : "");
         botao.disabled = bloqueado;
         botao.innerHTML = `<span class="dia-num">${dia}</span>`;
+        const marcadores = sugestoes.filter((item) => item.data_evento === iso);
+        if (marcadores.length) {
+          const ponto = document.createElement("span");
+          ponto.className = "dia-ponto" + (marcadores.every((item) => item.tipo === "clima") ? " clima" : "");
+          botao.appendChild(ponto);
+          botao.title = [...new Set(marcadores.map((item) => item.titulo.replace(/^Vem aí · /, "")))].join("\n");
+        }
         botao.addEventListener("click", () => {
           if (bloqueado) return;
           diaEscolhido = iso;
@@ -2372,6 +2518,8 @@
       document.getElementById("ficha-publico").value = achada ? achada.publico : "";
       document.getElementById("ficha-site").value = achada ? achada.site || "" : "";
       document.getElementById("ficha-marca-dagua").value = achada ? achada.marca_dagua || "" : "";
+      document.getElementById("ficha-cidade").value = achada ? achada.cidade || "" : "";
+      document.getElementById("ficha-uf").value = achada ? achada.uf || "" : "";
       document.getElementById("texto-ficha").value = achada ? achada.texto : "";
       document.getElementById("apagar-marca").hidden = !achada || marcas.length <= 1;
     }
@@ -2600,10 +2748,20 @@
         publico: document.getElementById("ficha-publico").value.trim(),
         site: document.getElementById("ficha-site").value.trim(),
         marca_dagua: document.getElementById("ficha-marca-dagua").value.trim(),
+        cidade: document.getElementById("ficha-cidade").value.trim(),
+        uf: document.getElementById("ficha-uf").value.trim().toUpperCase(),
         texto: document.getElementById("texto-ficha").value.trim(),
       };
       if (corpo.nome.length < 2) {
         nota.textContent = "Escreva o nome da marca.";
+        return;
+      }
+      if (corpo.uf && !/^[A-Z]{2}$/.test(corpo.uf)) {
+        nota.textContent = "Escreva a sigla do estado com 2 letras, por exemplo SP.";
+        return;
+      }
+      if (corpo.cidade && !corpo.uf) {
+        nota.textContent = "Escreva também o estado da cidade, por exemplo SP.";
         return;
       }
       if (corpo.texto.length < 20) {
@@ -2623,7 +2781,7 @@
         await carregarMarcas(dados.id);
         preencherFicha(dados.id);
         desenharLista();
-        nota.textContent = "Marca salva. Ela já está escolhida.";
+        nota.textContent = "Marca salva. Ela já está escolhida." + (dados.aviso_local ? " " + dados.aviso_local : "");
       } catch (falha) {
         nota.textContent = falha.message || "Não consegui salvar a marca.";
       } finally {
@@ -2649,20 +2807,21 @@
         botao.disabled = false;
       }
     });
-    document.getElementById("montar-semana").addEventListener("click", async () => {
+    async function preencherDia(extra) {
       const nota = document.getElementById("nota-agenda");
       const hora = document.getElementById("hora-post").value;
       if (!diaEscolhido) {
         nota.textContent = "Escolha o dia no calendário.";
-        return;
+        return false;
       }
       if (!hora) {
         nota.textContent = "Escolha o horário.";
-        return;
+        return false;
       }
       const botao = document.getElementById("montar-semana");
       botao.disabled = true;
       botao.textContent = "Escrevendo o post";
+      if (extra) nota.textContent = "Escrevendo o post de " + diaCurto(diaEscolhido) + " às " + hora + ".";
       try {
         const resposta = await fetch("/semana", {
           method: "POST",
@@ -2673,18 +2832,27 @@
             formato: formatoAgenda,
             tema,
             marca_id: marcaAtual.id,
+            ...(extra || {}),
           }),
         });
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         await carregarAgenda();
         nota.textContent = dados.aviso || "O dia entrou na fila. A foto é criada até 3 horas antes do horário.";
+        return true;
       } catch (falha) {
         nota.textContent = falha.message || "Não consegui preencher esse dia.";
+        return false;
       } finally {
         botao.disabled = false;
         botao.textContent = "Preencher este dia";
       }
+    }
+
+    document.getElementById("montar-semana").addEventListener("click", () => preencherDia());
+    document.getElementById("mais-sugestoes").addEventListener("click", () => {
+      sugestoesAbertas = !sugestoesAbertas;
+      desenharSugestoes();
     });
 
     document.getElementById("criar-foto").addEventListener("click", async () => {

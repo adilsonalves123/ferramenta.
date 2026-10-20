@@ -146,6 +146,8 @@ class PedidoMarca(BaseModel):
     publico: str = Field(default="", max_length=200)
     site: str = Field(default="", max_length=200)
     marca_dagua: str = Field(default="", max_length=60)
+    cidade: str = Field(default="", max_length=120)
+    uf: str = Field(default="", max_length=2)
     texto: str = Field(min_length=20, max_length=8000)
 
 
@@ -155,6 +157,11 @@ class ItemMarca(BaseModel):
     publico: str
     site: str = ""
     marca_dagua: str = ""
+    cidade: str = ""
+    uf: str = ""
+    latitude: float | None = None
+    longitude: float | None = None
+    aviso_local: str = ""
     texto: str
 
 
@@ -194,6 +201,25 @@ class PedidoSemana(BaseModel):
     formato: str = "feed"
     tema: str = Field(default="", max_length=30)
     marca_id: int = 0
+    contexto: str = Field(default="", max_length=1500)
+    sugestao_id: int = 0
+
+
+class ItemSugestao(BaseModel):
+    id: int
+    dia_sugerido: str
+    tipo: str
+    titulo: str
+    detalhe: str
+    data_evento: str
+
+
+class RespostaSugestoes(BaseModel):
+    marca_id: int
+    cidade: str = ""
+    uf: str = ""
+    clima_status: str = ""
+    itens: list[ItemSugestao]
 
 
 class PedidoAgenda(BaseModel):

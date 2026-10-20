@@ -107,8 +107,30 @@ class Ficha(SQLModel, table=True):
     publico: str = Field(default="", max_length=200)
     site: str = Field(default="", max_length=200)
     marca_dagua: str = Field(default="", max_length=60)
+    cidade: str = Field(default="", max_length=120)
+    uf: str = Field(default="", max_length=2)
+    latitude: float | None = Field(default=None)
+    longitude: float | None = Field(default=None)
+    clima_status: str = Field(default="", max_length=300)
     texto: str = Field(sa_type=Text)
     atualizado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
+
+
+class Sugestao(SQLModel, table=True):
+    __tablename__ = "mkt_sugestoes"
+    __table_args__ = (
+        UniqueConstraint("marca_id", "dia_sugerido", "tipo", "titulo", name="ux_mkt_sugestoes_chave"),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    marca_id: int = Field(default=0, index=True)
+    dia_sugerido: str = Field(max_length=10, index=True)
+    tipo: str = Field(max_length=20)
+    titulo: str = Field(max_length=160)
+    detalhe: str = Field(default="", sa_type=Text)
+    data_evento: str = Field(max_length=10)
+    status: str = Field(default="nova", max_length=20)
+    criado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
 
 
 class Roteiro(SQLModel, table=True):

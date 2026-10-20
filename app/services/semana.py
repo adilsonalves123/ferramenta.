@@ -6,8 +6,8 @@ from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import get_settings
-from app.models import Agendamento, ContaRede, Ficha, Publicacao, agora
-from app.services.openai_campanha import cliente_openai
+from app.models import Agendamento, ContaRede, Ficha, Publicacao, Sugestao, agora
+from app.services.openai_campanha import REGRAS_ALCOOL, cliente_openai, com_moderacao, fala_de_alcool
 
 ZONA = timezone(timedelta(hours=-3))
 
@@ -23,6 +23,7 @@ titulo: uma frase curta.
 legenda: texto de post, com 5 a 8 hashtags no final.
 cena: descrição de uma fotografia realista, diferente da anterior, que combina com o negócio da ficha. Se aparecer celular ou tela, ela fica virada ou apagada. Sem gráfico, sem botão, sem menu e sem texto escrito.
 Use somente a ficha. Não invente preço, cidade, telefone, depoimento ou número de clientes.
+Não invente horário de funcionamento, preço, desconto nem promoção que não esteja na ficha ou no contexto.
 Não repita o mesmo assunto visual."""
 
 
@@ -131,6 +132,9 @@ async def apagar_marca(session: AsyncSession, marca_id: int) -> None:
     publicacoes = await session.exec(select(Publicacao).where(Publicacao.marca_id == marca_id))
     for publicacao in publicacoes.all():
         await session.delete(publicacao)
+    sugestoes = await session.exec(select(Sugestao).where(Sugestao.marca_id == marca_id))
+    for sugestao in sugestoes.all():
+        await session.delete(sugestao)
     await session.delete(alvo)
     await session.commit()
 
@@ -145,15 +149,20 @@ TEMAS = {
 }
 
 
-async def escrever_semana(ficha: str, quantidade: int, tema: str = "", site: str = "") -> list[PosteGerado]:
+async def escrever_semana(
+    ficha: str, quantidade: int, tema: str = "", site: str = "", contexto: str = ""
+) -> list[PosteGerado]:
     guia = TEMAS.get(tema.strip().lower(), "")
     pedido_tema = f"\nTema de todas as publicações: {guia}" if guia else ""
     if site.strip():
         pedido_tema += "\nNão escreva o site nem link na legenda: o site da marca entra sozinho no final."
+    if contexto.strip():
+        pedido_tema += f"\nMotivo deste post: {contexto.strip()[:1500]}"
+    alcool = fala_de_alcool(ficha) or fala_de_alcool(contexto)
     resposta = await cliente_openai().with_options(timeout=90).chat.completions.parse(
         model=get_settings().openai_model,
         messages=[
-            {"role": "system", "content": SISTEMA},
+            {"role": "system", "content": SISTEMA + (REGRAS_ALCOOL if alcool else "")},
             {
                 "role": "user",
                 "content": (
@@ -176,6 +185,8 @@ async def escrever_semana(ficha: str, quantidade: int, tema: str = "", site: str
     ]
     if not posts:
         raise ValueError("A semana veio sem texto.")
+    if alcool:
+        posts = [item.model_copy(update={"legenda": com_moderacao(item.legenda)}) for item in posts]
     return posts[:quantidade]
 
 
@@ -191,6 +202,7 @@ async def montar_dias(
     formato: str = "feed",
     tema: str = "",
     marca_id: int = 0,
+    contexto: str = "",
 ) -> tuple[list[Agendamento], str]:
     if not pedidos:
         raise ValueError("Marque pelo menos um dia.")
@@ -222,7 +234,7 @@ async def montar_dias(
         cabecalho += f" Público: {marca.publico}."
     ficha = f"{cabecalho}\n{(marca.texto or '').strip()}".strip()
     try:
-        posts = await escrever_semana(ficha, len(pedidos), tema, marca.site or "")
+        posts = await escrever_semana(ficha, len(pedidos), tema, marca.site or "", contexto)
     except APIError as erro:
         detalhe = str(erro)
         if "insufficient_quota" in detalhe or "credit_balance" in detalhe:
