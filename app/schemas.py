@@ -374,6 +374,16 @@ class ClimaHoje(BaseModel):
     chuva: int | None = None
 
 
+class IdeiaResumo(BaseModel):
+    tipo: str
+    rotulo: str
+    motivo: str = ""
+    pedido: str
+    tema: str = ""
+    dia: str = ""
+    sugestoes: list[int] = Field(default_factory=list)
+
+
 class RespostaResumo(BaseModel):
     marca_id: int
     nome: str
@@ -388,3 +398,4 @@ class RespostaResumo(BaseModel):
     erros: list[PostResumo] = Field(default_factory=list)
     semana: SemanaResumo = Field(default_factory=SemanaResumo)
     sugestoes: list[ItemSugestao] = Field(default_factory=list)
+    ideias: list[IdeiaResumo] = Field(default_factory=list)

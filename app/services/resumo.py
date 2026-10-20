@@ -15,6 +15,7 @@ from app.services.calendario import (
     listar_sugestoes,
     previsao,
 )
+from app.services.ideias import montar_ideias, nome_tema, publicacoes_recentes
 from app.services.publicar import texto_do_post
 from app.services.resultados import _contas, _engajamento, ler_metricas
 from app.services.semana import marca_por_id
@@ -24,14 +25,6 @@ MESES = [
     "janeiro", "fevereiro", "março", "abril", "maio", "junho",
     "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 ]
-NOMES_TEMA = {
-    "bastidores": "Bastidores",
-    "oferta": "Oferta",
-    "dica": "Dica",
-    "história": "História",
-    "prova": "Prova",
-    "interação": "Interação",
-}
 NA_FILA = ("na_fila", "falta_imagem", "publicando")
 ESPERA_CLIMA = 4
 MEDINDO = "Ainda estamos medindo. Os números aparecem uns dias depois de cada post."
@@ -87,10 +80,6 @@ async def _fila(session: AsyncSession, marca_id: int, hoje: date) -> tuple[dict 
     proximo = next((item for item in itens if item.status in NA_FILA), None)
     erros = [item for item in itens if item.status == "erro"][:3]
     return (_post(proximo) if proximo else None), [_post(item) for item in erros]
-
-
-def nome_tema(tema: str) -> str:
-    return NOMES_TEMA.get(tema, tema[:1].upper() + tema[1:])
 
 
 def dica_da_semana(medidos: list[tuple[int, Publicacao]]) -> str:
@@ -209,7 +198,9 @@ async def montar_resumo(session: AsyncSession, marca_id: int) -> dict:
         resposta["semana"] = await _semana(session, ident)
     except Exception:
         await session.rollback()
+    sugestoes = []
     try:
+        sugestoes = await listar_sugestoes(session, ident, hoje)
         resposta["sugestoes"] = [
             {
                 "id": item.id or 0,
@@ -219,10 +210,19 @@ async def montar_resumo(session: AsyncSession, marca_id: int) -> dict:
                 "detalhe": item.detalhe,
                 "data_evento": item.data_evento,
             }
-            for item in (await listar_sugestoes(session, ident, hoje))[:4]
+            for item in sugestoes[:4]
         ]
     except Exception:
         await session.rollback()
+    try:
+        pubs = await publicacoes_recentes(session, ident)
+    except Exception:
+        await session.rollback()
+        pubs = []
+    try:
+        resposta["ideias"] = montar_ideias(marca, sugestoes, pubs, hoje)
+    except Exception:
+        pass
     try:
         resposta["clima"] = await _clima_hoje(*local, hoje)
     except Exception:

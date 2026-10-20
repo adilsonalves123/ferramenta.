@@ -2329,16 +2329,13 @@
       }
     }
 
-    const IDEIAS_TEMA = {
-      bastidores: { rotulo: "Bastidores do dia", pedido: "Crie um post de bastidores mostrando como é o dia a dia da marca, de um jeito próximo e verdadeiro." },
-      dica: { rotulo: "Dica da semana", pedido: "Crie um post com uma dica útil para o nosso público, ligada ao que a marca faz." },
-      oferta: { rotulo: "Oferta para sexta", pedido: "Crie um post chamando os clientes para a sexta-feira, destacando um produto ou serviço da marca. Se precisar de preço, deixe [preço] para eu completar." },
-      "história": { rotulo: "História da marca", pedido: "Crie um post contando um pedaço da história da marca e de quem está por trás dela." },
-      prova: { rotulo: "Por que escolher a gente", pedido: "Crie um post mostrando por que os clientes escolhem a marca, sem inventar depoimento nem número de clientes." },
-      "interação": { rotulo: "Pergunta para os clientes", pedido: "Crie um post com uma pergunta simples para os clientes responderem nos comentários." },
+    const ICONES_IDEIA = {
+      calor: "fa-solid fa-sun",
+      chuva: "fa-solid fa-cloud-rain",
+      frio: "fa-regular fa-snowflake",
+      resultado: "fa-solid fa-chart-simple",
+      convite: "fa-solid fa-wand-magic-sparkles",
     };
-    const ORDEM_IDEIAS = ["bastidores", "dica", "oferta", "interação"];
-    const NAO_INVENTAR = "Não invente preço, horário de funcionamento nem promoção.";
 
     function mostrarResumoDia(mostrar) {
       document.getElementById("resumo-dia").hidden = !mostrar;
@@ -2526,41 +2523,19 @@
       lugar.append(numeros, dica, todos);
     }
 
-    function rotuloSugestao(item, prefixo) {
-      const partes = String(item.titulo || "").replace(/^Vem aí · /, "").split(" · ");
-      if (item.tipo === "clima") {
-        const sinal = (partes[0] || "").split(" ")[0].toLowerCase();
-        return partes[1] ? `${prefixo} de ${sinal} para ${partes[1]}` : `${prefixo} de ${sinal}`;
-      }
-      return `${prefixo} de ${partes.length >= 3 ? partes[1] : partes[0]}`;
-    }
-
     function desenharIdeias() {
       const lugar = document.getElementById("resumo-ideias");
       if (!lugar) return;
-      const prefixo = formatoAgenda === "story" ? "Story" : "Post";
-      const fonte = sugestoesDe === marcaAtual.id ? sugestoes : (resumoAtual && resumoAtual.marca_id === marcaAtual.id ? resumoAtual.sugestoes || [] : []);
-      const ideias = [];
-      fonte.forEach((item) => {
-        const rotulo = rotuloSugestao(item, prefixo);
-        if (ideias.length >= 2 || ideias.some((ideia) => ideia.rotulo === rotulo)) return;
-        const detalhe = String(item.detalhe || item.titulo).trim();
-        const pedido = (formatoAgenda === "story" ? "Crie um Story. " : "") + detalhe + (/não invente/i.test(detalhe) ? "" : " " + NAO_INVENTAR);
-        ideias.push({ rotulo, pedido, icone: item.tipo === "clima" ? "fa-solid fa-cloud-sun" : "fa-regular fa-calendar" });
-      });
-      const quantas = ideias.length + (ideias.length ? 2 : 3);
-      [tema, ...ORDEM_IDEIAS].forEach((chave) => {
-        const base = IDEIAS_TEMA[chave];
-        if (!base || ideias.length >= quantas || ideias.some((ideia) => ideia.tema === chave)) return;
-        const rotulo = formatoAgenda === "story" ? base.rotulo.replace(/^Oferta/, "Story de oferta") : base.rotulo;
-        ideias.push({ rotulo, pedido: `${base.pedido} ${NAO_INVENTAR}`, tema: chave, icone: "fa-solid fa-wand-magic-sparkles" });
-      });
+      const doResumo = resumoAtual && resumoAtual.marca_id === marcaAtual.id ? resumoAtual.ideias || [] : [];
+      const abertas = sugestoesDe === marcaAtual.id ? new Set(sugestoes.map((item) => item.id)) : null;
+      const ideias = doResumo.filter((ideia) => !abertas || !(ideia.sugestoes || []).length || ideia.sugestoes.some((id) => abertas.has(id)));
       lugar.innerHTML = "";
       ideias.forEach((ideia) => {
         const botao = elemento("button", "chip");
         botao.type = "button";
+        if (ideia.motivo) botao.title = ideia.motivo;
         const icone = document.createElement("i");
-        icone.className = ideia.icone;
+        icone.className = ICONES_IDEIA[ideia.tipo] || "fa-regular fa-calendar";
         botao.append(icone, document.createTextNode(ideia.rotulo));
         botao.addEventListener("click", () => usarIdeia(ideia));
         lugar.append(botao);
@@ -2572,7 +2547,7 @@
         const botaoTema = [...document.querySelectorAll("[data-tema]")].find((item) => item.dataset.tema === ideia.tema);
         if (botaoTema) botaoTema.click();
       }
-      pedidoCampo.value = ideia.pedido;
+      pedidoCampo.value = (formatoAgenda === "story" ? "Crie um Story. " : "") + ideia.pedido;
       document.getElementById("enviar-chat").click();
     }
 

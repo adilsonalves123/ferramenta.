@@ -32,6 +32,32 @@ CLIMA_FORA = "Clima indisponível agora. Tento de novo mais tarde."
 REPETIR_CLIMA_ROBO = 30 * 60
 REPETIR_CLIMA_TELA = 10 * 60
 AVISO_FIM = "Não invente horário de funcionamento, preço nem promoção; se precisar, peça para o dono confirmar."
+AVISO_CONAR = (
+    "Se citar bebida alcoólica, siga o CONAR: sem incentivar consumo excessivo, sem ligar a bebida a dirigir "
+    "nem a menores de idade, e termine com \"Beba com moderação\"."
+)
+HORA_SEM_HOJE = 15
+CALOR = 30
+FRIO_MAXIMA = 18
+CHUVA_CHANCE = 70
+CHUVA_MM = 2
+CHUVA_FORTE = {
+    "RAIN",
+    "LIGHT_TO_MODERATE_RAIN",
+    "MODERATE_TO_HEAVY_RAIN",
+    "HEAVY_RAIN",
+    "RAIN_PERIODICALLY_HEAVY",
+    "RAIN_SHOWERS",
+    "HEAVY_RAIN_SHOWERS",
+    "WIND_AND_RAIN",
+    "THUNDERSTORM",
+    "THUNDERSHOWER",
+    "HEAVY_THUNDERSTORM",
+    "LIGHT_THUNDERSTORM_RAIN",
+    "SCATTERED_THUNDERSTORMS",
+}
+# Peso de segunda a domingo: para bar, sexta e sábado contam mais, depois quinta e domingo.
+PESO_DIA = [1, 1, 1, 2, 3, 3, 2]
 
 _feriados_ano: dict[int, list[tuple[date, str]]] = {}
 _ibge: dict[tuple[str, str], str] = {}
@@ -62,6 +88,18 @@ class DiaClima:
     maxima: float | None
     minima: float | None
     chuva: int | None
+    chuva_noite: int | None = None
+    mm: float | None = None
+    condicao: str = ""
+
+
+@dataclass
+class Perfil:
+    fornecedor: bool
+    bar: bool
+    comida: bool
+    delivery: bool
+    bebida: str
 
 
 def hoje_local() -> date:
@@ -219,6 +257,33 @@ def segmentos_da_marca(marca: Ficha) -> set[str]:
     return segmentos
 
 
+def perfil_da_marca(marca: Ficha) -> Perfil:
+    """Diz o ângulo dos posts: casa que atende o cliente final ou empresa que vende para o dono de bar."""
+    texto = sem_acento(f"{marca.nome} {marca.publico} {marca.texto}")
+    segmentos = segmentos_da_marca(marca)
+    fornecedor = bool(
+        re.search(r"\b(sistema|software|aplicativo|plataforma|app)\b", texto)
+        and re.search(r"\bdonos? (de|do|da|dos|das) (bar|bares|adega|restaurante|petiscaria|lanchonete|boteco)", texto)
+    )
+    if re.search(r"\b(cervejas?|chopp?|chope|adega|boteco|botequim|bar|bares|pub)\b", texto):
+        bebida = "Cerveja gelada"
+    elif re.search(r"\b(drinks?|drinque|coquetel)\b", texto):
+        bebida = "Drink gelado"
+    else:
+        bebida = ""
+    return Perfil(
+        fornecedor=fornecedor,
+        bar="bar" in segmentos,
+        comida="restaurante" in segmentos,
+        delivery=bool(re.search(r"\b(delivery|entregas?|ifood|tele-?entrega|motoboy)\b", texto)),
+        bebida=bebida,
+    )
+
+
+def aviso_da_marca(perfil: Perfil) -> str:
+    return f"{AVISO_FIM} {AVISO_CONAR}" if perfil.bar or perfil.bebida else AVISO_FIM
+
+
 async def eventos_do_periodo(marca: Ficha, inicio: date, fim: date) -> list[Evento]:
     cidade = (marca.cidade or "").strip()
     uf = (marca.uf or "").strip().upper()
@@ -271,7 +336,26 @@ def _chance(parte: dict | None) -> int | None:
         return None
 
 
+def _milimetros(parte: dict | None) -> float | None:
+    try:
+        qpf = parte["precipitation"]["qpf"]  # type: ignore[index]
+        valor = float(qpf["quantity"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if str(qpf.get("unit") or "MILLIMETERS").upper() == "INCHES":
+        valor *= 25.4
+    return round(valor, 1)
+
+
+def _condicao(parte: dict | None) -> str:
+    try:
+        return str(parte["weatherCondition"]["type"] or "").upper()  # type: ignore[index]
+    except (KeyError, TypeError):
+        return ""
+
+
 def ler_previsao(dados: dict) -> list[DiaClima]:
+    """Usa a data local (displayDate) e a parte do dia (7h às 19h) para chuva; a noite vai até as 7h do dia seguinte."""
     dias: list[DiaClima] = []
     for item in dados.get("forecastDays", []) if isinstance(dados, dict) else []:
         exibida = item.get("displayDate") or {}
@@ -279,13 +363,16 @@ def ler_previsao(dados: dict) -> list[DiaClima]:
             data = date(int(exibida["year"]), int(exibida["month"]), int(exibida["day"]))
         except (KeyError, TypeError, ValueError):
             continue
-        chances = [c for c in (_chance(item.get("daytimeForecast")), _chance(item.get("nighttimeForecast"))) if c is not None]
+        dia = item.get("daytimeForecast")
         dias.append(
             DiaClima(
                 data=data,
                 maxima=_graus(item.get("maxTemperature")),
                 minima=_graus(item.get("minTemperature")),
-                chuva=max(chances) if chances else None,
+                chuva=_chance(dia),
+                chuva_noite=_chance(item.get("nighttimeForecast")),
+                mm=_milimetros(dia),
+                condicao=_condicao(dia),
             )
         )
     return dias
@@ -332,22 +419,37 @@ def clima_guardado(latitude: float, longitude: float) -> list[DiaClima] | None:
     return guardado[1] if guardado else None
 
 
+def sinal_do_dia(dia: DiaClima) -> tuple[str, str] | None:
+    """Um sinal por dia, só o que muda o movimento: chuva de dia de verdade, calor ou dia frio (máxima baixa)."""
+    if (
+        dia.chuva is not None
+        and dia.chuva >= CHUVA_CHANCE
+        and ((dia.mm or 0) >= CHUVA_MM or dia.condicao in CHUVA_FORTE)
+    ):
+        return "chuva", f"Chuva {dia.chuva}%"
+    if dia.maxima is not None and dia.maxima >= CALOR:
+        return "calor", f"Calor {round(dia.maxima)} °C"
+    if dia.maxima is not None and dia.maxima <= FRIO_MAXIMA:
+        return "frio", f"Frio máx. {round(dia.maxima)} °C"
+    return None
+
+
 def sinais_do_clima(dias: list[DiaClima]) -> list[tuple[DiaClima, str, str]]:
-    sinais: list[tuple[DiaClima, str, str]] = []
-    anteriores: set[str] = set()
+    """Dias seguidos com o mesmo sinal viram uma sugestão só, no dia que mais pesa para bar (sexta e sábado primeiro)."""
+    blocos: list[list[tuple[DiaClima, str, str]]] = []
     for dia in sorted(dias, key=lambda d: d.data):
-        atuais: dict[str, str] = {}
-        if dia.maxima is not None and dia.maxima >= 30:
-            atuais["calor"] = f"Calor {round(dia.maxima)} °C"
-        if dia.chuva is not None and dia.chuva >= 60:
-            atuais["chuva"] = f"Chuva {dia.chuva}%"
-        if dia.minima is not None and dia.minima <= 15:
-            atuais["frio"] = f"Frio {round(dia.minima)} °C"
-        for sinal, rotulo in atuais.items():
-            if sinal not in anteriores:
-                sinais.append((dia, sinal, rotulo))
-        anteriores = set(atuais)
-    return sinais
+        achado = sinal_do_dia(dia)
+        if achado is None:
+            continue
+        anterior = blocos[-1][-1] if blocos else None
+        if anterior and anterior[1] == achado[0] and (dia.data - anterior[0].data).days == 1:
+            blocos[-1].append((dia, *achado))
+        else:
+            blocos.append([(dia, *achado)])
+    return [
+        max(bloco, key=lambda item: (PESO_DIA[item[0].data.weekday()], -item[0].data.toordinal()))
+        for bloco in blocos
+    ]
 
 
 def _dm(data: date) -> str:
@@ -364,17 +466,63 @@ def _onde(marca: Ficha) -> str:
     return ""
 
 
+def no_dia(data: date) -> str:
+    semana = SEMANA[data.weekday()]
+    return f"no {semana}" if data.weekday() >= 5 else f"na {semana}"
+
+
+def chave_perfil(perfil: Perfil) -> str:
+    if perfil.fornecedor:
+        return "fornecedor"
+    return "casa" if perfil.bar or perfil.comida else "geral"
+
+
 ROTULO_TIPO = {"feriado": "Feriado", "data": "Data", "cidade": "Cidade"}
-PEDIDO_CLIMA = {
-    "calor": "aproveitando o calor (algo gelado, refrescante, ambiente fresco)",
-    "chuva": "aproveitando a chuva (ficar abrigado, pedir para levar, conforto)",
-    "frio": "aproveitando o frio (algo quente, aconchego)",
+ANGULO = {
+    ("calor", "fornecedor"): "dica para o dono de bar se preparar para o calor (bebida gelada no estoque, gelo, movimento maior), mostrando como a marca ajuda",
+    ("calor", "geral"): "algo refrescante ligado ao que a marca faz",
+    ("frio", "fornecedor"): "dica para o dono de bar aproveitar o frio (petiscos e pratos quentes, caldos), mostrando como a marca ajuda",
+    ("frio", "casa"): "petisco ou prato quentinho e ambiente aconchegante",
+    ("frio", "geral"): "aconchego para o dia frio",
+    ("chuva", "fornecedor"): "dica para o dono de bar manter o movimento num dia de chuva, sem prometer resultado",
+    ("chuva", "delivery"): "chamar para pedir no delivery e ficar em casa",
+    ("chuva", "casa"): "salão aconchegante, um bom lugar para esperar a chuva passar",
+    ("chuva", "geral"): "conforto e aconchego no dia de chuva",
+    ("feriado", "fornecedor"): "dica para o dono de bar se preparar para o feriado (estoque, equipe, caixa)",
+    ("feriado", "casa"): "avisar se a casa abre ou fecha no feriado; deixe [horário] para o dono completar",
+    ("feriado", "geral"): "avisar se a marca atende no feriado; deixe [horário] para o dono completar",
+    ("data", "fornecedor"): "ideia para o dono de bar aproveitar a data (decoração, drink ou petisco temático), mostrando como a marca ajuda",
+    ("data", "casa"): "como a casa entra no clima da data, com um produto real do cardápio",
 }
 
 
-def montar_sugestoes(marca: Ficha, eventos: list[Evento], clima: list[DiaClima], hoje: date) -> list[dict]:
+def angulo(assunto: str, perfil: Perfil) -> str:
+    chave = chave_perfil(perfil)
+    if assunto == "chuva" and perfil.delivery and chave != "fornecedor":
+        chave = "delivery"
+    if assunto == "calor" and chave == "casa":
+        bebida = perfil.bebida.lower() if perfil.bebida else "algo gelado"
+        return f"{bebida} ou algo refrescante do cardápio para enfrentar o calor"
+    return ANGULO.get((assunto, chave), "")
+
+
+def frase_clima(dia: DiaClima, sinal: str, onde: str) -> str:
+    quando = f"{no_dia(dia.data)} {_dm(dia.data)}"
+    if sinal == "calor":
+        return f"Previsão do tempo{onde}: máxima de {round(dia.maxima or 0)} °C {quando}."
+    if sinal == "frio":
+        return f"Previsão do tempo{onde}: dia frio {quando}, máxima de só {round(dia.maxima or 0)} °C."
+    volume = f", cerca de {dia.mm:g} mm".replace(".", ",") if dia.mm else ""
+    return f"Previsão do tempo{onde}: {dia.chuva}% de chance de chuva durante o dia {quando}{volume}."
+
+
+def montar_sugestoes(
+    marca: Ficha, eventos: list[Evento], clima: list[DiaClima], hoje: date, hora: int = 0
+) -> list[dict]:
     ultimo = hoje + timedelta(days=JANELA - 1)
     onde = _onde(marca)
+    perfil = perfil_da_marca(marca)
+    aviso = aviso_da_marca(perfil)
     itens: list[dict] = []
 
     def adicionar(dia: date, tipo: str, titulo: str, detalhe: str, evento: date) -> None:
@@ -394,6 +542,8 @@ def montar_sugestoes(marca: Ficha, eventos: list[Evento], clima: list[DiaClima],
         titulo = f"{ROTULO_TIPO[evento.tipo]} · {evento.nome} · {_dm(evento.data)}"
         semana_evento = SEMANA[evento.data.weekday()]
         base = f"{nome_tipo}: {evento.nome}{onde}, {semana_evento} {_dm(evento.data)}."
+        jeito = angulo(evento.tipo, perfil)
+        extra = f" Ângulo: {jeito}." if jeito else ""
         if evento.antecipar or evento.tipo == "feriado":
             antes = evento.data - timedelta(days=3)
             if antes < hoje and (evento.data - hoje).days >= 2:
@@ -403,26 +553,26 @@ def montar_sugestoes(marca: Ficha, eventos: list[Evento], clima: list[DiaClima],
                     antes,
                     evento.tipo,
                     "Vem aí · " + titulo,
-                    f"{base} Faça um post para o dia {_dm(antes)} avisando que a data está chegando. {AVISO_FIM}",
+                    f"{base} Faça um post para o dia {_dm(antes)} avisando que a data está chegando.{extra} {aviso}",
                     evento.data,
                 )
         adicionar(
             evento.data,
             evento.tipo,
             titulo,
-            f"{base} Faça um post para o próprio dia {_dm(evento.data)}. {AVISO_FIM}",
+            f"{base} Faça um post para o próprio dia {_dm(evento.data)}.{extra} {aviso}",
             evento.data,
         )
-    for dia, sinal, rotulo in sinais_do_clima([d for d in clima if d.data >= hoje]):
+    primeiro = hoje if hora < HORA_SEM_HOJE else hoje + timedelta(days=1)
+    for dia, sinal, rotulo in sinais_do_clima([d for d in clima if d.data >= primeiro]):
         quando = max(hoje, dia.data - timedelta(days=1))
-        semana_dia = SEMANA[dia.data.weekday()]
         adicionar(
             quando,
             "clima",
-            f"{rotulo} · {semana_dia}",
+            f"{rotulo} · {SEMANA[dia.data.weekday()]}",
             (
-                f"Previsão do tempo{onde}: {rotulo.lower()} na {semana_dia} {_dm(dia.data)}. "
-                f"Faça um post para o dia {_dm(quando)} {PEDIDO_CLIMA[sinal]}. Não prometa o tempo como certo. {AVISO_FIM}"
+                f"{frase_clima(dia, sinal, onde)} Faça um post para o dia {_dm(quando)}. "
+                f"Ângulo: {angulo(sinal, perfil)}. Não prometa o tempo como certo. {aviso}"
             ),
             dia.data,
         )
@@ -430,7 +580,9 @@ def montar_sugestoes(marca: Ficha, eventos: list[Evento], clima: list[DiaClima],
 
 
 async def calcular(marca: Ficha, hoje: date | None = None) -> tuple[list[dict], str]:
-    hoje = hoje or hoje_local()
+    momento = datetime.now(ZONA)
+    hoje = hoje or momento.date()
+    hora = momento.hour if hoje == momento.date() else 0
     eventos = await eventos_do_periodo(marca, hoje, hoje + timedelta(days=JANELA + 5))
     clima: list[DiaClima] = []
     if marca.latitude is not None and marca.longitude is not None:
@@ -439,7 +591,7 @@ async def calcular(marca: Ficha, hoje: date | None = None) -> tuple[list[dict], 
         status = "Clima desligado: a localização da cidade não foi encontrada. Salve a marca de novo com Cidade e Estado."
     else:
         status = "Clima desligado: preencha Cidade e Estado em Minha marca."
-    return montar_sugestoes(marca, eventos, clima, hoje), status
+    return montar_sugestoes(marca, eventos, clima, hoje, hora), status
 
 
 async def gerar_sugestoes(session: AsyncSession, marca: Ficha, hoje: date | None = None) -> int:
@@ -511,7 +663,9 @@ async def sugestoes_de_todas(session: AsyncSession) -> None:
 
 
 async def listar_sugestoes(session: AsyncSession, marca_id: int, hoje: date | None = None) -> list[Sugestao]:
-    hoje = hoje or hoje_local()
+    momento = datetime.now(ZONA)
+    hoje = hoje or momento.date()
+    tarde = hoje == momento.date() and momento.hour >= HORA_SEM_HOJE
     resultado = await session.exec(
         select(Sugestao)
         .where(
@@ -522,7 +676,11 @@ async def listar_sugestoes(session: AsyncSession, marca_id: int, hoje: date | No
         )
         .order_by(col(Sugestao.dia_sugerido), col(Sugestao.data_evento), col(Sugestao.id))
     )
-    return list(resultado.all())
+    return [
+        item
+        for item in resultado.all()
+        if not (tarde and item.tipo == "clima" and item.data_evento == hoje.isoformat())
+    ]
 
 
 async def mudar_status(session: AsyncSession, sugestao_id: int, marca_id: int, status: str) -> bool:
