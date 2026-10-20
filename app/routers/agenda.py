@@ -7,12 +7,13 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import get_settings
 from app.database import get_session
-from app.models import Agendamento, Ficha, MemoriaFoto
+from app.models import Agendamento, Ficha, LogoMarca, MemoriaFoto
 from app.schemas import (
     EstadoRede,
     FatosMarca,
     ItemAgenda,
     PedidoAgenda,
+    PedidoArteAgenda,
     ItemMarca,
     PedidoFormato,
     PedidoFotoAgenda,
@@ -27,11 +28,13 @@ from app.schemas import (
     RespostaSemana,
     PosteSemana,
 )
+from app.services import diretor, molde
 from app.services.calendario import ajustar_local, alcance, aviso_local, mudar_status, uf_valida
 from app.services.imagens import url_memoria
-from app.services.memoria import imagem_da_memoria, ler_fatos, limpar_gancho
+from app.services.memoria import imagem_da_memoria, ler_fatos, limpar_gancho, montar_contexto
 from app.services.midia import anexar
 from app.services.publicar import (
+    LIMITE_FOTOS,
     escolher_pagina_facebook,
     estado_contas,
     facebook_pronta,
@@ -86,7 +89,8 @@ def _pagina_falta() -> str:
 
 
 def _item(registro: Agendamento) -> ItemAgenda:
-    tem_cena = bool((registro.cena or "").strip())
+    plano = diretor.ler_plano(registro.plano_arte)
+    tem_cena = bool((registro.cena or "").strip()) or plano is not None
     aberto = registro.status in {"na_fila", "falta_imagem"}
     return ItemAgenda(
         id=registro.id or 0,
@@ -106,6 +110,7 @@ def _item(registro: Agendamento) -> ItemAgenda:
         foto_id=registro.foto_id,
         gancho=registro.gancho or "",
         memoria_miniatura=url_memoria(registro.foto_id, mini=True) if registro.foto_id else "",
+        arte=diretor.resumo_plano(plano),
     )
 
 
@@ -172,17 +177,28 @@ async def post_agenda(
         marca_id=pedido.marca_id,
         gancho=limpar_gancho(pedido.gancho),
     )
-    registro.foto_id = await _foto_da_marca(session, pedido.foto_id, await marca_efetiva(session, pedido.marca_id))
+    marca_id = await marca_efetiva(session, pedido.marca_id)
+    plano = await _plano_do_pedido(session, pedido.plano_arte, marca_id)
+    usa_arte = (
+        plano is not None
+        and not registro.video_url
+        and (not registro.imagem_url or registro.imagem_url == plano.get("feed_url"))
+    )
+    if usa_arte:
+        registro.plano_arte = diretor.gravar_plano(plano)
+        registro.foto_id = plano.get("foto_base_id")
+    else:
+        registro.foto_id = await _foto_da_marca(session, pedido.foto_id, marca_id)
     session.add(registro)
     formato = registro.formato or "feed"
     precisa_foto = formato in {"story", "ambos"} or registro.rede in {"Instagram", "Ambos"}
-    contas = await estado_contas(session, await marca_efetiva(session, registro.marca_id))
+    contas = await estado_contas(session, marca_id)
     faltam = []
     if registro.rede in ("Instagram", "Ambos") and not _estado(contas["instagram"]).ligado:
         faltam.append(falta_conta("Instagram"))
     if registro.rede in ("Facebook", "Ambos") and not _estado(contas["facebook"]).ligado:
         faltam.append(falta_conta("Facebook"))
-    if precisa_foto and not registro.imagem_url and not registro.video_url:
+    if precisa_foto and not registro.imagem_url and not registro.video_url and not usa_arte:
         registro.status = "falta_imagem"
         registro.detalhe = "Falta a foto."
     elif faltam:
@@ -190,9 +206,18 @@ async def post_agenda(
     elif registro.rede not in ("Instagram", "Facebook", "Ambos"):
         registro.status = "manual"
         registro.detalhe = "Essa rede ainda não publica sozinha."
+    elif usa_arte and not registro.imagem_url:
+        registro.detalhe = "A IA prepara a foto e monta a arte até 3 horas antes do horário."
     await session.commit()
     await session.refresh(registro)
     return _item(registro)
+
+
+async def _plano_do_pedido(session: AsyncSession, dados: dict | None, marca_id: int) -> dict | None:
+    if not dados:
+        return None
+    marca = await session.get(Ficha, marca_id) if marca_id > 0 else None
+    return diretor.do_cliente(dados, await montar_contexto(session, marca))
 
 
 @router.post("/publicar-agora", response_model=RespostaPublicacao)
@@ -200,6 +225,8 @@ async def post_publicar_agora(
     pedido: PedidoPublicarAgora,
     session: AsyncSession = Depends(get_session),
 ) -> RespostaPublicacao:
+    marca_id = await marca_efetiva(session, pedido.marca_id)
+    plano = await _plano_do_pedido(session, pedido.plano_arte, marca_id)
     status, detalhe = await publicar_agora(
         session,
         pedido.rede.strip(),
@@ -211,13 +238,18 @@ async def post_publicar_agora(
         pedido.marca_id,
         pedido.tema.strip()[:30],
         limpar_gancho(pedido.gancho),
-        await _foto_da_marca(session, pedido.foto_id, await marca_efetiva(session, pedido.marca_id)),
+        await _foto_da_marca(session, pedido.foto_id, marca_id),
+        plano,
     )
     return RespostaPublicacao(status=status, detalhe=detalhe)
 
 
-def _marca(registro, aviso: str = "") -> ItemMarca:
+def _marca(registro, aviso: str = "", logos: dict[int, str] | None = None) -> ItemMarca:
+    versao = (logos or {}).get(registro.id or 0, "")
     return ItemMarca(
+        cor_principal=molde.hex_valido(registro.cor_principal, molde.COR_PRINCIPAL),
+        cor_destaque=molde.hex_valido(registro.cor_destaque, molde.COR_DESTAQUE),
+        logo_url=f"/marcas/{registro.id}/logo.png?v={versao}" if versao else "",
         id=registro.id or 0,
         nome=registro.nome or "",
         publico=registro.publico or "",
@@ -246,9 +278,25 @@ def _uf_do_pedido(pedido: PedidoMarca) -> str:
     return uf
 
 
+async def _logos(session: AsyncSession) -> dict[int, str]:
+    resultado = await session.exec(select(LogoMarca.marca_id, LogoMarca.atualizado_em))
+    return {marca_id: str(int(quando.timestamp())) for marca_id, quando in resultado.all()}
+
+
+def _cores(pedido: PedidoMarca) -> tuple[str, str] | None:
+    if not pedido.cor_principal and not pedido.cor_destaque:
+        return None
+    return (
+        molde.hex_valido(pedido.cor_principal, molde.COR_PRINCIPAL),
+        molde.hex_valido(pedido.cor_destaque, molde.COR_DESTAQUE),
+    )
+
+
 @router.get("/marcas", response_model=RespostaMarcas)
 async def get_marcas(session: AsyncSession = Depends(get_session)) -> RespostaMarcas:
-    return RespostaMarcas(itens=[_marca(item) for item in await listar_marcas(session)])
+    marcas = await listar_marcas(session)
+    logos = await _logos(session)
+    return RespostaMarcas(itens=[_marca(item, logos=logos) for item in marcas])
 
 
 @router.post("/marcas", response_model=ItemMarca)
@@ -262,9 +310,10 @@ async def post_marca(pedido: PedidoMarca, session: AsyncSession = Depends(get_se
         pedido.site,
         pedido.marca_dagua,
         pedido.memoria.model_dump() if pedido.memoria else None,
+        _cores(pedido),
     )
     aviso = await ajustar_local(session, registro, pedido.cidade, uf, pedido.abrangencia)
-    return _marca(registro, aviso)
+    return _marca(registro, aviso, await _logos(session))
 
 
 @router.put("/marcas/{marca_id}", response_model=ItemMarca)
@@ -283,11 +332,12 @@ async def put_marca(
         pedido.site,
         pedido.marca_dagua,
         pedido.memoria.model_dump() if pedido.memoria else None,
+        _cores(pedido),
     )
     if registro is None:
         raise HTTPException(status_code=404, detail="Essa marca não existe mais.")
     aviso = await ajustar_local(session, registro, pedido.cidade, uf, pedido.abrangencia)
-    return _marca(registro, aviso)
+    return _marca(registro, aviso, await _logos(session))
 
 
 @router.delete("/marcas/{marca_id}")
@@ -345,7 +395,84 @@ async def put_formato_agenda(
     return _item(registro)
 
 
+def _aberto(registro: Agendamento | None) -> Agendamento:
+    if registro is None:
+        raise HTTPException(status_code=404, detail="Esse post não está na fila.")
+    if registro.status not in {"na_fila", "falta_imagem"}:
+        raise HTTPException(status_code=422, detail="Esse post não está mais na fila.")
+    if registro.video_url:
+        raise HTTPException(status_code=422, detail="Este post sai com vídeo.")
+    return registro
+
+
+def _arte_pronta(registro: Agendamento, feito: dict) -> None:
+    registro.imagem_url = feito["feed_url"][:500]
+    registro.foto_id = feito.get("foto_base_id")
+    registro.plano_arte = diretor.gravar_plano(feito)
+    registro.detalhe = ""
+    if registro.status == "falta_imagem":
+        registro.status = "na_fila"
+
+
+async def _arte_com_foto(session: AsyncSession, registro: Agendamento, marca: Ficha | None, plano: dict, foto_id: int) -> None:
+    """Refaz a arte do post com outra foto da memória: 'pode postar' sai como está, 'base' a IA edita."""
+    foto = await session.get(MemoriaFoto, foto_id)
+    if foto is not None and foto.papel == "estilo":
+        raise HTTPException(status_code=422, detail="Essa foto é só inspiração de estilo. Mude o papel dela em Minha marca.")
+    dados = {**plano, "foto_base_id": foto_id, "base_url": "", "feed_url": "", "story_url": "", "editada": False}
+    novo = diretor.do_cliente(dados, await montar_contexto(session, marca))
+    if novo is None or novo.get("foto_base_id") != foto_id:
+        raise HTTPException(status_code=422, detail="Essa foto não está liberada para os posts.")
+    marca_id = marca.id if marca and marca.id else 0
+    if await diretor.vai_usar_ia(session, marca_id, novo):
+        if (registro.tentativas or 0) >= LIMITE_FOTOS:
+            raise HTTPException(
+                status_code=422,
+                detail=f"A IA já editou a foto deste post {LIMITE_FOTOS} vezes. Escolha uma foto 'pode postar' ou preencha o dia de novo.",
+            )
+        registro.tentativas = (registro.tentativas or 0) + 1
+        await session.commit()
+    try:
+        feito = await diretor.produzir(session, marca, novo, cena=registro.cena or "", reusar_base=False)
+    except Exception as erro:
+        raise HTTPException(status_code=422, detail="Não consegui montar a arte com essa foto agora.") from erro
+    _arte_pronta(registro, feito)
+    await session.commit()
+
+
+@router.put("/agenda/{item_id}/arte", response_model=ItemAgenda)
+async def put_arte_agenda(
+    item_id: int, pedido: PedidoArteAgenda, session: AsyncSession = Depends(get_session)
+) -> ItemAgenda:
+    """Refazer arte de um post da fila: muda o texto ou o modelo, com a mesma foto (sem custo de IA)."""
+    registro = _aberto(await session.get(Agendamento, item_id))
+    plano = diretor.ler_plano(registro.plano_arte)
+    if plano is None:
+        raise HTTPException(status_code=422, detail="Este post não tem arte para refazer.")
+    marca = await session.get(Ficha, await marca_efetiva(session, registro.marca_id))
+    textos = pedido.model_dump(exclude={"modelo"})
+    dados = {**plano, **textos, "modelo": pedido.modelo or plano.get("modelo")}
+    novo = diretor.do_cliente(dados, await montar_contexto(session, marca))
+    if novo is None:
+        raise HTTPException(status_code=422, detail="Não consegui ler a arte deste post.")
+    try:
+        feito = await diretor.refazer(session, marca, novo)
+    except RuntimeError as erro:
+        raise HTTPException(status_code=422, detail=str(erro)[:200]) from erro
+    except Exception as erro:
+        raise HTTPException(status_code=502, detail="Não consegui refazer a arte agora.") from erro
+    _arte_pronta(registro, feito)
+    await session.commit()
+    await session.refresh(registro)
+    return _item(registro)
+
+
 async def _trocar_por_ia(session: AsyncSession, registro: Agendamento) -> None:
+    if diretor.ler_plano(registro.plano_arte) is not None:
+        falha = await trocar_foto(session, registro)
+        if falha:
+            raise HTTPException(status_code=422, detail=falha)
+        return
     antes = registro.foto_id
     registro.foto_id = None
     falha = await trocar_foto(session, registro)
@@ -384,6 +511,11 @@ async def post_foto_memoria_agenda(
     marca = await session.get(Ficha, await marca_efetiva(session, registro.marca_id))
     if await _foto_da_marca(session, pedido.foto_id, marca.id if marca else 0) is None:
         raise HTTPException(status_code=404, detail="Essa foto não está na memória desta marca.")
+    plano = diretor.ler_plano(registro.plano_arte)
+    if plano is not None:
+        await _arte_com_foto(session, registro, marca, plano, pedido.foto_id)
+        await session.refresh(registro)
+        return _item(registro)
     try:
         url = await imagem_da_memoria(session, pedido.foto_id, registro.gancho or "", marca)
     except Exception as erro:

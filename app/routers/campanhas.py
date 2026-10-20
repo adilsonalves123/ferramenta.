@@ -5,18 +5,18 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.database import get_session
 from app.models import Campanha, Ficha
 from app.schemas import CampanhaCompleta, PedidoCampanha, PedidoFotoLegenda, RespostaFoto
+from app.services import diretor
 from app.services.imagens import url_memoria
 from app.services.memoria import (
     CAMPOS_FATOS,
-    bytes_referencia,
-    imagem_da_memoria,
+    artes_recentes,
     ler_fatos,
     limpar_gancho,
     montar_contexto,
     nome_do_dia,
     posts_recentes,
 )
-from app.services.midia import foto_da_cena, montar_midia
+from app.services.midia import montar_midia
 from app.services.openai_campanha import cena_da_legenda, gerar_campanha, gerar_campanha_memoria
 from app.services.semana import TEMAS
 
@@ -32,30 +32,45 @@ def _erro_ia(erro: Exception, padrao: str) -> HTTPException:
     return HTTPException(status_code=502, detail=detalhe)
 
 
+def _aviso_foto(erro: Exception) -> str:
+    texto = str(erro)
+    if "insufficient_quota" in texto or "credit_balance" in texto or "sem créditos" in texto:
+        return "A arte não saiu: a conta da OpenAI está sem créditos."
+    return "A arte não saiu agora. Use Criar foto com IA ou escolha uma foto da memória."
+
+
 async def _com_memoria(pedido: PedidoCampanha, marca: Ficha, session: AsyncSession) -> CampanhaCompleta:
     contexto = await montar_contexto(session, marca)
     quando = ""
     if pedido.dia:
         quando = nome_do_dia(pedido.dia) + (f" às {pedido.hora}" if pedido.hora else "")
     recentes = await posts_recentes(session, marca.id or 0)
-    gerada = await gerar_campanha_memoria(pedido, contexto.regras(), contexto.texto, quando, recentes)
-    foto_id, referencia_id = contexto.validar(gerada.foto_id, gerada.referencia_id)
+    artes = await artes_recentes(session, marca.id or 0)
+    gerada = await gerar_campanha_memoria(pedido, contexto.regras(), contexto.texto, quando, recentes, artes)
     gancho = limpar_gancho(gerada.gancho)
+    plano, legenda = diretor.validar_plano(
+        gerada.plano_arte, contexto, diretor.pedido_do_usuario(pedido.produto), gerada.legenda_redes, gancho
+    )
+    foto_id = plano.get("foto_base_id")
     completa = CampanhaCompleta(
         titulo_anuncio=gerada.titulo_anuncio,
-        legenda_redes=gerada.legenda_redes,
+        legenda_redes=legenda,
         cena=gerada.cena.strip()[:800],
         angulo=gerada.angulo.strip()[:200],
         gancho=gancho,
         foto_id=foto_id,
-        referencia_id=referencia_id,
+        referencia_id=(plano.get("fotos_estilo_ids") or [None])[0],
+        plano_arte=diretor.resumo_plano(plano),
     )
     if foto_id:
         try:
-            completa.foto_url = await imagem_da_memoria(session, foto_id, gancho, marca)
+            feito = await diretor.produzir(session, marca, plano, cena=completa.cena)
+            completa.foto_url = feito["feed_url"]
+            completa.story_url = feito["story_url"]
+            completa.plano_arte = diretor.resumo_plano(feito)
             completa.memoria_miniatura = url_memoria(foto_id, mini=True)
-        except Exception:
-            completa.foto_id = None
+        except Exception as erro:
+            completa.aviso_midia = _aviso_foto(erro)
     return completa
 
 
@@ -114,12 +129,18 @@ async def post_foto_legenda(
     pedido: PedidoFotoLegenda,
     session: AsyncSession = Depends(get_session),
 ) -> RespostaFoto:
+    """Criar foto com IA: edita a foto base do plano (ou cria uma) e monta a arte. Sem plano, usa um plano simples."""
     marca = await session.get(Ficha, pedido.marca_id) if pedido.marca_id > 0 else None
-    cena = pedido.cena.strip() or await cena_da_legenda(pedido.legenda, _sobre_marca(marca))
-    marca_id = marca.id if marca and marca.id else 0
-    referencia = await bytes_referencia(session, marca_id, pedido.referencia_id, f"{cena} {pedido.legenda}")
+    contexto = await montar_contexto(session, marca)
+    plano = diretor.do_cliente(pedido.plano_arte, contexto) or diretor.plano_padrao(pedido.legenda)
+    cena = pedido.cena.strip()
+    if not plano.get("foto_base_id") and not cena:
+        cena = await cena_da_legenda(pedido.legenda, _sobre_marca(marca))
+    sem_fotos = not plano.get("foto_base_id") and not plano.get("fotos_estilo_ids")
+    if sem_fotos and pedido.referencia_id in contexto.lugar | contexto.estilo:
+        plano["fotos_estilo_ids"] = [pedido.referencia_id]
     try:
-        url = await foto_da_cena(cena, referencia, marca_id)
+        feito = await diretor.produzir(session, marca, plano, cena=cena, forcar_ia=True, reusar_base=False)
     except Exception as erro:
         texto = str(erro)
         if "insufficient_quota" in texto or "credit_balance" in texto or "sem créditos" in texto:
@@ -127,4 +148,4 @@ async def post_foto_legenda(
         else:
             detalhe = "Não consegui criar a foto agora. Tente de novo em instantes."
         raise HTTPException(status_code=502, detail=detalhe) from erro
-    return RespostaFoto(foto_url=url)
+    return RespostaFoto(foto_url=feito["feed_url"], story_url=feito["story_url"], plano_arte=diretor.resumo_plano(feito))

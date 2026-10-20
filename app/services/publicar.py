@@ -14,6 +14,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import get_settings
 from app.models import Agendamento, ContaRede, Ficha, agora
+from app.services.diretor import ler_plano
 
 VERSAO = "v22.0"
 ZONA = timezone(timedelta(hours=-3))
@@ -422,16 +423,25 @@ async def fotos_com_marca(
     gancho: str = "",
     story_base: str = "",
     marca_id: int = 0,
+    plano: dict | None = None,
 ) -> tuple[str, str]:
     """Foto do feed com a marca d'água e o Story 1080x1920 (fundo desfocado, gancho e chamada).
-    Vídeo segue sem marca d'água."""
+    Com a arte do diretor (plano), o feed e o Story já saem prontos, com o logo. Vídeo segue sem marca d'água."""
     from app.services import arte
+    from app.services.imagens import existe
     from app.services.memoria import CTA_STORY
 
-    feed, story = imagem_url, ""
     usados = [alvo for alvo in alvos if _usa_foto(alvo, imagem_url, video_url)]
+    arte_pronta = bool(plano and plano.get("feed_url") and plano["feed_url"] == imagem_url.strip())
+    if arte_pronta:
+        story_arte = plano.get("story_url") or ""
+        if not any(alvo.endswith(":story") for alvo in usados):
+            return imagem_url, ""
+        if story_arte and await existe(story_arte):
+            return imagem_url, story_arte
+    feed, story = imagem_url, ""
     marca_dagua = marca_dagua.strip()
-    if marca_dagua and any(alvo.endswith(":feed") for alvo in usados):
+    if marca_dagua and not arte_pronta and any(alvo.endswith(":feed") for alvo in usados):
         chave = "feed:" + hashlib.sha1(marca_dagua.encode()).hexdigest()[:16]
         feed = await _variante(
             imagem_url, chave, marca_id, lambda dados: arte.carimbar(arte.abrir(dados), marca_dagua)
@@ -633,6 +643,7 @@ async def publicar_agora(
     tema: str = "",
     gancho: str = "",
     foto_id: int | None = None,
+    plano: dict | None = None,
 ) -> tuple[str, str]:
     from app.services.memoria import base_do_story
     from app.services.resultados import anotar_publicacao
@@ -652,7 +663,7 @@ async def publicar_agora(
     texto = com_site(texto_do_post(titulo, legenda), site)
     try:
         foto_feed, foto_story = await fotos_com_marca(
-            alvos, imagem_url, video_url, marca_dagua, gancho, await base_do_story(session, foto_id), marca
+            alvos, imagem_url, video_url, marca_dagua, gancho, await base_do_story(session, foto_id), marca, plano
         )
     except Exception as erro:
         return "erro", (erro_marca(erro) + " Nada foi publicado.")[:300]
@@ -712,8 +723,13 @@ async def foto_sumiu(imagem_url: str) -> bool:
     return not await existe(imagem_url)
 
 
+def _foto_automatica(item: Agendamento) -> bool:
+    """O post tem como a foto ser feita sozinha: cena, foto da memória ou plano de arte."""
+    return not item.video_url and bool((item.cena or "").strip() or item.foto_id or ler_plano(item.plano_arte))
+
+
 async def _refaz_foto(item: Agendamento) -> bool:
-    if item.video_url or not ((item.cena or "").strip() or item.foto_id):
+    if not _foto_automatica(item):
         return False
     return await foto_sumiu(item.imagem_url or "")
 
@@ -731,9 +747,40 @@ async def _foto_da_memoria(session: AsyncSession, item: Agendamento) -> str:
         return ""
 
 
-async def _gerar_foto(session: AsyncSession, item: Agendamento, automatica: bool = False) -> str:
-    """Faz a foto do post. Com foto da memória, usa a foto real (sem IA, sem custo).
-    Sem ela, cria com IA (conta uma tentativa), com a foto real do lugar como referência.
+async def _gerar_arte(
+    session: AsyncSession, item: Agendamento, plano: dict, automatica: bool, forcar_ia: bool
+) -> str:
+    """Arte do diretor: foto base (reaproveitada, original, editada ou criada) + molde em feed e Story.
+    Só conta tentativa quando a IA de imagem roda."""
+    from app.services import diretor
+
+    marca_id = await marca_efetiva(session, item.marca_id)
+    marca = await session.get(Ficha, marca_id)
+    if await diretor.vai_usar_ia(session, marca_id, plano, forcar_ia):
+        item.tentativas = (item.tentativas or 0) + 1
+        await session.commit()
+    try:
+        feito = await diretor.produzir(
+            session, marca, plano, cena=item.cena or "", forcar_ia=forcar_ia, reusar_base=not forcar_ia
+        )
+        item.imagem_url = feito["feed_url"][:500]
+        item.foto_id = feito.get("foto_base_id")
+        item.plano_arte = diretor.gravar_plano(feito)
+        item.detalhe = ""
+        if automatica:
+            item.tentativas = 0
+        falha = ""
+    except Exception as erro:
+        falha = _erro_foto(erro)
+        item.detalhe = falha
+    await session.commit()
+    return falha
+
+
+async def _gerar_foto(session: AsyncSession, item: Agendamento, automatica: bool = False, forcar_ia: bool = False) -> str:
+    """Faz a foto do post. Com plano de arte, o diretor monta a peça (edita a foto da memória ou cria).
+    Sem plano: com foto da memória, usa a foto real (sem IA, sem custo); sem ela, cria com IA
+    (conta uma tentativa), com a foto real do lugar como referência.
     Devolve o erro, ou '' quando deu certo.
 
     Na do robô (automatica), acertar zera a conta: refazer uma foto que sumiu não pode gastar
@@ -741,6 +788,9 @@ async def _gerar_foto(session: AsyncSession, item: Agendamento, automatica: bool
     from app.services.memoria import bytes_referencia
     from app.services.midia import foto_da_cena
 
+    plano = ler_plano(item.plano_arte)
+    if plano is not None:
+        return await _gerar_arte(session, item, plano, automatica, forcar_ia)
     if item.foto_id:
         url = await _foto_da_memoria(session, item)
         if url:
@@ -776,15 +826,17 @@ def _sem_mais_fotos(item: Agendamento) -> None:
 
 
 async def trocar_foto(session: AsyncSession, item: Agendamento) -> str:
-    """Refaz a foto de um post que a IA preencheu. Devolve o erro, ou '' quando deu certo."""
-    if not (item.cena or "").strip() or item.video_url:
+    """Refaz a foto de um post que a IA preencheu (com plano de arte, a IA edita ou cria a foto de novo).
+    Devolve o erro, ou '' quando deu certo."""
+    tem_plano = ler_plano(item.plano_arte) is not None
+    if not ((item.cena or "").strip() or tem_plano) or item.video_url:
         return "Só dá para trocar a foto dos posts que a IA preencheu."
     if item.status not in {"na_fila", "falta_imagem"}:
         return "Esse post não está mais na fila."
     if (item.tentativas or 0) >= LIMITE_FOTOS:
         return f"A foto deste post já foi criada {LIMITE_FOTOS} vezes. Cancele e preencha o dia de novo."
     antes = item.detalhe
-    falha = await _gerar_foto(session, item)
+    falha = await _gerar_foto(session, item, forcar_ia=tem_plano)
     if falha:
         item.detalhe = antes
         await session.commit()
@@ -814,7 +866,7 @@ async def preparar_fotos(session: AsyncSession) -> None:
     for item in resultado.all():
         if momento(item.dia, item.hora) > limite:
             continue
-        if item.video_url or not ((item.cena or "").strip() or item.foto_id):
+        if not _foto_automatica(item):
             continue
         if item.imagem_url and not await foto_sumiu(item.imagem_url):
             continue
@@ -886,7 +938,7 @@ async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
             return
     precisa_midia = any(alvo.endswith(":story") or alvo.startswith("Instagram:") for alvo in alvos)
     if precisa_midia and not item.imagem_url and not item.video_url:
-        if (item.cena or "").strip():
+        if (item.cena or "").strip() or ler_plano(item.plano_arte):
             item.status = "na_fila"
             return
         item.status = "falta_imagem"
@@ -907,7 +959,14 @@ async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
         return
     try:
         foto_feed, foto_story = await fotos_com_marca(
-            prontos, item.imagem_url, item.video_url, marca_dagua, item.gancho or "", story_base, marca
+            prontos,
+            item.imagem_url,
+            item.video_url,
+            marca_dagua,
+            item.gancho or "",
+            story_base,
+            marca,
+            ler_plano(item.plano_arte),
         )
     except Exception as erro:
         item.tentativas_marca = (item.tentativas_marca or 0) + 1

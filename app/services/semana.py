@@ -7,11 +7,13 @@ from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.config import get_settings
-from app.models import Agendamento, ContaRede, Ficha, Imagem, MemoriaFoto, Publicacao, Sugestao, agora
+from app.models import Agendamento, ContaRede, Ficha, Imagem, LogoMarca, MemoriaFoto, Publicacao, Sugestao, agora
+from app.schemas import PlanoArte
+from app.services import diretor
 from app.services.memoria import (
     ContextoMemoria,
+    artes_recentes,
     gravar_fatos,
-    imagem_da_memoria,
     limpar_gancho,
     montar_contexto,
     nome_do_dia,
@@ -43,8 +45,7 @@ class PosteGerado(BaseModel):
     cena: str
     angulo: str
     gancho: str
-    foto_id: int | None
-    referencia_id: int | None
+    plano_arte: PlanoArte
 
 
 class PacoteSemana(BaseModel):
@@ -94,6 +95,7 @@ async def criar_marca(
     site: str = "",
     marca_dagua: str = "",
     memoria: dict[str, str] | None = None,
+    cores: tuple[str, str] | None = None,
 ) -> Ficha:
     registro = Ficha(
         nome=nome.strip()[:120],
@@ -104,6 +106,8 @@ async def criar_marca(
     )
     if memoria is not None:
         gravar_fatos(registro, memoria)
+    if cores is not None:
+        registro.cor_principal, registro.cor_destaque = (cor.strip().upper()[:7] for cor in cores)
     session.add(registro)
     await session.commit()
     await session.refresh(registro)
@@ -119,6 +123,7 @@ async def atualizar_marca(
     site: str = "",
     marca_dagua: str = "",
     memoria: dict[str, str] | None = None,
+    cores: tuple[str, str] | None = None,
 ) -> Ficha | None:
     resultado = await session.exec(select(Ficha).where(Ficha.id == marca_id))
     registro = resultado.first()
@@ -131,6 +136,8 @@ async def atualizar_marca(
     registro.texto = texto.strip()
     if memoria is not None:
         gravar_fatos(registro, memoria)
+    if cores is not None:
+        registro.cor_principal, registro.cor_destaque = (cor.strip().upper()[:7] for cor in cores)
     registro.atualizado_em = agora()
     await session.commit()
     await session.refresh(registro)
@@ -162,6 +169,7 @@ async def apagar_marca(session: AsyncSession, marca_id: int) -> None:
         await session.delete(sugestao)
     await session.exec(delete(MemoriaFoto).where(MemoriaFoto.marca_id == marca_id))
     await session.exec(delete(Imagem).where(Imagem.marca_id == marca_id))
+    await session.exec(delete(LogoMarca).where(LogoMarca.marca_id == marca_id))
     await session.delete(alvo)
     await session.commit()
 
@@ -185,7 +193,9 @@ async def escrever_semana(
     memoria: ContextoMemoria | None = None,
     quando: list[str] | None = None,
     recentes: list[str] | None = None,
-) -> list[PosteGerado]:
+    artes: list[str] | None = None,
+) -> list[tuple[PosteGerado, dict]]:
+    """Escreve os posts e o plano de arte de cada um. Devolve (post, plano validado)."""
     memoria = memoria or ContextoMemoria()
     guia = TEMAS.get(tema.strip().lower(), "")
     pedido_tema = f"\nTema de todas as publicações: {guia}" if guia else ""
@@ -201,12 +211,19 @@ async def escrever_semana(
         pedido_tema += "\nPosts recentes desta marca (não repita o ângulo nem o gancho):\n" + "\n".join(
             f"- {linha}" for linha in recentes
         )
+    if artes:
+        pedido_tema += "\nÚltimas artes desta marca (varie o modelo e o ângulo):\n" + "\n".join(
+            f"- {linha}" for linha in artes
+        )
     bloco_memoria = f"\n\n{memoria.texto[:14000]}" if memoria.tem_memoria else ""
     alcool = fala_de_alcool(ficha) or fala_de_alcool(contexto) or fala_de_alcool(memoria.texto)
+    sistema = SISTEMA + memoria.regras() + diretor.REGRAS_ARTE
+    if alcool:
+        sistema += REGRAS_ALCOOL + diretor.REGRAS_ARTE_ALCOOL
     resposta = await cliente_openai().with_options(timeout=90).chat.completions.parse(
         model=get_settings().openai_model,
         messages=[
-            {"role": "system", "content": SISTEMA + memoria.regras() + (REGRAS_ALCOOL if alcool else "")},
+            {"role": "system", "content": sistema},
             {
                 "role": "user",
                 "content": (
@@ -233,12 +250,9 @@ async def escrever_semana(
         posts = [item.model_copy(update={"legenda": com_moderacao(item.legenda)}) for item in posts]
     validados = []
     for item in posts[:quantidade]:
-        foto_id, referencia_id = memoria.validar(item.foto_id, item.referencia_id)
-        validados.append(
-            item.model_copy(
-                update={"foto_id": foto_id, "referencia_id": referencia_id, "gancho": limpar_gancho(item.gancho)}
-            )
-        )
+        gancho = limpar_gancho(item.gancho)
+        plano, legenda = diretor.validar_plano(item.plano_arte, memoria, contexto, item.legenda, gancho)
+        validados.append((item.model_copy(update={"gancho": gancho, "legenda": legenda}), plano))
     return validados
 
 
@@ -287,10 +301,11 @@ async def montar_dias(
     ficha = f"{cabecalho}\n{(marca.texto or '').strip()}".strip()
     memoria = await montar_contexto(session, marca)
     recentes = await posts_recentes(session, marca.id or 0)
+    artes = await artes_recentes(session, marca.id or 0)
     quando = [f"{nome_do_dia(dia)} às {hora}" for dia, hora in pedidos]
     try:
         posts = await escrever_semana(
-            ficha, len(pedidos), tema, marca.site or "", contexto, memoria, quando, recentes
+            ficha, len(pedidos), tema, marca.site or "", contexto, memoria, quando, recentes, artes
         )
     except APIError as erro:
         detalhe = str(erro)
@@ -298,7 +313,8 @@ async def montar_dias(
             raise ValueError("A conta da OpenAI está sem créditos.") from erro
         raise ValueError("Os posts não puderam ser escritos agora.") from erro
     criados: list[Agendamento] = []
-    for (dia, hora), post in zip(pedidos, posts, strict=False):
+    planos: list[dict] = []
+    for (dia, hora), (post, plano) in zip(pedidos, posts, strict=False):
         registro = Agendamento(
             dia=dia,
             hora=hora,
@@ -309,30 +325,40 @@ async def montar_dias(
             titulo=post.titulo.strip()[:300],
             legenda=post.legenda.strip(),
             cena=post.cena.strip()[:800],
-            foto_id=post.foto_id,
-            referencia_id=post.referencia_id,
+            foto_id=plano.get("foto_base_id"),
+            referencia_id=(plano.get("fotos_estilo_ids") or [None])[0],
             gancho=post.gancho[:80],
+            plano_arte=diretor.gravar_plano(plano),
             status="na_fila",
         )
         session.add(registro)
         criados.append(registro)
+        planos.append(plano)
     await session.commit()
     for registro in criados:
         await session.refresh(registro)
-    da_memoria = 0
-    for registro in criados:
-        if not registro.foto_id:
+    prontas = 0
+    for registro, plano in zip(criados, planos):
+        if await diretor.vai_usar_ia(session, marca.id or 0, plano):
             continue
         try:
-            registro.imagem_url = (await imagem_da_memoria(session, registro.foto_id, registro.gancho, marca))[:500]
-            da_memoria += 1
+            feito = await diretor.produzir(session, marca, plano, cena=registro.cena)
         except Exception:
-            registro.foto_id = None
+            continue
+        registro.imagem_url = feito["feed_url"][:500]
+        registro.plano_arte = diretor.gravar_plano(feito)
+        prontas += 1
     await session.commit()
-    if da_memoria == len(criados):
-        aviso = f"Post de {marca.nome} na fila, com foto da Memória da marca. Você pode revisar, trocar a foto e cancelar antes de sair."
+    avisos_conar = [plano["aviso"] for plano in planos if plano.get("aviso")]
+    if prontas == len(criados):
+        aviso = f"Post de {marca.nome} na fila, com a arte pronta. Você pode revisar, trocar a foto e cancelar antes de sair."
     else:
-        aviso = f"Post de {marca.nome} na fila. A foto é criada até 3 horas antes do horário. Você pode revisar e cancelar antes de sair."
+        aviso = (
+            f"Post de {marca.nome} na fila. A IA prepara a foto e monta a arte até 3 horas antes do horário. "
+            "Você pode revisar e cancelar antes de sair."
+        )
+    if avisos_conar:
+        aviso += " " + avisos_conar[0]
     if len(criados) < len(pedidos):
         aviso = "Parte dos dias entrou na fila. " + aviso
     if repetidos:

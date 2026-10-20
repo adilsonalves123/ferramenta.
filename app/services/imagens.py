@@ -1,6 +1,7 @@
 """Fotos dos posts guardadas no Postgres, servidas em /img/{id}.jpg (o disco do Render some a cada deploy)."""
 
 import asyncio
+import json
 import re
 import urllib.request
 from datetime import timedelta
@@ -166,9 +167,20 @@ async def limpar_antigas(session: AsyncSession, dias: int = DIAS_GUARDADAS) -> i
     if not velhas:
         return 0
     usadas: set[int] = set()
-    fila = await session.exec(select(Agendamento.imagem_url).where(Agendamento.status != "publicado"))
+    fila = await session.exec(
+        select(Agendamento.imagem_url, Agendamento.plano_arte).where(Agendamento.status != "publicado")
+    )
     projetos = await session.exec(select(Projeto.imagem_url))
-    for url in [*fila.all(), *projetos.all()]:
+    urls = list(projetos.all())
+    for imagem_url, plano_arte in fila.all():
+        urls.append(imagem_url)
+        try:
+            plano = json.loads(plano_arte or "{}")
+        except ValueError:
+            plano = {}
+        if isinstance(plano, dict):
+            urls.extend(str(plano.get(chave) or "") for chave in ("base_url", "feed_url", "story_url"))
+    for url in urls:
         ident = id_da_url(url or "")
         if ident is not None:
             usadas.add(ident)

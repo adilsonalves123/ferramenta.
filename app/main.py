@@ -17,6 +17,7 @@ from app.services.publicar import preparar_fotos, publicar_vencidos, soltar_pres
 from app.services.calendario import sugestoes_de_todas
 from app.services.resultados import medir_rodada
 from app.routers.agenda import router as router_agenda
+from app.routers.arte import router as router_arte
 from app.routers.campanhas import router
 from app.routers.legal import router as router_legal
 from app.routers.memoria import router as router_memoria
@@ -112,6 +113,7 @@ def create_app() -> FastAPI:
     app.include_router(router_novas)
     app.include_router(router_projetos)
     app.include_router(router_agenda)
+    app.include_router(router_arte)
     app.include_router(router_legal)
     app.include_router(router_memoria)
     app.include_router(router_resultados)
@@ -146,6 +148,8 @@ def create_app() -> FastAPI:
                 "promocoes": "As promoções fixas podem ter até 2000 letras.",
                 "tom": "O tom de voz pode ter até 1000 letras.",
                 "nunca": "O Nunca dizer pode ter até 2000 letras.",
+                "cor_principal": "Escolha a cor principal na paleta.",
+                "cor_destaque": "Escolha a cor de destaque na paleta.",
             }.get(campo, "Não consegui salvar a marca. Confira os campos.")
             return JSONResponse(status_code=422, content={"detail": detalhe})
         if request.url.path.startswith("/memoria"):

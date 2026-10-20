@@ -23,6 +23,8 @@ from app.services.openai_campanha import cliente_openai
 LIMITE_FOTOS = 60
 TIPOS = ("print do app", "prato", "fachada", "ambiente", "equipe", "produto", "outro")
 TIPOS_LUGAR = {"prato", "fachada", "ambiente", "equipe", "produto"}
+PAPEIS = ("postar", "base", "estilo")
+NOMES_PAPEIS = {"postar": "pode postar como está", "base": "base para editar", "estilo": "só inspiração de estilo"}
 CTA_STORY = "Responda QUERO"
 DIAS_SEMANA = ("segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo")
 
@@ -43,15 +45,14 @@ Memória da marca: leia a MEMÓRIA DA MARCA antes de escrever. O dono escreveu e
 - Não copie as descrições ao pé da letra: transforme o fato em benefício concreto para o cliente, com palavras suas. Nada genérico ("qualidade e excelência", "o melhor da cidade").
 - angulo: diga em poucas palavras o ângulo concreto do post (um item, uma funcionalidade, um diferencial, um momento do dia). Varie o ângulo entre os posts e em relação aos posts recentes.
 - Itens com dia ou horário (ex.: "Feijoada — sábado") só aparecem como oferta do dia no dia certo do post. Em outro dia não prometa esse item para hoje.
-- foto_id: o id da foto da memória que mostra o assunto do post (o prato, a tela ou funcionalidade, a fachada, a equipe). Se o post fala de algo que tem foto, escolha essa foto. Se nenhuma combina, null. Use só ids da lista.
-- referencia_id: quando foto_id for null, o id de uma foto real do lugar (fachada, ambiente, prato, equipe, produto) parecida com a cena, para a foto criada manter o lugar e o estilo. Nunca um print de app. Se não houver, null.
+- A foto do post sai do plano_arte (foto_base_id e fotos_estilo_ids). Se o post fala de algo que tem foto na memória, use essa foto como base. Use só ids da lista.
 - Se a foto escolhida for print do app, a legenda explica o que aquela tela resolve no dia a dia, sem citar valores de exemplo da tela.
 - Respeite o "Tom de voz" e tudo que está em "Nunca dizer"."""
 
 CAMPOS_SEM_MEMORIA = """
 angulo: o ângulo concreto do post, em poucas palavras.
 gancho: de 3 a 7 palavras em português, fortes e claras, para escrever em cima da imagem. Sem hashtag, sem emoji, sem preço inventado.
-foto_id e referencia_id: null (esta marca ainda não tem fotos na memória)."""
+Esta marca ainda não tem fotos na memória: no plano_arte, foto_base_id é null e fotos_estilo_ids é []."""
 
 CAMPO_GANCHO = """
 gancho: de 3 a 7 palavras em português, fortes e claras, para escrever em cima da imagem. Sem hashtag, sem emoji, sem preço inventado."""
@@ -78,10 +79,16 @@ class AnaliseFoto(BaseModel):
 
 @dataclass
 class ContextoMemoria:
+    """O que a IA lê da marca. 'usaveis' são as fotos que podem aparecer no post (postar e base);
+    'estilo' são as que só inspiram (nunca aparecem)."""
+
     texto: str = ""
+    fatos: str = ""
     usaveis: set[int] = field(default_factory=set)
     lugar: set[int] = field(default_factory=set)
+    estilo: set[int] = field(default_factory=set)
     tipos: dict[int, str] = field(default_factory=dict)
+    papeis: dict[int, str] = field(default_factory=dict)
 
     @property
     def tem_memoria(self) -> bool:
@@ -89,11 +96,6 @@ class ContextoMemoria:
 
     def regras(self) -> str:
         return REGRAS_MEMORIA + CAMPO_GANCHO if self.tem_memoria else CAMPOS_SEM_MEMORIA
-
-    def validar(self, foto_id: int | None, referencia_id: int | None) -> tuple[int | None, int | None]:
-        foto = foto_id if foto_id in self.usaveis else None
-        referencia = referencia_id if referencia_id in self.lugar else None
-        return foto, (None if foto else referencia)
 
 
 def ler_fatos(ficha: Ficha | None) -> dict[str, str]:
@@ -123,6 +125,7 @@ def _colunas_lista():
         MemoriaFoto.descricao,
         MemoriaFoto.tags,
         MemoriaFoto.tipo,
+        MemoriaFoto.papel,
         MemoriaFoto.usar_em_posts,
     )
 
@@ -207,6 +210,8 @@ async def adicionar_foto(session: AsyncSession, ficha: Ficha, dados: bytes) -> t
     aviso = ""
     try:
         _aplicar_analise(foto, await analisar_foto(jpeg, ficha))
+        if foto.tipo == "print do app":
+            foto.papel = "postar"
         await session.commit()
     except Exception:
         await session.rollback()
@@ -252,20 +257,57 @@ async def montar_contexto(session: AsyncSession, ficha: Ficha | None) -> Context
     linhas_fatos = [f"{rotulo}:\n{fatos[chave]}" for chave, rotulo in CAMPOS_FATOS if fatos[chave]]
     if linhas_fatos:
         partes.append("MEMÓRIA DA MARCA (fatos escritos pelo dono):\n" + "\n\n".join(linhas_fatos))
-    contexto = ContextoMemoria()
+    contexto = ContextoMemoria(fatos="\n".join(fatos.values()))
     linhas_fotos = []
+    linhas_estilo = []
     for foto in fotos:
         descricao = re.sub(r"\s+", " ", foto.descricao or "").strip()[:260] or "(sem descrição)"
         tags = f" (tags: {foto.tags[:120]})" if (foto.tags or "").strip() else ""
-        linhas_fotos.append(f"[{foto.id}] {foto.tipo}: {descricao}{tags}")
-        contexto.usaveis.add(foto.id)
+        papel = foto.papel if foto.papel in PAPEIS else "base"
+        if foto.tipo == "print do app" and papel == "base":
+            papel = "postar"
         contexto.tipos[foto.id] = foto.tipo
+        contexto.papeis[foto.id] = papel
+        if papel == "estilo":
+            linhas_estilo.append(f"[{foto.id}] {foto.tipo}: {descricao}{tags}")
+            contexto.estilo.add(foto.id)
+            continue
+        linhas_fotos.append(f"[{foto.id}] {foto.tipo} · {NOMES_PAPEIS[papel]}: {descricao}{tags}")
+        contexto.usaveis.add(foto.id)
         if foto.tipo in TIPOS_LUGAR:
             contexto.lugar.add(foto.id)
     if linhas_fotos:
-        partes.append("FOTOS DA MEMÓRIA (id, tipo, o que mostra):\n" + "\n".join(linhas_fotos))
+        partes.append("FOTOS DA MEMÓRIA (id, tipo · papel, o que mostra):\n" + "\n".join(linhas_fotos))
+    if linhas_estilo:
+        partes.append(
+            "FOTOS DE ESTILO (só inspiração de luz, cores e enquadramento; nunca aparecem no post):\n"
+            + "\n".join(linhas_estilo)
+        )
     contexto.texto = "\n\n".join(partes)
     return contexto
+
+
+async def artes_recentes(session: AsyncSession, marca_id: int, quantos: int = 5) -> list[str]:
+    """As últimas artes da marca (modelo, título e ideia), para a IA variar."""
+    resultado = await session.exec(
+        select(Agendamento.plano_arte)
+        .where(Agendamento.marca_id == marca_id, Agendamento.plano_arte != "")
+        .order_by(col(Agendamento.id).desc())
+        .limit(quantos)
+    )
+    linhas = []
+    for bruto in resultado.all():
+        try:
+            plano = json.loads(bruto or "")
+        except ValueError:
+            continue
+        if not isinstance(plano, dict):
+            continue
+        linha = f"modelo {plano.get('modelo', '')} · título \"{plano.get('titulo_arte', '')}\""
+        if plano.get("ideia"):
+            linha += f" · ideia: {str(plano['ideia'])[:120]}"
+        linhas.append(linha)
+    return linhas
 
 
 async def posts_recentes(session: AsyncSession, marca_id: int, quantos: int = 8) -> list[str]:

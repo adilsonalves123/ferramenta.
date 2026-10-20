@@ -14,6 +14,7 @@ from app.schemas import (
 from app.services.imagens import ler, ler_memoria, url_memoria
 from app.services.memoria import (
     LIMITE_FOTOS,
+    PAPEIS,
     TIPOS,
     adicionar_foto,
     apagar_foto,
@@ -55,6 +56,7 @@ def _item(foto) -> ItemFotoMemoria:
         descricao=foto.descricao or "",
         tags=foto.tags or "",
         tipo=foto.tipo or "outro",
+        papel=foto.papel if foto.papel in PAPEIS else "base",
         usar_em_posts=bool(foto.usar_em_posts),
     )
 
@@ -119,9 +121,12 @@ async def put_foto(
     foto = await _foto(session, foto_id)
     if pedido.tipo not in TIPOS:
         raise HTTPException(status_code=422, detail="Escolha um tipo da lista.")
+    if pedido.papel not in PAPEIS:
+        raise HTTPException(status_code=422, detail="Escolha como a IA usa a foto.")
     foto.descricao = pedido.descricao.strip()
     foto.tags = pedido.tags.strip()
     foto.tipo = pedido.tipo
+    foto.papel = pedido.papel
     foto.usar_em_posts = pedido.usar_em_posts
     await session.commit()
     await session.refresh(foto)

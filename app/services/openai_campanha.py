@@ -77,9 +77,16 @@ async def gerar_campanha(pedido: PedidoCampanha) -> CampanhaGerada:
 
 
 async def gerar_campanha_memoria(
-    pedido: PedidoCampanha, regras: str, memoria: str, quando: str = "", recentes: list[str] | None = None
+    pedido: PedidoCampanha,
+    regras: str,
+    memoria: str,
+    quando: str = "",
+    recentes: list[str] | None = None,
+    artes: list[str] | None = None,
 ) -> CampanhaMemoria:
-    """Campanha da marca escolhida, presa à Memória da marca: escolhe a foto, o ângulo e o gancho."""
+    """Campanha da marca escolhida, presa à Memória da marca: o texto, o ângulo, o gancho e o plano da arte."""
+    from app.services.diretor import REGRAS_ARTE, REGRAS_ARTE_ALCOOL
+
     alcool = fala_de_alcool(f"{pedido.nicho} {pedido.produto} {memoria}")
     partes = [f"Nicho: {pedido.nicho.strip()}", f"Produto ou serviço: {pedido.produto.strip()}"]
     if quando:
@@ -88,10 +95,15 @@ async def gerar_campanha_memoria(
         partes.append(memoria.strip()[:14000])
     if recentes:
         partes.append("Posts recentes desta marca (não repita o ângulo):\n" + "\n".join(f"- {linha}" for linha in recentes))
+    if artes:
+        partes.append("Últimas artes desta marca (varie o modelo e o ângulo):\n" + "\n".join(f"- {linha}" for linha in artes))
+    sistema = SISTEMA + CAMPOS_POST + regras + REGRAS_ARTE
+    if alcool:
+        sistema += REGRAS_ALCOOL + REGRAS_ARTE_ALCOOL
     resposta = await cliente_openai().with_options(timeout=90).chat.completions.parse(
         model=get_settings().openai_model,
         messages=[
-            {"role": "system", "content": SISTEMA + CAMPOS_POST + regras + (REGRAS_ALCOOL if alcool else "")},
+            {"role": "system", "content": sistema},
             {"role": "user", "content": "\n\n".join(partes)},
         ],
         response_format=CampanhaMemoria,

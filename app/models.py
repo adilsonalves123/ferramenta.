@@ -46,6 +46,7 @@ class Agendamento(SQLModel, table=True):
     foto_id: int | None = Field(default=None)
     referencia_id: int | None = Field(default=None)
     gancho: str = Field(default="", max_length=80)
+    plano_arte: str = Field(default="", sa_type=Text)
     feito: str = Field(default="", max_length=80)
     status: str = Field(default="na_fila", max_length=20)
     detalhe: str = Field(default="", sa_type=Text)
@@ -118,6 +119,18 @@ class Ficha(SQLModel, table=True):
     clima_status: str = Field(default="", max_length=300)
     texto: str = Field(sa_type=Text)
     memoria: str = Field(default="", sa_type=Text)
+    cor_principal: str = Field(default="", max_length=7)
+    cor_destaque: str = Field(default="", max_length=7)
+    atualizado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
+
+
+class LogoMarca(SQLModel, table=True):
+    """Logo da marca (PNG), fora da mkt_ficha para não vir junto em toda consulta de marca."""
+
+    __tablename__ = "mkt_logos"
+
+    marca_id: int = Field(primary_key=True)
+    arquivo: bytes = Field(sa_type=LargeBinary)
     atualizado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
 
 
@@ -133,6 +146,7 @@ class MemoriaFoto(SQLModel, table=True):
     descricao: str = Field(default="", sa_type=Text)
     tags: str = Field(default="", sa_type=Text)
     tipo: str = Field(default="outro", max_length=30)
+    papel: str = Field(default="base", max_length=20)
     usar_em_posts: bool = Field(default=True)
     criado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
 

@@ -149,6 +149,39 @@ def _modelo() -> str:
     return get_settings().openai_image_model.strip() or "gpt-image-2.5-flare"
 
 
+def _arquivo_imagem(dados: bytes, nome: str) -> tuple[str, bytes, str]:
+    tipo = tipo_da_foto(dados) or "image/png"
+    extensao = {"image/jpeg": "jpg", "image/webp": "webp"}.get(tipo, "png")
+    return (f"{nome}.{extensao}", dados, tipo)
+
+
+async def editar_com_ia(prompt: str, imagens: list[bytes], qualidade: str = "medium") -> tuple[bytes, int]:
+    """Edita/cria a foto com o modelo de imagem a partir de 1 ou 2 fotos (a 1ª é a base).
+    Se o modelo não aceitar 2 fotos, tenta só com a base. Devolve (PNG, quantas fotos foram usadas)."""
+    modelo = _modelo()
+    cliente = cliente_openai().with_options(timeout=180)
+    extra = {"input_fidelity": "high"} if modelo in ("gpt-image-1", "gpt-image-1.5") else {}
+    pedido = {"model": modelo, "prompt": prompt, "size": "1024x1024", "quality": qualidade, "output_format": "png", **extra}
+    arquivos = [_arquivo_imagem(dados, f"foto{numero}") for numero, dados in enumerate(imagens[:2], start=1)]
+    try:
+        resposta = await cliente.images.edit(image=arquivos if len(arquivos) > 1 else arquivos[0], **pedido)
+        usadas = len(arquivos)
+    except Exception as erro:
+        texto = str(erro)
+        if len(arquivos) < 2 or "insufficient_quota" in texto or "credit_balance" in texto:
+            raise
+        resposta = await cliente.images.edit(image=arquivos[0], **pedido)
+        usadas = 1
+    conteudo = resposta.data[0].b64_json if resposta.data else None
+    if not conteudo:
+        raise ValueError("A foto não veio.")
+    return base64.b64decode(conteudo), usadas
+
+
+async def gerar_com_ia(prompt: str, qualidade: str = "medium") -> bytes:
+    return await _foto(prompt, None, None, _modelo(), qualidade)
+
+
 async def montar_midia(pedido: PedidoCampanha, marca_id: int = 0) -> dict[str, str | None]:
     aviso: str | None = None
     url: str | None = None

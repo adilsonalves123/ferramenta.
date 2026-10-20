@@ -748,6 +748,37 @@
     .faixa-memoria span { flex: 1; min-width: 0; color: var(--tinta); line-height: 1.3; }
     .faixa-memoria span small { display: block; color: var(--mudo); }
     .post.modo-story .faixa-memoria span { color: var(--tinta); }
+    .post img.arte { height: auto; aspect-ratio: 4 / 5; object-fit: contain; background: #0f172a; }
+    .post.modo-story img.arte { height: auto; aspect-ratio: 9 / 16; }
+    .editor-arte { margin: 0 14px 12px; padding: 10px; border: 1px solid var(--linha); border-radius: 10px; background: #fafbff; display: flex; flex-direction: column; gap: 8px; font-size: 12px; color: var(--tinta); }
+    .editor-arte[hidden] { display: none; }
+    .editor-arte .ideia-arte { margin: 0; color: var(--mudo); line-height: 1.4; }
+    .editor-arte .ideia-arte strong { color: var(--tinta); }
+    .aviso-arte { margin: 0; padding: 7px 9px; border-radius: 8px; background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; line-height: 1.4; }
+    .aviso-arte[hidden] { display: none; }
+    .campos-arte { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; }
+    .campos-arte label { display: flex; flex-direction: column; gap: 3px; font-weight: 600; font-size: 11.5px; color: var(--mudo); margin: 0; }
+    .campos-arte label.largo { grid-column: 1 / -1; }
+    .campos-arte label[hidden] { display: none; }
+    .campos-arte input, .campos-arte select { width: 100%; padding: 6px 8px; font-size: 12.5px; border: 1px solid var(--linha); border-radius: 7px; font-family: inherit; background: white; color: var(--tinta); }
+    .editor-arte button.secundario { width: 100%; height: 34px; margin: 0; font-size: 12.5px; }
+    .post.modo-story .editor-arte { color: var(--tinta); }
+    .ficha-cores { display: flex; flex-wrap: wrap; gap: 12px; }
+    .ficha-corpo label.cor-campo { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-weight: 600; cursor: pointer; }
+    .ficha-corpo label.cor-campo input { width: 44px; height: 34px; padding: 2px; border-radius: 8px; border: 1px solid var(--linha); background: white; cursor: pointer; }
+    .ficha-logo { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+    .ficha-logo img { height: 52px; max-width: 160px; object-fit: contain; padding: 6px; border: 1px solid var(--linha); border-radius: 10px; background: repeating-conic-gradient(#f1f3f7 0% 25%, white 0% 50%) 50% / 14px 14px; }
+    .ficha-logo img[hidden] { display: none; }
+    .ficha-corpo .ficha-logo label.enviar-fotos { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; margin: 0; border-radius: 10px; border: 1px solid var(--linha); background: white; color: var(--azul); font-size: 13px; font-weight: 600; cursor: pointer; }
+    .ficha-corpo .ficha-logo label.enviar-fotos.ocupado { opacity: 0.65; cursor: wait; }
+    .cartao-foto.estilo img { filter: saturate(0.6); }
+    .cartao-foto .papel-nota { color: var(--mudo); font-size: 11px; line-height: 1.3; }
+    .lista-agenda .arte-fila { display: block; margin-top: 4px; color: var(--mudo); font-size: 12px; }
+    .lista-agenda .arte-fila strong { color: var(--tinta); font-weight: 600; }
+    .lista-agenda .form-arte-fila { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; padding: 8px; border: 1px solid var(--linha); border-radius: 8px; background: #fafbff; }
+    .lista-agenda .form-arte-fila input, .lista-agenda .form-arte-fila select { width: 100%; padding: 5px 7px; font-size: 12px; border: 1px solid var(--linha); border-radius: 6px; font-family: inherit; }
+    .lista-agenda .form-arte-fila button { grid-column: 1 / -1; }
+    .seletor-grade span em { display: block; font-style: normal; color: var(--azul); font-weight: 600; }
     .lista-agenda .memoria-fila { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; color: var(--azul); font-weight: 600; }
     .lista-agenda .memoria-fila img { width: 22px; height: 22px; border-radius: 4px; object-fit: cover; }
     .seletor-fundo { position: fixed; inset: 0; z-index: 60; background: rgba(15, 23, 42, 0.45); display: grid; place-items: center; padding: 16px; }
@@ -1028,6 +1059,29 @@
               <span id="faixa-memoria-texto">Foto da Memória da marca</span>
               <button class="link-mini" type="button" id="faixa-memoria-trocar">Trocar foto</button>
             </div>
+            <div class="editor-arte" id="editor-arte" hidden>
+              <p class="ideia-arte" id="ideia-arte"></p>
+              <p class="aviso-arte" id="aviso-arte" hidden></p>
+              <div class="campos-arte">
+                <label class="largo">Modelo da arte
+                  <select id="arte-modelo">
+                    <option value="faixa">Faixa (oferta, dia especial)</option>
+                    <option value="selo">Selo (novidade, dia, preço)</option>
+                    <option value="destaque">Destaque (produto, prato)</option>
+                    <option value="antes_depois">Antes e depois (serviço, app)</option>
+                    <option value="tela_app">Tela do app (celular)</option>
+                    <option value="story_chamada">Chamada (convite direto)</option>
+                  </select>
+                </label>
+                <label class="largo">Título da arte<input id="arte-titulo" maxlength="60" /></label>
+                <label class="largo">Subtítulo<input id="arte-subtitulo" maxlength="90" placeholder="Opcional" /></label>
+                <label>Selo<input id="arte-selo" maxlength="18" placeholder="Ex.: Hoje" /></label>
+                <label>Chamada<input id="arte-chamada" maxlength="32" placeholder="Ex.: Peça já" /></label>
+                <label class="largo" id="arte-antes-campo" hidden>Antes (o problema do cliente)<input id="arte-antes" maxlength="90" /></label>
+              </div>
+              <button class="secundario" type="button" id="refazer-arte"><i class="fa-solid fa-rotate"></i> Refazer arte</button>
+              <p class="nota" id="nota-arte">Refazer arte troca só o texto e o modelo, com a mesma foto: não gasta IA.</p>
+            </div>
             <div class="post-acoes" aria-hidden="true">
               <i class="fa-regular fa-heart"></i>
               <i class="fa-regular fa-comment"></i>
@@ -1093,7 +1147,7 @@
           </div>
           <div class="bloco-ia">
             <p class="secao">Deixar a IA preencher o dia</p>
-            <p class="nota">A IA escreve o post com a Memória da marca e usa uma foto real dela; se nenhuma combinar, cria a foto antes do horário. Você vê na fila antes de sair.</p>
+            <p class="nota">A IA escreve o post com a Memória da marca, escolhe a foto, edita se precisar e monta a arte (feed e Story) até 3 horas antes do horário. Você vê na fila antes de sair.</p>
             <button class="secundario" type="button" id="montar-semana">Preencher este dia</button>
           </div>
           <ul class="lista-agenda" id="lista-agenda"></ul>
@@ -1119,6 +1173,18 @@
         <input id="ficha-site" maxlength="200" placeholder="Ex.: https://www.riscaai.com.br" />
         <label for="ficha-marca-dagua">Marca d'água (texto no canto de toda foto)</label>
         <input id="ficha-marca-dagua" maxlength="60" placeholder="Ex.: Risca Aí" />
+        <p class="secao">Cores e logo das artes</p>
+        <div class="ficha-cores">
+          <label class="cor-campo" for="ficha-cor-principal"><input id="ficha-cor-principal" type="color" value="#1B2A41" />Cor principal</label>
+          <label class="cor-campo" for="ficha-cor-destaque"><input id="ficha-cor-destaque" type="color" value="#E63946" />Cor de destaque</label>
+        </div>
+        <div class="ficha-logo">
+          <img id="ficha-logo-previa" alt="Logo da marca" hidden />
+          <label class="enviar-fotos" id="ficha-logo-rotulo" for="ficha-logo-arquivo"><i class="fa-solid fa-upload"></i><span id="ficha-logo-texto">Enviar logo</span></label>
+          <input id="ficha-logo-arquivo" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+          <button class="link-mini" type="button" id="ficha-logo-tirar" hidden>Tirar logo</button>
+        </div>
+        <p class="nota" id="nota-logo">Opcional. Logo em PNG com fundo transparente fica melhor. Sem logo, a arte leva a marca d'água.</p>
         <p class="secao">Alcance da marca</p>
         <div class="atalhos em-linha" id="ficha-alcance">
           <button class="chip ativo" type="button" data-alcance="cidade">Minha cidade</button>
@@ -1164,7 +1230,7 @@
       </form>
       <div class="ficha-corpo fotos-marca" id="fotos-marca">
         <h2><i class="fa-regular fa-images"></i> Fotos da marca</h2>
-        <p class="nota">Mande fotos reais: prints das telas principais do app, fachada, salão, pratos, equipe. A IA lê cada foto e escreve a descrição; você pode corrigir. Os posts usam essas fotos de verdade, sem custo de IA.</p>
+        <p class="nota">Mande fotos reais: prints das telas principais do app, fachada, salão, pratos, drinks, equipe. A IA lê cada foto e escreve a descrição; você pode corrigir. Em cada foto, diga como a IA usa: <strong>Pode postar como está</strong> (sai igual, só com a arte por cima), <strong>Usar como base para editar</strong> (a IA mantém o produto real e melhora fundo, luz, gelo) ou <strong>Só inspiração de estilo</strong> (nunca aparece; serve de clima, cores e enquadramento).</p>
         <div class="topo-fotos">
           <label class="enviar-fotos" id="rotulo-enviar-fotos" for="enviar-fotos"><i class="fa-solid fa-upload"></i><span id="texto-enviar-fotos">Enviar fotos</span></label>
           <input id="enviar-fotos" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden />
@@ -1457,6 +1523,7 @@
       videoProjeto = projeto.video_url || "";
       origemFoto = "projeto";
       memoriaPrevia = null;
+      artePrevia = null;
       escreverLegenda(projeto.legenda ? projeto.titulo + "\n\n" + projeto.legenda : projeto.titulo);
       if (videoProjeto) colocarMidiaPrevia(videoProjeto, "video");
       else if (imagemProjeto) colocarMidiaPrevia(imagemProjeto, "foto");
@@ -1795,6 +1862,7 @@
         videoProjeto = "";
         origemFoto = "ia";
         memoriaPrevia = null;
+        artePrevia = null;
         if (document.getElementById("legenda-previa")) mostrarPrevia(fotoPronta, imagemProjeto);
       } catch (falha) {
         window.clearTimeout(pulsoMiniatura);
@@ -1866,6 +1934,7 @@
     let videoProjeto = "";
     let origemFoto = "";
     let memoriaPrevia = null;
+    let artePrevia = null;
     let diaEscolhido = "";
     let mesOffset = 0;
     let redeAgenda = "Ambos";
@@ -2125,8 +2194,17 @@
           mini.src = item.memoria_miniatura;
           mini.alt = "";
           mini.loading = "lazy";
-          chip.append(mini, document.createTextNode("Foto da Memória da marca"));
+          chip.append(mini, document.createTextNode(item.arte && item.arte.editada ? "Foto da memória editada pela IA" : "Foto da Memória da marca"));
           corpo.append(chip);
+        }
+        if (item.arte) {
+          const linhaArte = elemento("span", "arte-fila");
+          linhaArte.append(
+            elemento("strong", "", "Arte: "),
+            document.createTextNode(`${NOMES_MODELOS[item.arte.modelo] || item.arte.modelo} · ${item.arte.titulo_arte || ""}`),
+          );
+          corpo.append(linhaArte);
+          if (item.arte.aviso) corpo.append(elemento("span", "arte-fila", item.arte.aviso));
         }
         if (item.imagem_url) {
           const miniatura = document.createElement("img");
@@ -2154,6 +2232,14 @@
             trocar.textContent = "Trocar foto";
             trocar.addEventListener("click", () => trocarFotoFila(item, trocar));
             corpo.append(trocar);
+          }
+          if (item.arte && item.imagem_url && item.pode_trocar_foto) {
+            const editar = document.createElement("button");
+            editar.type = "button";
+            editar.className = "trocar-foto";
+            editar.textContent = "Editar arte";
+            editar.addEventListener("click", () => abrirArteFila(item, corpo, editar));
+            corpo.append(editar);
           }
           const escolha = document.createElement("select");
           escolha.className = "formato-fila";
@@ -2270,19 +2356,85 @@
         marcaId: item.marca_id || marcaAtual.id,
         atual: item.foto_id,
         podeIA: item.pode_criar_ia,
+        arte: Boolean(item.arte),
         aoIA: () => trocarFoto(item.id, botao),
         aoEscolher: async (fotoId) => {
           const resposta = await fetch("/agenda/" + item.id + "/foto-memoria", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            signal: AbortSignal.timeout(180000),
             body: JSON.stringify({ foto_id: fotoId }),
           });
           const dados = await lerResposta(resposta);
           if (!resposta.ok) throw new Error(mensagemErro(dados));
           await carregarAgenda();
-          document.getElementById("nota-agenda").textContent = "Foto trocada por uma da Memória da marca.";
+          document.getElementById("nota-agenda").textContent = item.arte
+            ? "Foto trocada e arte montada de novo."
+            : "Foto trocada por uma da Memória da marca.";
         },
       });
+    }
+
+    function abrirArteFila(item, corpo, botao) {
+      const aberto = corpo.querySelector(".form-arte-fila");
+      if (aberto) {
+        aberto.remove();
+        return;
+      }
+      const arte = item.arte || {};
+      const form = elemento("div", "form-arte-fila");
+      const modelo = document.createElement("select");
+      Object.entries(NOMES_MODELOS).forEach(([valor, rotulo]) => {
+        const opcao = document.createElement("option");
+        opcao.value = valor;
+        opcao.textContent = rotulo;
+        modelo.append(opcao);
+      });
+      modelo.value = arte.modelo || "destaque";
+      modelo.setAttribute("aria-label", "Modelo da arte");
+      const campo = (chave, rotulo, limite) => {
+        const entrada = document.createElement("input");
+        entrada.value = arte[chave] || "";
+        entrada.maxLength = limite;
+        entrada.placeholder = rotulo;
+        entrada.setAttribute("aria-label", rotulo);
+        entrada.dataset.campo = chave;
+        return entrada;
+      };
+      const titulo = campo("titulo_arte", "Título da arte", 60);
+      modelo.style.gridColumn = "1 / -1";
+      titulo.style.gridColumn = "1 / -1";
+      const subtitulo = campo("subtitulo_arte", "Subtítulo (opcional)", 90);
+      const selo = campo("selo", "Selo (ex.: Hoje)", 18);
+      const chamada = campo("chamada", "Chamada (ex.: Peça já)", 32);
+      const antes = campo("antes", "Antes (o problema do cliente)", 90);
+      const mostrarAntes = () => { antes.hidden = modelo.value !== "antes_depois"; };
+      modelo.addEventListener("change", mostrarAntes);
+      mostrarAntes();
+      const refazer = elemento("button", "secundario", "Refazer arte");
+      refazer.type = "button";
+      refazer.addEventListener("click", async () => {
+        const nota = document.getElementById("nota-agenda");
+        refazer.disabled = true;
+        try {
+          const corpoPedido = { modelo: modelo.value };
+          [titulo, subtitulo, selo, chamada, antes].forEach((entrada) => { corpoPedido[entrada.dataset.campo] = entrada.value.trim(); });
+          const resposta = await fetch("/agenda/" + item.id + "/arte", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(corpoPedido),
+          });
+          const dados = await lerResposta(resposta);
+          if (!resposta.ok) throw new Error(mensagemErro(dados));
+          await carregarAgenda();
+          nota.textContent = "Arte refeita, sem gastar IA.";
+        } catch (falha) {
+          nota.textContent = falha.message || "Não consegui refazer a arte.";
+          refazer.disabled = false;
+        }
+      });
+      form.append(modelo, titulo, subtitulo, selo, chamada, antes, refazer);
+      botao.after(form);
     }
 
     async function trocarFoto(id, botao) {
@@ -2370,15 +2522,90 @@
         midia.muted = true;
       } else {
         midia.alt = "Mídia do post";
+        if (artePrevia && (url === artePrevia.feed_url || url === artePrevia.story_url)) midia.className = "arte";
       }
       lugar.replaceWith(midia);
       mostrarBotaoFoto();
+    }
+
+    const NOMES_MODELOS = {
+      faixa: "Faixa",
+      selo: "Selo",
+      destaque: "Destaque",
+      antes_depois: "Antes e depois",
+      tela_app: "Tela do app",
+      story_chamada: "Chamada",
+    };
+    const CAMPOS_ARTE = [
+      ["arte-titulo", "titulo_arte"],
+      ["arte-subtitulo", "subtitulo_arte"],
+      ["arte-selo", "selo"],
+      ["arte-chamada", "chamada"],
+      ["arte-antes", "antes"],
+    ];
+
+    function arteAtiva() {
+      return Boolean(artePrevia) && !videoProjeto && (!imagemProjeto || imagemProjeto === artePrevia.feed_url);
+    }
+
+    function urlArteDaVista() {
+      const vista = formatoAgenda === "ambos" ? vistaPrevia : formatoAgenda;
+      return vista === "story" && artePrevia.story_url ? artePrevia.story_url : artePrevia.feed_url;
+    }
+
+    function desenharEditorArte() {
+      const editor = document.getElementById("editor-arte");
+      editor.hidden = !arteAtiva();
+      if (editor.hidden) return;
+      const ideia = document.getElementById("ideia-arte");
+      ideia.textContent = "";
+      ideia.append(elemento("strong", "", "Ideia da IA: "), document.createTextNode(artePrevia.ideia || "arte da marca"));
+      if (artePrevia.editada) ideia.append(document.createTextNode(" · a foto da memória foi editada pela IA"));
+      const aviso = document.getElementById("aviso-arte");
+      aviso.hidden = !artePrevia.aviso;
+      aviso.textContent = artePrevia.aviso || "";
+      document.getElementById("arte-modelo").value = artePrevia.modelo || "destaque";
+      CAMPOS_ARTE.forEach(([id, campo]) => { document.getElementById(id).value = artePrevia[campo] || ""; });
+      document.getElementById("arte-antes-campo").hidden = artePrevia.modelo !== "antes_depois";
+      document.getElementById("refazer-arte").hidden = !imagemProjeto;
+      document.getElementById("nota-arte").textContent = imagemProjeto
+        ? "Refazer arte troca só o texto e o modelo, com a mesma foto: não gasta IA."
+        : "A foto ainda não foi feita: clique em Criar foto com IA, escolha uma da memória ou agende (a IA faz até 3 horas antes).";
+    }
+
+    function arteDoEditor() {
+      if (!artePrevia) return null;
+      const plano = { ...artePrevia, modelo: document.getElementById("arte-modelo").value };
+      CAMPOS_ARTE.forEach(([id, campo]) => { plano[campo] = document.getElementById(id).value.trim(); });
+      return plano;
+    }
+
+    function usarArte(dados) {
+      artePrevia = dados.plano_arte || null;
+      if (artePrevia && dados.foto_url) {
+        artePrevia.feed_url = dados.foto_url;
+        if (dados.story_url) artePrevia.story_url = dados.story_url;
+        imagemProjeto = dados.foto_url;
+        videoProjeto = "";
+        origemFoto = "arte";
+        if (!memoriaPrevia) memoriaPrevia = { foto_id: null, gancho: "", cena: "", referencia_id: null, angulo: "", legenda: "" };
+        memoriaPrevia.foto_id = artePrevia.foto_base_id || null;
+        colocarMidiaPrevia(urlArteDaVista(), "foto");
+        marcarAnexo(artePrevia.editada ? "Arte pronta, com a foto editada pela IA." : "Arte pronta.");
+        desenharFaixaMemoria();
+      }
+      desenharEditorArte();
+    }
+
+    function planoParaEnviar() {
+      return arteAtiva() ? { ...artePrevia } : null;
     }
 
     function mostrarBotaoFoto() {
       const semMidia = !imagemProjeto && !videoProjeto;
       document.getElementById("criar-foto").hidden = !semMidia;
       if (!semMidia) document.getElementById("nota-foto").hidden = true;
+      desenharEditorArte();
     }
 
     function ajustarLegenda() {
@@ -2407,6 +2634,11 @@
       const outro = document.getElementById("ver-outro");
       outro.hidden = formatoAgenda !== "ambos";
       outro.textContent = story ? "Ver Feed" : "Ver Story";
+      if (artePrevia && imagemProjeto && imagemProjeto === artePrevia.feed_url) {
+        const atual = document.getElementById("foto-previa");
+        const alvo = urlArteDaVista();
+        if (atual && atual.tagName === "IMG" && atual.getAttribute("src") !== alvo) colocarMidiaPrevia(alvo, "foto");
+      }
     }
 
     function textoDoPost() {
@@ -2445,11 +2677,14 @@
       const botaoFaixa = document.getElementById("faixa-memoria-trocar");
       faixa.hidden = !memoriaPrevia || Boolean(videoProjeto);
       if (faixa.hidden) return;
-      const comFoto = origemFoto === "memoria" && memoriaPrevia.foto_id;
+      const comFoto = (origemFoto === "memoria" || origemFoto === "arte") && memoriaPrevia.foto_id;
       foto.hidden = !comFoto;
       if (comFoto) foto.src = `/memoria/foto/${memoriaPrevia.foto_id}.jpg?mini=1`;
       textoFaixa.textContent = "";
-      textoFaixa.append(document.createTextNode(comFoto ? "Foto da Memória da marca" : "Foto sem a Memória da marca"));
+      let rotulo = comFoto ? "Foto da Memória da marca" : "Foto sem a Memória da marca";
+      if (comFoto && origemFoto === "arte" && artePrevia && artePrevia.editada) rotulo = "Foto da memória editada pela IA";
+      if (!comFoto && origemFoto === "arte") rotulo = "Foto criada pela IA";
+      textoFaixa.append(document.createTextNode(rotulo));
       if (memoriaPrevia.angulo) textoFaixa.append(elemento("small", "", "Ângulo: " + memoriaPrevia.angulo));
       botaoFaixa.textContent = comFoto ? "Trocar foto" : "Escolher da memória";
     }
@@ -2468,8 +2703,9 @@
     function dadosMemoriaPost() {
       if (!memoriaPrevia) return { foto_id: null, gancho: "" };
       return {
-        foto_id: origemFoto === "memoria" ? memoriaPrevia.foto_id || null : null,
+        foto_id: origemFoto === "memoria" || origemFoto === "arte" ? memoriaPrevia.foto_id || null : null,
         gancho: (memoriaPrevia.gancho || "").slice(0, 80),
+        plano_arte: planoParaEnviar(),
       };
     }
 
@@ -2506,20 +2742,35 @@
           legenda: document.getElementById("legenda-previa").value.trim(),
         };
         const podeTrocar = !videoProjeto && origemFoto !== "anexo" && origemFoto !== "projeto";
-        if (dados.foto_url && dados.foto_id && podeTrocar) {
+        artePrevia = podeTrocar || !imagemProjeto ? dados.plano_arte || null : artePrevia;
+        if (dados.foto_url && dados.plano_arte && podeTrocar) {
+          usarArte(dados);
+        } else if (dados.foto_url && dados.foto_id && podeTrocar) {
           usarFotoMemoriaNaPrevia(dados, dados.foto_id);
-        } else if (podeTrocar && origemFoto === "memoria") {
+        } else if (podeTrocar && ["memoria", "arte", "ia"].includes(origemFoto)) {
           imagemProjeto = "";
           origemFoto = "";
           colocarMidiaPrevia("", "foto");
           marcarAnexo("");
         }
         desenharFaixaMemoria();
+        desenharEditorArte();
         const partes = [];
         if (dados.angulo) partes.push("Ângulo: " + dados.angulo + ".");
-        if (dados.foto_id && origemFoto === "memoria") partes.push("Usei uma foto da Memória da marca.");
-        else if (podeTrocar && !imagemProjeto) partes.push("Nenhuma foto da memória combinou: crie a foto com IA ou escolha uma da memória.");
-        falar("assistente", (partes.length ? partes.join(" ") + " " : "") + "O post está na prévia ao lado. Mude o texto lá se quiser, depois publique agora ou escolha o dia para agendar.");
+        if (artePrevia && artePrevia.ideia) partes.push("Ideia da arte: " + artePrevia.ideia);
+        if (origemFoto === "arte" && artePrevia) {
+          const nome = NOMES_MODELOS[artePrevia.modelo] || artePrevia.modelo;
+          partes.push(artePrevia.editada
+            ? `Editei a foto da memória com IA e montei a arte (modelo ${nome}).`
+            : `Montei a arte com a foto da memória (modelo ${nome}).`);
+        } else if (dados.foto_id && origemFoto === "memoria") {
+          partes.push("Usei uma foto da Memória da marca.");
+        } else if (podeTrocar && !imagemProjeto) {
+          partes.push("Nenhuma foto da memória combinou: clique em Criar foto com IA para a IA criar a foto e montar a arte, ou escolha uma da memória.");
+        }
+        if (dados.aviso_midia) partes.push(dados.aviso_midia);
+        if (artePrevia && artePrevia.aviso) partes.push(artePrevia.aviso);
+        falar("assistente", (partes.length ? partes.join(" ") + " " : "") + "O post está na prévia ao lado. Mude o texto ou a arte lá se quiser, depois publique agora ou escolha o dia para agendar.");
       } catch (falha) {
         falar("assistente", falha.message || "Não foi possível criar agora.");
       } finally {
@@ -3149,11 +3400,83 @@
         document.getElementById("memoria-" + campo).value = memoria[campo] || "";
       });
       document.getElementById("apagar-marca").hidden = !achada || marcas.length <= 1;
+      document.getElementById("ficha-cor-principal").value = (achada && achada.cor_principal) || "#1B2A41";
+      document.getElementById("ficha-cor-destaque").value = (achada && achada.cor_destaque) || "#E63946";
+      mostrarLogo(achada ? achada.logo_url || "" : "");
       carregarFotosMarca(achada ? achada.id : 0);
     }
 
+    function mostrarLogo(url) {
+      const previa = document.getElementById("ficha-logo-previa");
+      previa.hidden = !url;
+      if (url) previa.src = url;
+      else previa.removeAttribute("src");
+      document.getElementById("ficha-logo-tirar").hidden = !url;
+      document.getElementById("ficha-logo-texto").textContent = url ? "Trocar logo" : "Enviar logo";
+    }
+
+    document.getElementById("ficha-logo-arquivo").addEventListener("change", async () => {
+      const campo = document.getElementById("ficha-logo-arquivo");
+      const arquivo = campo.files[0];
+      campo.value = "";
+      const nota = document.getElementById("nota-logo");
+      if (!arquivo) return;
+      if (!fichaEditando) {
+        nota.textContent = "Salve a marca primeiro. Depois mande o logo.";
+        return;
+      }
+      if (arquivo.size > 4 * 1024 * 1024) {
+        nota.textContent = "O logo precisa ter até 4 MB.";
+        return;
+      }
+      const rotulo = document.getElementById("ficha-logo-rotulo");
+      rotulo.classList.add("ocupado");
+      nota.textContent = "Enviando o logo...";
+      try {
+        const form = new FormData();
+        form.append("arquivo", arquivo, arquivo.name);
+        const resposta = await fetch("/marcas/" + fichaEditando + "/logo", { method: "POST", body: form });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        const marca = marcas.find((item) => item.id === fichaEditando);
+        if (marca) marca.logo_url = dados.logo_url;
+        mostrarLogo(dados.logo_url);
+        nota.textContent = "Logo guardado. As próximas artes já saem com ele.";
+      } catch (falha) {
+        nota.textContent = falha.message || "Não consegui guardar o logo.";
+      } finally {
+        rotulo.classList.remove("ocupado");
+      }
+    });
+
+    document.getElementById("ficha-logo-tirar").addEventListener("click", async () => {
+      const nota = document.getElementById("nota-logo");
+      if (!fichaEditando) return;
+      try {
+        const resposta = await fetch("/marcas/" + fichaEditando + "/logo", { method: "DELETE" });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        const marca = marcas.find((item) => item.id === fichaEditando);
+        if (marca) marca.logo_url = "";
+        mostrarLogo("");
+        nota.textContent = "Logo tirado. As artes voltam a usar a marca d'água.";
+      } catch (falha) {
+        nota.textContent = falha.message || "Não consegui tirar o logo.";
+      }
+    });
+
     const CAMPOS_MEMORIA = ["oferta", "itens", "horarios", "diferenciais", "promocoes", "tom", "nunca"];
     const TIPOS_FOTO = ["print do app", "prato", "fachada", "ambiente", "equipe", "produto", "outro"];
+    const PAPEIS_FOTO = [
+      ["postar", "Pode postar como está"],
+      ["base", "Usar como base para editar"],
+      ["estilo", "Só inspiração de estilo"],
+    ];
+    const NOTAS_PAPEL = {
+      postar: "Sai igual, só com a arte por cima. Sem custo de IA.",
+      base: "A IA mantém o produto real e melhora fundo, luz e detalhes.",
+      estilo: "Nunca aparece no post: só inspira clima, cores e enquadramento.",
+    };
     let fotosMarcaDe = 0;
     let pedidoFotos = 0;
 
@@ -3211,6 +3534,18 @@
       });
       tipo.value = foto.tipo || "outro";
       tipo.setAttribute("aria-label", "Tipo da foto");
+      const papel = document.createElement("select");
+      PAPEIS_FOTO.forEach(([valor, rotulo]) => {
+        const opcao = document.createElement("option");
+        opcao.value = valor;
+        opcao.textContent = rotulo;
+        papel.append(opcao);
+      });
+      papel.value = foto.papel || "base";
+      papel.setAttribute("aria-label", "Como a IA usa esta foto");
+      papel.title = "Como a IA usa esta foto nas artes";
+      const papelNota = elemento("span", "papel-nota", NOTAS_PAPEL[papel.value] || "");
+      cartao.classList.toggle("estilo", papel.value === "estilo");
       const descricao = document.createElement("textarea");
       descricao.maxLength = 1500;
       descricao.value = foto.descricao || "";
@@ -3236,7 +3571,7 @@
       acoes.append(ler, apagar);
       linha.append(usar, acoes);
       const estado = elemento("span", "estado-foto", foto.descricao ? "" : "Sem descrição: escreva o que a foto mostra.");
-      campos.append(tipo, descricao, tags, linha, estado);
+      campos.append(tipo, papel, papelNota, descricao, tags, linha, estado);
       cartao.append(imagem, campos);
 
       async function salvar() {
@@ -3245,17 +3580,25 @@
           const resposta = await fetch("/memoria/fotos/" + foto.id, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ descricao: descricao.value.trim(), tags: tags.value.trim(), tipo: tipo.value, usar_em_posts: caixa.checked }),
+            body: JSON.stringify({
+              descricao: descricao.value.trim(),
+              tags: tags.value.trim(),
+              tipo: tipo.value,
+              papel: papel.value,
+              usar_em_posts: caixa.checked,
+            }),
           });
           const dados = await lerResposta(resposta);
           if (!resposta.ok) throw new Error(mensagemErro(dados));
           cartao.classList.toggle("desligada", !dados.usar_em_posts);
+          cartao.classList.toggle("estilo", dados.papel === "estilo");
+          papelNota.textContent = NOTAS_PAPEL[dados.papel] || "";
           estado.textContent = "Salvo.";
         } catch (falha) {
           estado.textContent = falha.message || "Não consegui salvar.";
         }
       }
-      [tipo, descricao, tags, caixa].forEach((campo) => campo.addEventListener("change", salvar));
+      [tipo, papel, descricao, tags, caixa].forEach((campo) => campo.addEventListener("change", salvar));
       ler.addEventListener("click", async () => {
         ler.disabled = true;
         estado.textContent = "A IA está lendo a foto...";
@@ -3360,10 +3703,11 @@
         const dados = await lerResposta(resposta);
         if (seletorAtual !== opcoes) return;
         if (!resposta.ok) throw new Error(mensagemErro(dados));
-        const usaveis = (dados.itens || []).filter((foto) => foto.usar_em_posts);
+        const usaveis = (dados.itens || []).filter((foto) => foto.usar_em_posts && foto.papel !== "estilo");
+        const textoComArte = "Escolha a foto da arte. As de \"pode postar\" entram como estão (sem custo de IA); as de \"base para editar\" a IA melhora mantendo o produto real.";
         nota.textContent = usaveis.length
-          ? "Escolha uma foto da Memória da marca. Ela entra sem custo de IA."
-          : "Esta marca ainda não tem fotos na memória. Mande em Minha marca > Fotos da marca.";
+          ? (opcoes.arte ? textoComArte : "Escolha uma foto da Memória da marca. Ela entra sem custo de IA.")
+          : "Esta marca ainda não tem fotos para posts na memória. Mande em Minha marca > Fotos da marca.";
         usaveis.forEach((foto) => {
           const botao = document.createElement("button");
           botao.type = "button";
@@ -3373,10 +3717,13 @@
           imagem.alt = "";
           imagem.loading = "lazy";
           const legenda = (foto.descricao || foto.tipo || "").slice(0, 70);
-          botao.append(imagem, elemento("span", "", `${foto.tipo} · ${legenda}`));
+          const rotulo = elemento("span", "", `${foto.tipo} · ${legenda}`);
+          const editada = opcoes.arte && foto.papel === "base" && foto.tipo !== "print do app";
+          if (opcoes.arte) rotulo.prepend(elemento("em", "", editada ? "A IA edita" : "Entra como está"));
+          botao.append(imagem, rotulo);
           botao.addEventListener("click", async () => {
             grade.querySelectorAll("button").forEach((item) => { item.disabled = true; });
-            nota.textContent = "Montando a foto do post...";
+            nota.textContent = editada ? "A IA está editando a foto e montando a arte (pode levar até 1 minuto)..." : "Montando a arte do post...";
             try {
               await opcoes.aoEscolher(foto.id);
               fecharSeletor();
@@ -3401,13 +3748,63 @@
       fecharSeletor();
       if (opcoes && opcoes.aoIA) opcoes.aoIA();
     });
+    document.getElementById("refazer-arte").addEventListener("click", async () => {
+      const plano = arteDoEditor();
+      const nota = document.getElementById("nota-arte");
+      if (!plano) return;
+      if (!plano.titulo_arte) {
+        nota.textContent = "Escreva o título da arte.";
+        return;
+      }
+      const botao = document.getElementById("refazer-arte");
+      botao.disabled = true;
+      nota.textContent = "Montando a arte de novo...";
+      try {
+        const resposta = await fetch("/arte/refazer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ marca_id: marcaAtual.id, plano_arte: plano }),
+        });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        usarArte(dados);
+        const final = dados.plano_arte || {};
+        let texto = "Arte refeita, sem gastar IA.";
+        if (final.modelo && final.modelo !== plano.modelo) {
+          const falta = plano.modelo === "selo" ? "o Selo está vazio" : plano.modelo === "antes_depois" ? "o Antes está vazio" : "esse modelo não combina com print de tela";
+          texto += ` O modelo ficou ${NOMES_MODELOS[final.modelo] || final.modelo}: ${falta}.`;
+        }
+        document.getElementById("nota-arte").textContent = texto;
+      } catch (falha) {
+        nota.textContent = falha.message || "Não consegui refazer a arte.";
+      } finally {
+        botao.disabled = false;
+      }
+    });
+    document.getElementById("arte-modelo").addEventListener("change", (evento) => {
+      document.getElementById("arte-antes-campo").hidden = evento.target.value !== "antes_depois";
+    });
+
     document.getElementById("faixa-memoria-trocar").addEventListener("click", () => {
       abrirSeletor({
         marcaId: marcaAtual.id,
-        atual: origemFoto === "memoria" && memoriaPrevia ? memoriaPrevia.foto_id : null,
+        atual: (origemFoto === "memoria" || origemFoto === "arte") && memoriaPrevia ? memoriaPrevia.foto_id : null,
         podeIA: true,
+        arte: Boolean(artePrevia),
         aoIA: () => document.getElementById("criar-foto").click(),
         aoEscolher: async (fotoId) => {
+          if (artePrevia) {
+            const resposta = await fetch("/arte/foto", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              signal: AbortSignal.timeout(180000),
+              body: JSON.stringify({ marca_id: marcaAtual.id, foto_id: fotoId, plano_arte: arteDoEditor(), gancho: memoriaPrevia ? memoriaPrevia.gancho || "" : "" }),
+            });
+            const dados = await lerResposta(resposta);
+            if (!resposta.ok) throw new Error(mensagemErro(dados));
+            usarArte(dados);
+            return;
+          }
           const resposta = await fetch("/memoria/imagem", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -3651,6 +4048,8 @@
         uf: document.getElementById("ficha-uf").value.trim().toUpperCase(),
         texto: document.getElementById("texto-ficha").value.trim(),
         memoria: Object.fromEntries(CAMPOS_MEMORIA.map((campo) => [campo, document.getElementById("memoria-" + campo).value.trim()])),
+        cor_principal: document.getElementById("ficha-cor-principal").value.toUpperCase(),
+        cor_destaque: document.getElementById("ficha-cor-destaque").value.toUpperCase(),
       };
       if (corpo.nome.length < 2) {
         nota.textContent = "Escreva o nome da marca.";
@@ -3775,7 +4174,7 @@
       giro.className = "spinner";
       icone.replaceWith(giro);
       botao.disabled = true;
-      rotulo.textContent = "Criando a foto";
+      rotulo.textContent = "Criando a foto e a arte";
       const mesmaLegenda = memoriaPrevia && memoriaPrevia.legenda === legenda;
       try {
         const resposta = await fetch("/foto-legenda", {
@@ -3787,17 +4186,22 @@
             marca_id: marcaAtual.id,
             cena: mesmaLegenda ? (memoriaPrevia.cena || "").slice(0, 800) : "",
             referencia_id: mesmaLegenda ? memoriaPrevia.referencia_id || null : null,
+            plano_arte: arteDoEditor(),
           }),
         });
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
-        imagemProjeto = dados.foto_url;
-        videoProjeto = "";
-        origemFoto = "ia";
-        if (memoriaPrevia) memoriaPrevia.foto_id = null;
-        colocarMidiaPrevia(dados.foto_url, "foto");
-        desenharFaixaMemoria();
-        marcarAnexo("Foto criada com IA.");
+        if (dados.plano_arte) {
+          usarArte(dados);
+        } else {
+          imagemProjeto = dados.foto_url;
+          videoProjeto = "";
+          origemFoto = "ia";
+          if (memoriaPrevia) memoriaPrevia.foto_id = null;
+          colocarMidiaPrevia(dados.foto_url, "foto");
+          desenharFaixaMemoria();
+          marcarAnexo("Foto criada com IA.");
+        }
       } catch (falha) {
         const demorou = falha.name === "TimeoutError" || falha.name === "AbortError";
         nota.textContent = demorou ? "A foto demorou demais. Tente de novo." : (falha.message || "Não consegui criar a foto agora.");

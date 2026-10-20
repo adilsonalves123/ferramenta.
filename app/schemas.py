@@ -32,10 +32,52 @@ class PedidoFotoLegenda(BaseModel):
     marca_id: int = 0
     cena: str = Field(default="", max_length=800)
     referencia_id: int | None = None
+    plano_arte: dict | None = None
 
 
 class RespostaFoto(BaseModel):
     foto_url: str
+    story_url: str = ""
+    plano_arte: dict | None = None
+    aviso: str = ""
+
+
+class PlanoArte(BaseModel):
+    """Plano do diretor de arte, devolvido pela IA junto com o texto do post."""
+
+    ideia: str
+    foto_base_id: int | None
+    fotos_estilo_ids: list[int]
+    edicao_foto: str
+    modelo: Literal["faixa", "selo", "destaque", "antes_depois", "tela_app", "story_chamada"]
+    titulo_arte: str
+    subtitulo_arte: str
+    selo: str
+    chamada: str
+    antes: str
+    cor: Literal["principal", "destaque"]
+    aviso: str
+
+
+class PedidoArte(BaseModel):
+    marca_id: int = 0
+    plano_arte: dict
+
+
+class PedidoArteFoto(BaseModel):
+    marca_id: int = 0
+    foto_id: int
+    plano_arte: dict | None = None
+    gancho: str = Field(default="", max_length=80)
+
+
+class PedidoArteAgenda(BaseModel):
+    modelo: str = Field(default="", max_length=20)
+    titulo_arte: str = Field(default="", max_length=80)
+    subtitulo_arte: str = Field(default="", max_length=120)
+    selo: str = Field(default="", max_length=30)
+    chamada: str = Field(default="", max_length=40)
+    antes: str = Field(default="", max_length=120)
 
 
 class FatosMarca(BaseModel):
@@ -57,6 +99,7 @@ class ItemFotoMemoria(BaseModel):
     descricao: str = ""
     tags: str = ""
     tipo: str = "outro"
+    papel: str = "base"
     usar_em_posts: bool = True
 
 
@@ -71,6 +114,7 @@ class PedidoFotoMemoria(BaseModel):
     descricao: str = Field(default="", max_length=1500)
     tags: str = Field(default="", max_length=500)
     tipo: str = Field(default="outro", max_length=30)
+    papel: str = Field(default="base", max_length=20)
     usar_em_posts: bool = True
 
 
@@ -108,8 +152,7 @@ class CampanhaMemoria(BaseModel):
     cena: str
     angulo: str
     gancho: str
-    foto_id: int | None
-    referencia_id: int | None
+    plano_arte: PlanoArte
 
 
 class CampanhaCompleta(CampanhaGerada):
@@ -125,6 +168,8 @@ class CampanhaCompleta(CampanhaGerada):
     foto_id: int | None = None
     referencia_id: int | None = None
     memoria_miniatura: str = ""
+    story_url: str = ""
+    plano_arte: dict | None = None
 
 
 class MensagemCriacao(BaseModel):
@@ -203,6 +248,7 @@ class PedidoPublicarAgora(BaseModel):
     video_url: str = Field(default="", max_length=500)
     foto_id: int | None = None
     gancho: str = Field(default="", max_length=80)
+    plano_arte: dict | None = None
 
 
 class RespostaPublicacao(BaseModel):
@@ -220,6 +266,8 @@ class PedidoMarca(BaseModel):
     uf: str = Field(default="", max_length=2)
     texto: str = Field(min_length=20, max_length=8000)
     memoria: FatosMarca | None = None
+    cor_principal: str = Field(default="", pattern=r"^(#[0-9a-fA-F]{6})?$")
+    cor_destaque: str = Field(default="", pattern=r"^(#[0-9a-fA-F]{6})?$")
 
 
 class ItemMarca(BaseModel):
@@ -236,6 +284,9 @@ class ItemMarca(BaseModel):
     aviso_local: str = ""
     texto: str
     memoria: FatosMarca = Field(default_factory=FatosMarca)
+    cor_principal: str = ""
+    cor_destaque: str = ""
+    logo_url: str = ""
 
 
 class RespostaMarcas(BaseModel):
@@ -309,6 +360,7 @@ class PedidoAgenda(BaseModel):
     video_url: str = Field(default="", max_length=500)
     foto_id: int | None = None
     gancho: str = Field(default="", max_length=80)
+    plano_arte: dict | None = None
 
     def hora_normalizada(self) -> str:
         partes = self.hora.strip().split(":")
@@ -342,6 +394,7 @@ class ItemAgenda(BaseModel):
     foto_id: int | None = None
     gancho: str = ""
     memoria_miniatura: str = ""
+    arte: dict | None = None
 
 
 class EstadoRede(BaseModel):
