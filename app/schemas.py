@@ -10,13 +10,13 @@ class PedidoCampanha(BaseModel):
         min_length=2,
         max_length=120,
         validation_alias=AliasChoices("nicho", "nicho_negocio"),
-        examples=["bar e petiscaria"],
+        examples=["loja de roupas"],
     )
     produto: str = Field(
         min_length=2,
         max_length=4000,
         validation_alias=AliasChoices("produto", "produto_servico"),
-        examples=["combo de cerveja gelada no happy hour"],
+        examples=["produto da semana com entrega no mesmo dia"],
     )
     acao: Literal["texto", "foto"] = "texto"
     foto_base64: str = Field(default="", max_length=6_000_000)
@@ -98,8 +98,8 @@ class ItemFotoMemoria(BaseModel):
     altura: int = 0
     descricao: str = ""
     tags: str = ""
-    tipo: str = "outro"
-    papel: str = "base"
+    tipo: str = "auto"
+    papel: str = "auto"
     usar_em_posts: bool = True
 
 
@@ -113,8 +113,8 @@ class RespostaFotosMemoria(BaseModel):
 class PedidoFotoMemoria(BaseModel):
     descricao: str = Field(default="", max_length=1500)
     tags: str = Field(default="", max_length=500)
-    tipo: str = Field(default="outro", max_length=30)
-    papel: str = Field(default="base", max_length=20)
+    tipo: str = Field(default="auto", max_length=30)
+    papel: str = Field(default="auto", max_length=20)
     usar_em_posts: bool = True
 
 

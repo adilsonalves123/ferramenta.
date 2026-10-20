@@ -21,16 +21,35 @@ from app.services.imagens import achar_variante, guardar_figura, url_memoria
 from app.services.openai_campanha import cliente_openai
 
 LIMITE_FOTOS = 60
-TIPOS = ("print do app", "prato", "fachada", "ambiente", "equipe", "produto", "outro")
-TIPOS_LUGAR = {"prato", "fachada", "ambiente", "equipe", "produto"}
-PAPEIS = ("postar", "base", "estilo")
-NOMES_PAPEIS = {"postar": "pode postar como está", "base": "base para editar", "estilo": "só inspiração de estilo"}
+TIPOS = ("auto", "produto", "servico", "local", "pessoas", "bastidores", "captura", "arte", "outro")
+TIPOS_IA = ("produto", "servico", "local", "pessoas", "bastidores", "captura", "arte", "outro")
+NOMES_TIPOS = {
+    "auto": "não definido",
+    "produto": "produto",
+    "servico": "serviço",
+    "local": "local / ambiente",
+    "pessoas": "pessoas / equipe",
+    "bastidores": "bastidores",
+    "captura": "captura de tela",
+    "arte": "logo ou arte",
+    "outro": "outro",
+}
+TIPOS_ANTIGOS = {"print do app": "captura", "prato": "produto", "fachada": "local", "ambiente": "local", "equipe": "pessoas"}
+TIPOS_LUGAR = {"auto", "produto", "servico", "local", "pessoas", "bastidores"}
+CAPTURA = re.compile(r"\b(captura de tela|print de tela|screenshot)\b", re.IGNORECASE)
+PAPEIS = ("auto", "postar", "base", "estilo")
+NOMES_PAPEIS = {
+    "auto": "a IA decide (postar como está, editar ou só estilo)",
+    "postar": "pode postar como está",
+    "base": "base para editar",
+    "estilo": "só inspiração de estilo",
+}
 CTA_STORY = "Responda QUERO"
 DIAS_SEMANA = ("segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo")
 
 CAMPOS_FATOS = (
-    ("oferta", "O que vende ou faz"),
-    ("itens", "Produtos, pratos ou funcionalidades (com dia e horário quando houver)"),
+    ("oferta", "O que você vende ou faz"),
+    ("itens", "Produtos ou serviços (com dia e horário quando houver)"),
     ("horarios", "Horários de funcionamento"),
     ("diferenciais", "Diferenciais"),
     ("promocoes", "Promoções fixas"),
@@ -41,12 +60,12 @@ CAMPOS_FATOS = (
 REGRAS_MEMORIA = """
 
 Memória da marca: leia a MEMÓRIA DA MARCA antes de escrever. O dono escreveu esses fatos e é a única fonte de verdade.
-- Use só fatos da memória e da ficha. Não invente produto, prato, funcionalidade, preço, desconto, horário, endereço, telefone nem depoimento.
+- Use só fatos da memória e da ficha. Não invente produto, serviço, preço, desconto, horário, endereço, telefone nem depoimento.
 - Não copie as descrições ao pé da letra: transforme o fato em benefício concreto para o cliente, com palavras suas. Nada genérico ("qualidade e excelência", "o melhor da cidade").
-- angulo: diga em poucas palavras o ângulo concreto do post (um item, uma funcionalidade, um diferencial, um momento do dia). Varie o ângulo entre os posts e em relação aos posts recentes.
-- Itens com dia ou horário (ex.: "Feijoada — sábado") só aparecem como oferta do dia no dia certo do post. Em outro dia não prometa esse item para hoje.
+- angulo: diga em poucas palavras o ângulo concreto do post (um produto, um serviço, um diferencial, um momento do dia). Varie o ângulo entre os posts e em relação aos posts recentes.
+- Itens com dia ou horário (ex.: "Produto da semana — sábado") só aparecem como oferta do dia no dia certo do post. Em outro dia não prometa esse item para hoje.
 - A foto do post sai do plano_arte (foto_base_id e fotos_estilo_ids). Se o post fala de algo que tem foto na memória, use essa foto como base. Use só ids da lista.
-- Se a foto escolhida for print do app, a legenda explica o que aquela tela resolve no dia a dia, sem citar valores de exemplo da tela.
+- Se a foto escolhida for captura de tela, a legenda explica o que aparece nela e por que importa para o cliente, sem citar valores de exemplo da tela.
 - Respeite o "Tom de voz" e tudo que está em "Nunca dizer"."""
 
 CAMPOS_SEM_MEMORIA = """
@@ -58,23 +77,54 @@ CAMPO_GANCHO = """
 gancho: de 3 a 7 palavras em português, fortes e claras, para escrever em cima da imagem. Sem hashtag, sem emoji, sem preço inventado."""
 
 SISTEMA_VISAO = """Você descreve uma foto que o dono de um negócio guardou na memória da marca. Uma IA de posts vai usar a descrição depois. Português do Brasil.
-descricao: 2 ou 3 frases concretas sobre o que aparece.
-- Print de tela de aplicativo ou site: diga qual tela ou funcionalidade é (leia títulos, botões e rótulos visíveis) e qual problema do dia a dia do negócio ela resolve.
-- Prato, bebida ou produto: o que é e como está servido.
-- Lugar: fachada, salão, balcão, mesas, luz, clima.
-- Pessoas: o que estão fazendo, sem inventar nome.
-Descreva só o que está visível na imagem. O texto sobre a marca serve apenas para entender o assunto; nunca use esse texto para inventar tela, objeto, pessoa ou funcionalidade que não aparece.
+descricao: 2 ou 3 frases concretas e objetivas sobre o que aparece.
+- Descreva só o que está visível: o assunto principal, o lugar, as pessoas (o que estão fazendo, sem inventar nome), as cores, a luz e o enquadramento.
+- Não suponha o ramo do negócio nem para que a coisa serve se isso não estiver claro na imagem.
+- Texto legível (placa, embalagem, cartaz, tela): diga do que se trata, sem copiar valores em dinheiro.
+- Captura de tela: diga qual tela ou página é, pelos títulos e rótulos visíveis.
+O texto sobre a marca serve apenas para entender o assunto; nunca use esse texto para inventar objeto, pessoa ou detalhe que não aparece.
 Se a imagem for lisa, borrada, escura ou sem nada reconhecível, diga isso em uma frase (ex.: "Imagem de cor laranja lisa, sem objetos nem texto.") e use tipo outro.
-Só use tipo print do app se a imagem for mesmo uma captura de tela com interface visível.
-Valores e nomes de exemplo numa tela não são preço nem cliente real: não repita valores em dinheiro.
+Valores e nomes de exemplo numa tela ou etiqueta não são preço nem cliente real: não repita valores em dinheiro.
 tags: de 3 a 8 palavras-chave curtas, em minúsculas, só do que aparece.
-tipo: print do app, prato, fachada, ambiente, equipe, produto ou outro."""
+tipo, um destes:
+- produto: um item à venda em destaque;
+- servico: um serviço sendo feito ou o resultado dele;
+- local: fachada ou ambiente, sem foco em pessoas;
+- pessoas: pessoas ou equipe em foco;
+- bastidores: preparo, rotina de trabalho, ferramentas ou materiais;
+- captura: só se a imagem for mesmo uma captura de tela com interface visível;
+- arte: logo, cartaz ou arte gráfica pronta;
+- outro: quando nada disso combina."""
 
 
 class AnaliseFoto(BaseModel):
     descricao: str
     tags: list[str]
-    tipo: Literal["print do app", "prato", "fachada", "ambiente", "equipe", "produto", "outro"]
+    tipo: Literal["produto", "servico", "local", "pessoas", "bastidores", "captura", "arte", "outro"]
+
+
+def normalizar_tipo(valor: str | None) -> str:
+    """Tipo guardado (inclusive os nomes antigos) no tipo atual; vazio ou desconhecido vira 'auto'."""
+    tipo = (valor or "").strip().lower()
+    tipo = TIPOS_ANTIGOS.get(tipo, tipo)
+    return tipo if tipo in TIPOS else "auto"
+
+
+def normalizar_papel(valor: str | None) -> str:
+    papel = (valor or "").strip().lower()
+    return papel if papel in PAPEIS else "auto"
+
+
+def tipo_efetivo(tipo: str | None, descricao: str | None = "", tags: str | None = "") -> str:
+    """O tipo que a IA usa: em 'auto', reconhece captura de tela pela descrição."""
+    atual = normalizar_tipo(tipo)
+    if atual == "auto" and CAPTURA.search(f"{descricao or ''} {tags or ''}"):
+        return "captura"
+    return atual
+
+
+def e_captura(foto) -> bool:
+    return tipo_efetivo(foto.tipo, foto.descricao, foto.tags) == "captura"
 
 
 @dataclass
@@ -192,7 +242,7 @@ async def analisar_foto(jpeg: bytes, ficha: Ficha | None = None) -> AnaliseFoto:
 def _aplicar_analise(foto: MemoriaFoto, analise: AnaliseFoto) -> None:
     foto.descricao = analise.descricao.strip()[:1500]
     foto.tags = ", ".join(tag.strip().lower() for tag in analise.tags if tag.strip())[:500]
-    foto.tipo = analise.tipo if analise.tipo in TIPOS else "outro"
+    foto.tipo = analise.tipo if analise.tipo in TIPOS_IA else "outro"
 
 
 AVISO_SEM_LEITURA = "A foto ficou guardada, mas a IA não conseguiu ler agora. Escreva a descrição ou clique em Ler de novo."
@@ -203,15 +253,21 @@ async def adicionar_foto(session: AsyncSession, ficha: Ficha, dados: bytes) -> t
     if await contar_fotos(session, ficha.id or 0) >= LIMITE_FOTOS:
         raise ValueError(f"Esta marca já tem {LIMITE_FOTOS} fotos na memória. Apague alguma para enviar outra.")
     jpeg, miniatura, largura, altura = await asyncio.to_thread(arte.normalizar_memoria, dados)
-    foto = MemoriaFoto(marca_id=ficha.id or 0, arquivo=jpeg, miniatura=miniatura, largura=largura, altura=altura)
+    foto = MemoriaFoto(
+        marca_id=ficha.id or 0,
+        arquivo=jpeg,
+        miniatura=miniatura,
+        largura=largura,
+        altura=altura,
+        tipo="auto",
+        papel="auto",
+    )
     session.add(foto)
     await session.commit()
     await session.refresh(foto)
     aviso = ""
     try:
         _aplicar_analise(foto, await analisar_foto(jpeg, ficha))
-        if foto.tipo == "print do app":
-            foto.papel = "postar"
         await session.commit()
     except Exception:
         await session.rollback()
@@ -263,18 +319,19 @@ async def montar_contexto(session: AsyncSession, ficha: Ficha | None) -> Context
     for foto in fotos:
         descricao = re.sub(r"\s+", " ", foto.descricao or "").strip()[:260] or "(sem descrição)"
         tags = f" (tags: {foto.tags[:120]})" if (foto.tags or "").strip() else ""
-        papel = foto.papel if foto.papel in PAPEIS else "base"
-        if foto.tipo == "print do app" and papel == "base":
+        tipo = tipo_efetivo(foto.tipo, foto.descricao, foto.tags)
+        papel = normalizar_papel(foto.papel)
+        if tipo == "captura" and papel in ("base", "auto"):
             papel = "postar"
-        contexto.tipos[foto.id] = foto.tipo
+        contexto.tipos[foto.id] = tipo
         contexto.papeis[foto.id] = papel
         if papel == "estilo":
-            linhas_estilo.append(f"[{foto.id}] {foto.tipo}: {descricao}{tags}")
+            linhas_estilo.append(f"[{foto.id}] {NOMES_TIPOS[tipo]}: {descricao}{tags}")
             contexto.estilo.add(foto.id)
             continue
-        linhas_fotos.append(f"[{foto.id}] {foto.tipo} · {NOMES_PAPEIS[papel]}: {descricao}{tags}")
+        linhas_fotos.append(f"[{foto.id}] {NOMES_TIPOS[tipo]} · {NOMES_PAPEIS[papel]}: {descricao}{tags}")
         contexto.usaveis.add(foto.id)
-        if foto.tipo in TIPOS_LUGAR:
+        if tipo in TIPOS_LUGAR:
             contexto.lugar.add(foto.id)
     if linhas_fotos:
         partes.append("FOTOS DA MEMÓRIA (id, tipo · papel, o que mostra):\n" + "\n".join(linhas_fotos))
@@ -343,13 +400,13 @@ def _rodape(ficha: Ficha | None) -> str:
 
 
 async def imagem_da_memoria(session: AsyncSession, foto_id: int, gancho: str, ficha: Ficha | None) -> str:
-    """Foto do post feita da foto real (sem IA, sem custo). Print do app vira cartão com a frase no alto."""
+    """Foto do post feita da foto real (sem IA, sem custo). Captura de tela vira cartão com a frase no alto."""
     foto = await session.get(MemoriaFoto, foto_id)
     if foto is None or (ficha is not None and foto.marca_id != ficha.id):
         raise RuntimeError("Essa foto saiu da memória da marca. Escolha outra.")
     gancho = limpar_gancho(gancho)
     rodape = _rodape(ficha)
-    cartao = foto.tipo == "print do app"
+    cartao = e_captura(foto)
     chave = hashlib.sha1(f"{gancho}|{rodape}".encode()).hexdigest()[:16] if cartao else "foto"
     variante = f"memoria:{foto_id}:{chave}"
     pronta = await achar_variante(foto_id, variante)
@@ -365,6 +422,10 @@ async def imagem_da_memoria(session: AsyncSession, foto_id: int, gancho: str, fi
     return await guardar_figura(figura, foto.marca_id, "memoria", foto_id, variante)
 
 
+def _de_lugar(foto) -> bool:
+    return tipo_efetivo(foto.tipo, foto.descricao, foto.tags) in TIPOS_LUGAR
+
+
 def _palavras(texto: str) -> set[str]:
     sem = "".join(c for c in unicodedata.normalize("NFKD", (texto or "").lower()) if not unicodedata.combining(c))
     return {palavra for palavra in re.findall(r"[a-z0-9]{4,}", sem)}
@@ -378,9 +439,9 @@ async def bytes_referencia(
         return None
     if referencia_id:
         foto = await session.get(MemoriaFoto, referencia_id)
-        if foto is not None and foto.marca_id == marca_id and foto.usar_em_posts and foto.tipo in TIPOS_LUGAR:
+        if foto is not None and foto.marca_id == marca_id and foto.usar_em_posts and _de_lugar(foto):
             return foto.arquivo
-    fotos = [foto for foto in await listar_fotos(session, marca_id, so_usaveis=True) if foto.tipo in TIPOS_LUGAR]
+    fotos = [foto for foto in await listar_fotos(session, marca_id, so_usaveis=True) if _de_lugar(foto)]
     alvo = _palavras(texto)
     melhor, pontos = None, 1
     for foto in fotos:
@@ -394,12 +455,14 @@ async def bytes_referencia(
 
 
 async def base_do_story(session: AsyncSession, foto_id: int | None) -> str:
-    """Para print do app, o Story usa o print original (o cartão do feed já tem a frase)."""
+    """Para captura de tela, o Story usa a imagem original (o cartão do feed já tem a frase)."""
     if not foto_id:
         return ""
-    resultado = await session.exec(select(MemoriaFoto.tipo).where(MemoriaFoto.id == foto_id))
-    tipo = resultado.first()
-    return url_memoria(foto_id) if tipo == "print do app" else ""
+    resultado = await session.exec(
+        select(MemoriaFoto.tipo, MemoriaFoto.descricao, MemoriaFoto.tags).where(MemoriaFoto.id == foto_id)
+    )
+    linha = resultado.first()
+    return url_memoria(foto_id) if linha and tipo_efetivo(*linha) == "captura" else ""
 
 
 async def miniaturas(session: AsyncSession, ids: set[int]) -> set[int]:

@@ -1,4 +1,4 @@
-"""Desenho das fotos com o Pillow: JPEG aceito pelo Instagram, cartão do print, Story e marca d'água."""
+"""Desenho das fotos com o Pillow: JPEG aceito pelo Instagram, cartão da captura de tela, Story e marca d'água."""
 
 import io
 import unicodedata
@@ -215,7 +215,7 @@ def _cor_media(imagem: Image.Image) -> tuple[int, int, int]:
 
 
 def cartao_print(imagem: Image.Image, gancho: str, rodape: str) -> Image.Image:
-    """Feed 4:5 do print do app: frase no alto, print no meio sobre fundo desfocado, site embaixo."""
+    """Feed 4:5 da captura de tela: frase no alto, imagem no meio sobre fundo desfocado, site embaixo."""
     largura, altura = CARTAO
     fundo = fundo_desfocado(imagem, largura, altura, brilho=0.45)
     tinta = Image.new("RGB", (largura, altura), _cor_media(imagem))

@@ -175,7 +175,7 @@ async def montar_resumo(session: AsyncSession, marca_id: int) -> dict:
     ident = (marca.id or 0) if marca else 0
     resposta: dict = {
         "marca_id": ident,
-        "nome": ((marca.nome if marca else "") or "").strip() or "Risca Aí",
+        "nome": ((marca.nome if marca else "") or "").strip() or "Minha marca",
         "abrangencia": alcance_da_marca(marca) if marca else "cidade",
         "local": local_da_marca(marca) if marca else "",
         "cidade": cidade_da_marca(marca) if marca else "",

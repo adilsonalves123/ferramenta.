@@ -70,24 +70,24 @@ def _prompt_foto(pedido: PedidoCampanha, tem_referencia: bool) -> str:
         cena = (
             "Fotografia realista para post de rede social, luz natural do lugar. "
             f"{brief} "
-            "Sem texto legível, sem letras, sem números na imagem, sem logotipo, sem marca d'água, sem menu de aplicativo com palavras."
+            "Sem texto legível, sem letras, sem números na imagem, sem logotipo, sem marca d'água, sem tela com palavras."
         )
         if tem_referencia:
             return (
-                "Use a foto enviada como o lugar real da marca. Conserve o ambiente, as cores, a louça e o estilo. "
+                "Use a foto enviada como o lugar real da marca. Conserve o ambiente, as cores, os objetos e o estilo. "
                 + cena
             )
         return cena
     if tem_referencia:
         return (
-            "Use a foto enviada como a cena real. Conserve o produto, o balcão, as cores e o lugar. "
+            "Use a foto enviada como a cena real. Conserve o produto, os objetos, as cores e o lugar. "
             "Ajuste só a luz e o enquadramento para um post quadrado. "
             "Não troque o produto, não invente pessoa, não adicione texto, letra, logotipo nem marca d'água. "
             f"Negócio: {nicho}. O que deve continuar em destaque: {produto}."
         )
     return (
-        "Fotografia realista de comida e bebida, luz natural, câmera perto do produto. "
-        f"Ambiente de {nicho}, com o balcão ao fundo levemente desfocado. "
+        "Fotografia realista, luz natural, câmera perto do assunto principal. "
+        f"Ambiente de {nicho}, com o fundo levemente desfocado. "
         f"Assunto único: {produto}. "
         "Sem pessoas, sem mãos, sem texto, sem letras, sem logotipo, sem marca d'água."
     )

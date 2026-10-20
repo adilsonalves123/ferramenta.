@@ -56,31 +56,31 @@ def rotulo_clima(sinal: str, numero: int | None, perfil: Perfil, data: date, hoj
     if sinal == "calor":
         graus = f" ({numero}°C)" if numero is not None else ""
         if chave == "fornecedor":
-            return f"Calor {de}{graus}: bar com estoque gelado"
+            return f"Calor {de}{graus}: dica para seus clientes"
         if chave == "casa":
             return f"{perfil.bebida or 'Algo gelado'} para o calor {de}{graus}"
         return f"Post para o calor {de}{graus}"
     if sinal == "frio":
         if chave == "fornecedor":
-            return f"Frio {de}: petisco quente vende mais"
+            return f"Frio {de}: dica para seus clientes"
         if chave == "casa":
-            return f"{'Petisco' if perfil.bar else 'Prato'} quentinho para o frio {de}"
+            return f"Algo quentinho para o frio {de}"
         return f"Aconchego para o frio {de}"
     if chave == "fornecedor":
-        return f"Chuva {na}: dica para o bar não esvaziar"
+        return f"Chuva {na}: dica para seus clientes"
     if perfil.delivery:
         return f"Chuva {na}: chame para o delivery"
     if chave == "casa":
-        return f"Chuva {na}: aconchego no salão"
+        return f"Chuva {na}: venha se aconchegar"
     return f"Chuva {na}: post de aconchego"
 
 
 def rotulo_evento(tipo: str, nome: str, data: date, perfil: Perfil) -> str:
     if tipo != "feriado":
-        sufixo = ": ideia para o bar" if tipo == "data" and chave_perfil(perfil) == "fornecedor" else ""
+        sufixo = ": ideia para seus clientes" if tipo == "data" and chave_perfil(perfil) == "fornecedor" else ""
         return f"{nome} ({_dm(data)}){sufixo}"
     titulo = nome if sem_feriado(nome) else f"Feriado de {nome}"
-    acao = "prepare o bar" if chave_perfil(perfil) == "fornecedor" else "avise se abre"
+    acao = "prepare seus clientes" if chave_perfil(perfil) == "fornecedor" else "avise se abre"
     return f"{titulo} ({_dm(data)}): {acao}"
 
 
@@ -188,7 +188,7 @@ def ideia_dos_resultados(pubs: list[Publicacao], hoje: date, aviso: str) -> dict
 
 
 def ideia_de_convite(marca: Ficha, perfil: Perfil, hoje: date, aviso: str) -> dict:
-    """Reserva quando não há data nem resultado: o próximo dia forte para bar (sexta, ou hoje se for sexta ou sábado)."""
+    """Reserva quando não há data nem resultado: o próximo dia de mais movimento (sexta, ou hoje se for sexta ou sábado)."""
     alvo = hoje if hoje.weekday() in (4, 5) else hoje + timedelta(days=(4 - hoje.weekday()) % 7)
     quando = f"{no_dia(alvo)} {_dm(alvo)}"
     chave = chave_perfil(perfil)
@@ -196,10 +196,10 @@ def ideia_de_convite(marca: Ficha, perfil: Perfil, hoje: date, aviso: str) -> di
         return {
             "tipo": "convite",
             "rotulo": f"Dica para o movimento de {SEMANA[alvo.weekday()]} ({_dm(alvo)})",
-            "motivo": f"Sexta e sábado são os dias mais cheios do bar. Dica prática para o dono se preparar para {quando}.",
+            "motivo": f"O fim de semana costuma ter mais movimento. Dica prática para seus clientes se prepararem para {quando}.",
             "pedido": (
-                f"Crie um post com uma dica prática para o dono de bar se organizar para o movimento {quando} "
-                f"(caixa, estoque, mesas), mostrando como a marca ajuda. {aviso}"
+                f"Crie um post com uma dica prática para os clientes da marca se organizarem para o movimento {quando}, "
+                f"mostrando como a marca ajuda. {aviso}"
             ),
             "tema": "dica",
             "dia": alvo.isoformat(),
@@ -214,7 +214,7 @@ def ideia_de_convite(marca: Ficha, perfil: Perfil, hoje: date, aviso: str) -> di
             "rotulo": "Convite para hoje à noite" if alvo == hoje else f"Convite para {artigo} {SEMANA[alvo.weekday()]} ({_dm(alvo)})",
             "motivo": f"Sem data especial nem resultado para comparar ainda. Convite para {quando}, dia forte para a casa.",
             "pedido": (
-                f"Crie um post convidando os clientes{onde} para vir {quando}, destacando um produto ou prato real da casa. "
+                f"Crie um post convidando os clientes{onde} para vir {quando}, destacando um produto ou serviço real da casa. "
                 f"Se precisar de preço, deixe [preço] para eu completar. {aviso}"
             ),
             "tema": "oferta",

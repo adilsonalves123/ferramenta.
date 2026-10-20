@@ -85,7 +85,7 @@ def ler_pagina(url: str) -> str:
             with abridor.open(pedido, timeout=12) as resposta:
                 tipo = (resposta.headers.get("Content-Type") or "").lower()
                 if tipo and "html" not in tipo and "text/" not in tipo:
-                    raise ValueError("Esse link não é uma página. Cole o endereço do app ou do site.")
+                    raise ValueError("Esse link não é uma página. Cole o endereço do seu site.")
                 dados = resposta.read(400_000)
         except _Redirecionou as erro:
             if not erro.url:
@@ -104,6 +104,6 @@ def ler_pagina(url: str) -> str:
             raise ValueError("A página demorou demais para abrir.") from erro
         texto = extrair_texto(dados.decode("utf-8", errors="replace"))
         if len(texto) < 40:
-            raise ValueError("A página não trouxe texto. Escreva o que o app faz em Produto ou serviço.")
+            raise ValueError("A página não trouxe texto. Escreva o que a marca faz em Produto ou serviço.")
         return texto
     raise ValueError("O link ficou redirecionando.")

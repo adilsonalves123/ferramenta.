@@ -59,7 +59,7 @@ CHUVA_FORTE = {
     "LIGHT_THUNDERSTORM_RAIN",
     "SCATTERED_THUNDERSTORMS",
 }
-# Peso de segunda a domingo: para bar, sexta e sábado contam mais, depois quinta e domingo.
+# Peso de segunda a domingo: sexta e sábado contam mais, depois quinta e domingo.
 PESO_DIA = [1, 1, 1, 2, 3, 3, 2]
 
 _feriados_ano: dict[int, list[tuple[date, str]]] = {}
@@ -295,12 +295,14 @@ def segmentos_da_marca(marca: Ficha) -> set[str]:
 
 
 def perfil_da_marca(marca: Ficha) -> Perfil:
-    """Diz o ângulo dos posts: casa que atende o cliente final ou empresa que vende para o dono de bar."""
+    """Diz o ângulo dos posts: casa que atende o cliente final ou empresa que vende para outros negócios."""
     texto = sem_acento(f"{marca.nome} {marca.publico} {marca.texto}")
     segmentos = segmentos_da_marca(marca)
     fornecedor = bool(
-        re.search(r"\b(sistema|software|aplicativo|plataforma|app)\b", texto)
-        and re.search(r"\bdonos? (de|do|da|dos|das) (bar|bares|adega|restaurante|petiscaria|lanchonete|boteco)", texto)
+        re.search(r"\b(sistema|software|aplicativo|plataforma|app|fornecedor|distribuidora|atacado)\b", texto)
+        and re.search(
+            r"\b(donos? (de|do|da|dos|das) \w+|para (empresas|negocios|lojistas|comerciantes|empreendedores))", texto
+        )
     )
     if re.search(r"\b(cervejas?|chopp?|chope|adega|boteco|botequim|bar|bares|pub)\b", texto):
         bebida = "Cerveja gelada"
@@ -472,7 +474,7 @@ def sinal_do_dia(dia: DiaClima) -> tuple[str, str] | None:
 
 
 def sinais_do_clima(dias: list[DiaClima]) -> list[tuple[DiaClima, str, str]]:
-    """Dias seguidos com o mesmo sinal viram uma sugestão só, no dia que mais pesa para bar (sexta e sábado primeiro)."""
+    """Dias seguidos com o mesmo sinal viram uma sugestão só, no dia de mais movimento (sexta e sábado primeiro)."""
     blocos: list[list[tuple[DiaClima, str, str]]] = []
     for dia in sorted(dias, key=lambda d: d.data):
         achado = sinal_do_dia(dia)
@@ -521,20 +523,20 @@ def chave_perfil(perfil: Perfil) -> str:
 
 ROTULO_TIPO = {"feriado": "Feriado", "data": "Data", "cidade": "Cidade"}
 ANGULO = {
-    ("calor", "fornecedor"): "dica para o dono de bar se preparar para o calor (bebida gelada no estoque, gelo, movimento maior), mostrando como a marca ajuda",
+    ("calor", "fornecedor"): "dica para os clientes da marca se prepararem para o calor e o movimento diferente, mostrando como a marca ajuda",
     ("calor", "geral"): "algo refrescante ligado ao que a marca faz",
-    ("frio", "fornecedor"): "dica para o dono de bar aproveitar o frio (petiscos e pratos quentes, caldos), mostrando como a marca ajuda",
-    ("frio", "casa"): "petisco ou prato quentinho e ambiente aconchegante",
+    ("frio", "fornecedor"): "dica para os clientes da marca aproveitarem o dia frio, mostrando como a marca ajuda",
+    ("frio", "casa"): "algo quentinho do que a casa oferece e ambiente aconchegante",
     ("frio", "geral"): "aconchego para o dia frio",
-    ("chuva", "fornecedor"): "dica para o dono de bar manter o movimento num dia de chuva, sem prometer resultado",
+    ("chuva", "fornecedor"): "dica para os clientes da marca manterem o movimento num dia de chuva, sem prometer resultado",
     ("chuva", "delivery"): "chamar para pedir no delivery e ficar em casa",
-    ("chuva", "casa"): "salão aconchegante, um bom lugar para esperar a chuva passar",
+    ("chuva", "casa"): "ambiente aconchegante, um bom lugar para esperar a chuva passar",
     ("chuva", "geral"): "conforto e aconchego no dia de chuva",
-    ("feriado", "fornecedor"): "dica para o dono de bar se preparar para o feriado (estoque, equipe, caixa)",
+    ("feriado", "fornecedor"): "dica para os clientes da marca se organizarem para o feriado (equipe, horário, atendimento)",
     ("feriado", "casa"): "avisar se a casa abre ou fecha no feriado; deixe [horário] para o dono completar",
     ("feriado", "geral"): "avisar se a marca atende no feriado; deixe [horário] para o dono completar",
-    ("data", "fornecedor"): "ideia para o dono de bar aproveitar a data (decoração, drink ou petisco temático), mostrando como a marca ajuda",
-    ("data", "casa"): "como a casa entra no clima da data, com um produto real do cardápio",
+    ("data", "fornecedor"): "ideia para os clientes da marca aproveitarem a data, mostrando como a marca ajuda",
+    ("data", "casa"): "como a casa entra no clima da data, com um produto real da memória da marca",
 }
 
 
@@ -544,7 +546,7 @@ def angulo(assunto: str, perfil: Perfil) -> str:
         chave = "delivery"
     if assunto == "calor" and chave == "casa":
         bebida = perfil.bebida.lower() if perfil.bebida else "algo gelado"
-        return f"{bebida} ou algo refrescante do cardápio para enfrentar o calor"
+        return f"{bebida} ou algo refrescante do que a casa oferece para enfrentar o calor"
     return ANGULO.get((assunto, chave), "")
 
 

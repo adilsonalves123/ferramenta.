@@ -120,7 +120,7 @@ ANIVERSARIO_CAPITAIS: dict[str, tuple[str, str]] = {
     "TO": ("Palmas", "05-20"),
 }
 
-# Datas comemorativas boas para bar, restaurante e pequeno comércio.
+# Datas comemorativas. "geral" vale para toda marca; os outros segmentos só entram quando a ficha da marca fala deles.
 # regra: "MM-DD" fixa; "pascoa+N"/"pascoa-N"; "N-dom-MM" (N-ésimo domingo do mês);
 # "1-sex-MM" (primeira sexta do mês); "black_friday".
 # antecipar: True quando vale um post de aviso alguns dias antes.

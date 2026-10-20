@@ -145,8 +145,8 @@ class MemoriaFoto(SQLModel, table=True):
     altura: int = Field(default=0)
     descricao: str = Field(default="", sa_type=Text)
     tags: str = Field(default="", sa_type=Text)
-    tipo: str = Field(default="outro", max_length=30)
-    papel: str = Field(default="base", max_length=20)
+    tipo: str = Field(default="auto", max_length=30)
+    papel: str = Field(default="auto", max_length=20)
     usar_em_posts: bool = Field(default=True)
     criado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
 

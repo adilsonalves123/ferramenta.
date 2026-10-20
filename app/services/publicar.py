@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import os
 import time
 import urllib.error
 import urllib.parse
@@ -19,6 +20,11 @@ from app.services.diretor import ler_plano
 VERSAO = "v22.0"
 ZONA = timezone(timedelta(hours=-3))
 REDES_PUBLICAVEIS = {"Instagram", "Facebook", "Ambos"}
+
+
+def publicacao_simulada() -> bool:
+    """Teste local: SIMULAR_PUBLICACAO=1 responde 'publicado' sem chamar a Meta nem gravar nada."""
+    return os.environ.get("SIMULAR_PUBLICACAO", "").strip() == "1"
 
 
 def meta_pronta() -> bool:
@@ -659,6 +665,8 @@ async def publicar_agora(
     faltam = await contas_faltando(session, alvos, marca)
     if faltam:
         return "falta_conta", " ".join(falta_conta(nome) for nome in faltam)
+    if publicacao_simulada():
+        return "publicado", "Simulação: nada foi enviado à Meta."
     site, marca_dagua = await dados_marca(session, marca)
     texto = com_site(texto_do_post(titulo, legenda), site)
     try:

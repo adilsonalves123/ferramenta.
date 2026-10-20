@@ -23,11 +23,7 @@ from app.services.openai_campanha import REGRAS_ALCOOL, cliente_openai, com_mode
 
 ZONA = timezone(timedelta(hours=-3))
 
-FICHA_PADRAO = """Risca Aí é um sistema para o dono de bar, adega, restaurante ou petiscaria controlar o caixa, o estoque, as mesas e os fiados. Ele acompanha a venda no celular. O site é https://www.riscaai.com.br
-
-Não invente preço, cidade, telefone, depoimento nem quantidade de clientes. Os preços de um cardápio de demonstração não são o preço do sistema.
-
-Cada publicação mostra um assunto visual diferente, nesta rotação: o caixa do bar aberto no celular em cima do balcão; o fiado organizado, sem papel solto; as mesas com a comanda; o estoque de bebidas; o dono olhando o movimento do salão; o balcão no fim da tarde. A foto é realista, sem texto, sem letra, sem número, sem logotipo e sem tela de aplicativo com palavras."""
+NOME_PADRAO = "Minha marca"
 
 SISTEMA = """Você monta publicações para Instagram e Facebook, em português do Brasil.
 Cada item precisa de titulo, legenda e cena.
@@ -56,13 +52,7 @@ async def listar_marcas(session: AsyncSession) -> list[Ficha]:
     resultado = await session.exec(select(Ficha).order_by(Ficha.id))
     marcas = list(resultado.all())
     if not marcas:
-        primeira = Ficha(
-            nome="Risca Aí",
-            publico="Donos de bar no Brasil",
-            site="https://www.riscaai.com.br",
-            marca_dagua="Risca Aí",
-            texto=FICHA_PADRAO,
-        )
+        primeira = Ficha(nome=NOME_PADRAO, publico="", site="", marca_dagua="", texto="")
         session.add(primeira)
         await session.commit()
         await session.refresh(primeira)
@@ -70,9 +60,7 @@ async def listar_marcas(session: AsyncSession) -> list[Ficha]:
     mudou = False
     for indice, marca in enumerate(marcas):
         if not (marca.nome or "").strip():
-            marca.nome = "Risca Aí" if indice == 0 else f"Marca {marca.id}"
-            if indice == 0 and not (marca.publico or "").strip():
-                marca.publico = "Donos de bar no Brasil"
+            marca.nome = NOME_PADRAO if indice == 0 else f"Marca {marca.id}"
             mudou = True
     if mudou:
         await session.commit()

@@ -21,7 +21,7 @@ from app.services.imagens import (
     id_memoria_da_url,
     url_memoria,
 )
-from app.services.memoria import ContextoMemoria, limpar_gancho
+from app.services.memoria import ContextoMemoria, e_captura, limpar_gancho
 from app.services.openai_campanha import com_moderacao, fala_de_alcool
 
 log = logging.getLogger("uvicorn.error")
@@ -55,29 +55,29 @@ CAMPOS_GUARDADOS = (
 
 REGRAS_ARTE = """
 
-plano_arte: você também é o diretor de arte do post. A foto da memória é material criativo: pode sair como está, ou servir de base para a IA de imagem melhorar (fundo, luz, gelo, respingo, mesa) mantendo o produto real idêntico.
+plano_arte: você também é o diretor de arte do post. A foto da memória é material criativo: pode sair como está, ou servir de base para a IA de imagem melhorar (fundo, luz, cenário) mantendo o assunto real idêntico.
 - ideia: 1 frase com a ideia criativa da peça.
-- foto_base_id: id de uma foto da memória com papel "pode postar como está" ou "base para editar" que mostra o assunto do post. Nunca uma foto de estilo. Se nenhuma combina, null (aí a foto é criada do zero).
-- fotos_estilo_ids: até 2 ids de FOTOS DE ESTILO (ou do lugar) que inspiram luz, cores e enquadramento. Pode ser [].
-- edicao_foto: instrução curta para a IA de imagem, dizendo o que mudar na foto base mantendo o produto real idêntico (ex.: "fundo de balcão de bar à noite com luzes desfocadas, gelo brilhando, gotas no copo"). Escreva "nenhuma" se a foto for "pode postar como está", se for print de tela, ou se não tiver foto base e a cena bastar.
+- foto_base_id: id de uma foto da memória com papel "pode postar como está", "base para editar" ou "a IA decide" que mostra o assunto do post. Nunca uma foto de estilo. Se nenhuma combina, null (aí a foto é criada do zero).
+- fotos_estilo_ids: até 2 ids de FOTOS DE ESTILO (ou de fotos do lugar, ou "a IA decide") que inspiram luz, cores e enquadramento. Pode ser [].
+- edicao_foto: instrução curta para a IA de imagem, dizendo o que mudar na foto base mantendo o assunto real idêntico (ex.: "fundo limpo e claro, luz suave de fim de tarde, mais profundidade"). Escreva "nenhuma" se a foto for "pode postar como está", se for captura de tela, ou se não tiver foto base e a cena bastar. Em foto "a IA decide", escreva "nenhuma" se ela já está boa para postar; senão diga o que melhorar.
 - modelo, um destes:
   faixa: faixa inclinada com o título em cima da foto (oferta fixa, dia especial, evento);
   selo: selo redondo grande + título embaixo (novidade, dia da semana, preço que está na memória);
-  destaque: degradê embaixo com título, subtítulo e chamada (produto, prato, bastidor);
-  antes_depois: a dor do cliente antes x a solução depois (sistema, serviço, app);
-  tela_app: print do app dentro de um celular (funcionalidade de app ou site);
+  destaque: degradê embaixo com título, subtítulo e chamada (produto, serviço, bastidores);
+  antes_depois: o problema do cliente antes x a solução depois;
+  tela_app: imagem em destaque, inteira dentro de uma moldura (captura de tela, peça pronta ou produto);
   story_chamada: foto cheia, título no alto e chamada grande embaixo (convite direto, "Responda QUERO").
 - titulo_arte: de 2 a 6 palavras, forte, para ler de longe. Sem emoji, sem hashtag.
 - subtitulo_arte: até 8 palavras, ou "".
 - selo: palavra curta para o selo ("Hoje", "Novo", "Sábado") ou um preço SÓ se o preço está escrito na memória. Senão "".
-- chamada: chamada para ação de até 4 palavras ("Peça já", "Reserve sua mesa", "Chame no direct", "Responda QUERO").
+- chamada: chamada para ação de até 4 palavras ("Peça já", "Saiba mais", "Chame no direct", "Responda QUERO").
 - antes: só no modelo antes_depois, a dor do cliente antes, até 8 palavras. Nos outros modelos, "".
 - cor: "destaque" para oferta e novidade (chama atenção) ou "principal" para post institucional.
 - aviso: "" ou uma frase curta explicando um ajuste que você fez no pedido (ex.: por causa do CONAR).
 Regras do plano_arte:
 - Use só fatos da memória e do pedido. Não invente preço, desconto, produto, dia nem horário.
 - Oferta e promoção só se estiverem em "Promoções fixas" ou se o pedido pedir com todas as letras.
-- Print de tela: modelo tela_app ou antes_depois, edicao_foto "nenhuma".
+- Captura de tela: modelo tela_app ou antes_depois, edicao_foto "nenhuma".
 - Varie o modelo e o ângulo em relação às últimas artes da marca."""
 
 REGRAS_ARTE_ALCOOL = """
@@ -109,10 +109,10 @@ DIAS = {
     "domingo": "domingo",
 }
 COMPOSICAO = {
-    "faixa": "Keep the top third of the frame calm and uncluttered (it will hold a text banner); the product sits in the lower two thirds.",
-    "story_chamada": "Keep the top third and the bottom fifth calm and uncluttered (they will hold text); the product sits in the middle.",
-    "selo": "Keep the top-right corner and the bottom quarter calm and uncluttered (they will hold a badge and text); the product slightly left of center.",
-    "destaque": "Keep the bottom third calm and darker (it will hold text); the product sits in the upper two thirds.",
+    "faixa": "Keep the top third of the frame calm and uncluttered (it will hold a text banner); the main subject sits in the lower two thirds.",
+    "story_chamada": "Keep the top third and the bottom fifth calm and uncluttered (they will hold text); the main subject sits in the middle.",
+    "selo": "Keep the top-right corner and the bottom quarter calm and uncluttered (they will hold a badge and text); the main subject slightly left of center.",
+    "destaque": "Keep the bottom third calm and darker (it will hold text); the main subject sits in the upper two thirds.",
 }
 
 
@@ -262,11 +262,12 @@ def validar_plano(
     estilos: list[int] = []
     for valor in dados.get("fotos_estilo_ids") or []:
         ident = _inteiro(valor)
-        if ident and ident != base and ident not in estilos and (ident in contexto.estilo or ident in contexto.lugar):
+        livre = contexto.papeis.get(ident) == "auto" and contexto.tipos.get(ident) != "captura"
+        if ident and ident != base and ident not in estilos and (ident in contexto.estilo or ident in contexto.lugar or livre):
             estilos.append(ident)
     plano["foto_base_id"] = base
     plano["fotos_estilo_ids"] = estilos[:2]
-    plano["tela_app"] = bool(base) and contexto.tipos.get(base) == "print do app"
+    plano["tela_app"] = bool(base) and contexto.tipos.get(base) == "captura"
     if plano["tela_app"]:
         plano["edicao_foto"] = NENHUMA
         if plano["modelo"] not in ("tela_app", "antes_depois"):
@@ -343,7 +344,7 @@ async def _fotos_estilo(session: AsyncSession, plano: dict, marca_id: int) -> li
     fotos = []
     for ident in plano.get("fotos_estilo_ids") or []:
         foto = await _foto_da_marca(session, ident, marca_id)
-        if foto is not None and foto.tipo != "print do app":
+        if foto is not None and not e_captura(foto):
             fotos.append(foto.arquivo)
     return fotos
 
@@ -354,11 +355,11 @@ def prompt_edicao(plano: dict, com_estilo: bool) -> str:
         edicao = "a cleaner, more attractive background and professional lighting"
     partes = [
         "Edit this real photo of the business into a premium Instagram photo.",
-        "KEEP THE REAL PRODUCT IDENTICAL: same shape, size, colors, glass or plate, garnish, plating, label and branding. "
-        "Do not replace, redraw, restyle or add another product.",
+        "KEEP THE REAL SUBJECT IDENTICAL: same shape, size, colors, materials, details, packaging, label and branding. "
+        "Do not replace, redraw, restyle or add another product or object.",
         f"What to change: {edicao}.",
-        "Photographic realism, appetizing professional lighting, sharp focus on the product, natural depth of field.",
-        COMPOSICAO.get(plano.get("modelo", ""), "Product centered with breathing room around it."),
+        "Photographic realism, attractive professional lighting, sharp focus on the main subject, natural depth of field.",
+        COMPOSICAO.get(plano.get("modelo", ""), "Main subject centered with breathing room around it."),
         "No text, no letters, no numbers, no logos, no watermark, no frame. Square image.",
     ]
     if com_estilo:
@@ -374,7 +375,7 @@ def prompt_criacao(plano: dict, cena: str, com_estilo: bool) -> str:
     assunto = (cena or plano.get("ideia") or plano.get("titulo_arte") or "the business").strip()[:600]
     partes = [
         f"Realistic photograph for an Instagram post: {assunto}.",
-        "Appetizing professional lighting, sharp focus on the main subject, natural depth of field.",
+        "Attractive professional lighting, sharp focus on the main subject, natural depth of field.",
         COMPOSICAO.get(plano.get("modelo", ""), "Main subject centered with breathing room around it."),
         "No text, no letters, no numbers, no logos, no watermark, no screens with words. Square image.",
     ]
@@ -390,7 +391,7 @@ def prompt_criacao(plano: dict, cena: str, com_estilo: bool) -> str:
 
 
 def _sem_edicao(foto: MemoriaFoto, plano: dict, forcar_ia: bool) -> bool:
-    if foto.tipo == "print do app":
+    if e_captura(foto):
         return True
     if forcar_ia:
         return False

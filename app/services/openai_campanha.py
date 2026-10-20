@@ -25,7 +25,7 @@ Regras para bebida alcoólica (CONAR):
 CENA_ALCOOL = "\nSe aparecer bebida alcoólica, ninguém está bebendo nem levando o copo à boca, e não aparece menor de idade."
 
 PALAVRAS_ALCOOL = re.compile(
-    r"\b(bebidas?|cervejas?|chopps?|chopes?|drinks?|drinques?|cacha[cç]as?|caipirinhas?|caipiroskas?|vinhos?|"
+    r"\b(bebidas? alco[oó]licas?|cervejas?|chopps?|chopes?|drinks?|drinques?|cacha[cç]as?|caipirinhas?|caipiroskas?|vinhos?|"
     r"whiske?y|vodkas?|gin|adegas?|long necks?|happy hour|destilados?)\b",
     re.IGNORECASE,
 )

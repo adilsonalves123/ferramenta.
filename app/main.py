@@ -142,7 +142,7 @@ def create_app() -> FastAPI:
                 "uf": "Escreva a sigla do estado com 2 letras, por exemplo SP.",
                 "texto": "As outras instruções precisam ter entre 20 e 8000 letras.",
                 "oferta": "O que você vende ou faz pode ter até 2000 letras.",
-                "itens": "A lista de produtos, pratos ou funcionalidades pode ter até 4000 letras.",
+                "itens": "A lista de produtos ou serviços pode ter até 4000 letras.",
                 "horarios": "Os horários podem ter até 1000 letras.",
                 "diferenciais": "Os diferenciais podem ter até 2000 letras.",
                 "promocoes": "As promoções fixas podem ter até 2000 letras.",
@@ -157,6 +157,19 @@ def create_app() -> FastAPI:
                 "descricao": "A descrição pode ter até 1500 letras.",
                 "tags": "As palavras-chave podem ter até 500 letras.",
             }.get(campo, "Não consegui salvar a foto. Confira os campos.")
+            return JSONResponse(status_code=422, content={"detail": detalhe})
+        if request.url.path in {"/agenda", "/publicar-agora"}:
+            detalhe = {
+                "dia": "Escolha o dia na agenda.",
+                "hora": "Escolha o horário.",
+                "rede": "Escolha onde publicar.",
+                "titulo": "Escreva a legenda na prévia (a primeira linha pode ter até 300 letras).",
+                "legenda": "Escreva a legenda na prévia.",
+                "imagem_url": "O link da foto é longo demais. Anexe a foto de novo.",
+                "video_url": "O link do vídeo é longo demais. Anexe o vídeo de novo.",
+                "tema": "Escolha o tipo de post de novo.",
+                "gancho": "A frase da arte ficou longa demais. Encurte e tente de novo.",
+            }.get(campo, f"O post não passou na conferência (campo {campo or 'desconhecido'}). Recarregue a página e tente de novo.")
             return JSONResponse(status_code=422, content={"detail": detalhe})
         if tipo == "string_too_long" and campo in {"produto", "produto_servico"}:
             detalhe = "O texto ficou longo demais. Encurte um pouco e tente de novo."

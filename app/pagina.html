@@ -668,6 +668,7 @@
     .cartao-agenda .secao { margin: 0 0 4px; }
     .botoes-agenda { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
     .botoes-agenda button.principal { margin-top: 0; }
+    #nota-agenda.falha { color: #b42318; font-weight: 600; }
     .ficha-corpo { padding: 24px 28px 40px; max-width: 760px; display: flex; flex-direction: column; gap: 12px; }
     .ficha-corpo textarea { min-height: 320px; resize: vertical; }
     .marca-campos { min-width: 0; flex: 1; display: grid; gap: 2px; text-align: left; }
@@ -980,13 +981,13 @@
     <section id="menu" class="estudio">
       <header class="topo">
         <div class="topo-nome">__PRODUTO__</div>
-        <div class="topo-marca"><span>Marca</span><strong id="nome-topo">Risca Aí</strong></div>
+        <div class="topo-marca"><span>Marca</span><strong id="nome-topo">Minha marca</strong></div>
       </header>
       <aside class="painel">
         <button class="marca escolher-marca" type="button" id="escolher-marca" aria-label="Escolher marca">
           <div class="avatar" id="avatar-marca">R</div>
           <div class="marca-campos">
-            <strong id="nome-marca">Risca Aí</strong>
+            <strong id="nome-marca">Minha marca</strong>
             <span id="publico-marca"></span>
           </div>
           <i class="fa-solid fa-chevron-down" id="seta-marca"></i>
@@ -1051,7 +1052,7 @@
           <div class="post" id="previa">
             <div class="post-topo">
               <div class="avatar" id="avatar-previa">R</div>
-              <div class="post-conta"><strong id="nome-previa">Risca Aí</strong><span>Agora</span></div>
+              <div class="post-conta"><strong id="nome-previa">Minha marca</strong><span>Agora</span></div>
             </div>
             <div class="vazio-foto" id="foto-previa"><i class="fa-regular fa-image"></i><span>A imagem aparece aqui</span></div>
             <div class="faixa-memoria" id="faixa-memoria" hidden>
@@ -1067,9 +1068,9 @@
                   <select id="arte-modelo">
                     <option value="faixa">Faixa (oferta, dia especial)</option>
                     <option value="selo">Selo (novidade, dia, preço)</option>
-                    <option value="destaque">Destaque (produto, prato)</option>
-                    <option value="antes_depois">Antes e depois (serviço, app)</option>
-                    <option value="tela_app">Tela do app (celular)</option>
+                    <option value="destaque">Destaque (produto, serviço)</option>
+                    <option value="antes_depois">Antes e depois (problema e solução)</option>
+                    <option value="tela_app">Imagem em destaque (moldura)</option>
                     <option value="story_chamada">Chamada (convite direto)</option>
                   </select>
                 </label>
@@ -1145,13 +1146,13 @@
             <button class="principal" type="button" id="criar-agora">Publicar agora</button>
             <button class="principal" type="button" id="agendar">Agendar</button>
           </div>
+          <p class="nota" id="nota-agenda" role="status" aria-live="polite">Escolha o dia e o horário. Cancelar tira o post da fila.</p>
           <div class="bloco-ia">
             <p class="secao">Deixar a IA preencher o dia</p>
             <p class="nota">A IA escreve o post com a Memória da marca, escolhe a foto, edita se precisar e monta a arte (feed e Story) até 3 horas antes do horário. Você vê na fila antes de sair.</p>
             <button class="secundario" type="button" id="montar-semana">Preencher este dia</button>
           </div>
           <ul class="lista-agenda" id="lista-agenda"></ul>
-          <p class="nota" id="nota-agenda">Escolha o dia e o horário. Cancelar tira o post da fila.</p>
         </div>
       </aside>
     </section>
@@ -1166,13 +1167,13 @@
         <label for="ficha-escolha">Marca</label>
         <select id="ficha-escolha"></select>
         <label for="ficha-nome">Nome da marca</label>
-        <input id="ficha-nome" required minlength="2" maxlength="120" placeholder="Ex.: Risca Aí" />
+        <input id="ficha-nome" required minlength="2" maxlength="120" placeholder="Ex.: Studio Bela Vista" />
         <label for="ficha-publico">Público</label>
         <input id="ficha-publico" maxlength="200" placeholder="Ex.: Famílias do bairro" />
         <label for="ficha-site">Site (vai no final de toda legenda)</label>
-        <input id="ficha-site" maxlength="200" placeholder="Ex.: https://www.riscaai.com.br" />
+        <input id="ficha-site" maxlength="200" placeholder="Ex.: https://www.seusite.com.br" />
         <label for="ficha-marca-dagua">Marca d'água (texto no canto de toda foto)</label>
-        <input id="ficha-marca-dagua" maxlength="60" placeholder="Ex.: Risca Aí" />
+        <input id="ficha-marca-dagua" maxlength="60" placeholder="Ex.: @suamarca" />
         <p class="secao">Cores e logo das artes</p>
         <div class="ficha-cores">
           <label class="cor-campo" for="ficha-cor-principal"><input id="ficha-cor-principal" type="color" value="#1B2A41" />Cor principal</label>
@@ -1206,19 +1207,19 @@
           <h2><i class="fa-solid fa-brain"></i> Memória da marca</h2>
           <p class="nota">A IA lê esta memória antes de escrever cada post e de escolher a foto. Ela usa só o que está aqui: não inventa produto, preço nem horário.</p>
           <label for="memoria-oferta">O que você vende ou faz</label>
-          <textarea id="memoria-oferta" class="curto" maxlength="2000" placeholder="Ex.: Sistema para bar e restaurante controlar caixa, mesas, estoque e fiado pelo celular."></textarea>
-          <label for="memoria-itens">Produtos, pratos ou funcionalidades (um por linha; pode pôr dia e horário)</label>
-          <textarea id="memoria-itens" class="medio" maxlength="4000" placeholder="Ex.:&#10;Feijoada — sábado&#10;Fiado com nome e limite do cliente&#10;Caixa do dia fechado em 1 minuto"></textarea>
+          <textarea id="memoria-oferta" class="curto" maxlength="2000" placeholder="Ex.: Produtos e serviços para o dia a dia, com atendimento rápido."></textarea>
+          <label for="memoria-itens">Produtos ou serviços (um por linha; pode pôr dia e horário)</label>
+          <textarea id="memoria-itens" class="medio" maxlength="4000" placeholder="Ex.:&#10;Produto da semana — sábado&#10;Atendimento com hora marcada&#10;Entrega no mesmo dia"></textarea>
           <label for="memoria-horarios">Horários de funcionamento</label>
-          <textarea id="memoria-horarios" class="curto" maxlength="1000" placeholder="Ex.: Ter a dom, 11h às 23h. Segunda fechado."></textarea>
+          <textarea id="memoria-horarios" class="curto" maxlength="1000" placeholder="Ex.: Seg a sex, 9h às 18h. Sábado, 9h às 13h."></textarea>
           <label for="memoria-diferenciais">Diferenciais</label>
-          <textarea id="memoria-diferenciais" class="curto" maxlength="2000" placeholder="Ex.: Funciona sem internet; suporte no WhatsApp."></textarea>
+          <textarea id="memoria-diferenciais" class="curto" maxlength="2000" placeholder="Ex.: Atendimento rápido; entrega no mesmo dia."></textarea>
           <label for="memoria-promocoes">Promoções fixas (se tiver)</label>
-          <textarea id="memoria-promocoes" class="curto" maxlength="2000" placeholder="Ex.: Happy hour de quinta, 18h às 20h."></textarea>
+          <textarea id="memoria-promocoes" class="curto" maxlength="2000" placeholder="Ex.: Frete grátis às sextas."></textarea>
           <label for="memoria-tom">Tom de voz</label>
-          <textarea id="memoria-tom" class="curto" maxlength="1000" placeholder="Ex.: Direto, simpático, fala como dono de bar."></textarea>
+          <textarea id="memoria-tom" class="curto" maxlength="1000" placeholder="Ex.: Direto e simpático, fala como gente."></textarea>
           <label for="memoria-nunca">Nunca dizer</label>
-          <textarea id="memoria-nunca" class="curto" maxlength="2000" placeholder="Ex.: Não falar de preço do sistema. Não prometer entrega."></textarea>
+          <textarea id="memoria-nunca" class="curto" maxlength="2000" placeholder="Ex.: Não falar de preço. Não prometer prazo."></textarea>
         </div>
         <label for="texto-ficha">Outras instruções</label>
         <textarea id="texto-ficha" required minlength="20" placeholder="O que mais a IA deve lembrar dessa marca: para quem fala, o que não pode inventar e quais fotos combinam."></textarea>
@@ -1230,7 +1231,7 @@
       </form>
       <div class="ficha-corpo fotos-marca" id="fotos-marca">
         <h2><i class="fa-regular fa-images"></i> Fotos da marca</h2>
-        <p class="nota">Mande fotos reais: prints das telas principais do app, fachada, salão, pratos, drinks, equipe. A IA lê cada foto e escreve a descrição; você pode corrigir. Em cada foto, diga como a IA usa: <strong>Pode postar como está</strong> (sai igual, só com a arte por cima), <strong>Usar como base para editar</strong> (a IA mantém o produto real e melhora fundo, luz, gelo) ou <strong>Só inspiração de estilo</strong> (nunca aparece; serve de clima, cores e enquadramento).</p>
+        <p class="nota">Mande fotos reais do seu negócio: produtos, serviços, o local, a equipe, bastidores. A IA lê cada foto e escreve a descrição; você pode corrigir. Tipo e uso começam no <strong>Automático</strong>: a IA decide em cada post. Se quiser, escolha: <strong>Pode postar como está</strong>, <strong>Usar como base para editar</strong> ou <strong>Só inspiração de estilo</strong>.</p>
         <div class="topo-fotos">
           <label class="enviar-fotos" id="rotulo-enviar-fotos" for="enviar-fotos"><i class="fa-solid fa-upload"></i><span id="texto-enviar-fotos">Enviar fotos</span></label>
           <input id="enviar-fotos" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden />
@@ -1300,8 +1301,8 @@
         </div>
         <div id="campos-foto" hidden>
           <div id="campo-link-app" hidden>
-            <label for="link_app">Link do seu app</label>
-            <input id="link_app" name="link_app" type="url" inputmode="url" maxlength="500" placeholder="https://www.riscaai.com.br" />
+            <label for="link_app">Link do seu site</label>
+            <input id="link_app" name="link_app" type="url" inputmode="url" maxlength="500" placeholder="https://www.seusite.com.br" />
             <p class="nota">Opcional. Se colar, o chat lê a página e sugere o que criar e postar.</p>
           </div>
           <label for="foto_referencia">Foto do seu negócio</label>
@@ -1338,7 +1339,7 @@
       },
       foto: {
         titulo: "Foto",
-        ajuda: "Cole o link do app, se quiser. O chat lê a página, sugere a foto e a legenda. A foto só é criada quando você confirmar.",
+        ajuda: "Cole o link do seu site, se quiser. O chat lê a página, sugere a foto e a legenda. A foto só é criada quando você confirmar.",
         botao: "Continuar",
         espera: "Lendo a página",
       },
@@ -1928,7 +1929,7 @@
     const fio = document.getElementById("fio");
     const pedidoCampo = document.getElementById("pedido");
     let marcas = [];
-    let marcaAtual = { id: 0, nome: "Risca Aí", publico: "", texto: "" };
+    let marcaAtual = { id: 0, nome: "Minha marca", publico: "", texto: "" };
     let tema = "";
     let imagemProjeto = "";
     let videoProjeto = "";
@@ -2049,7 +2050,7 @@
     }
 
     function lerMarca() {
-      const nome = (marcaAtual.nome || "").trim() || "Risca Aí";
+      const nome = (marcaAtual.nome || "").trim() || "Minha marca";
       const publico = (marcaAtual.publico || "").trim() || "o público da marca";
       return { id: marcaAtual.id, nome, publico, nicho: nome, produto: nome, texto: marcaAtual.texto || "" };
     }
@@ -2533,7 +2534,7 @@
       selo: "Selo",
       destaque: "Destaque",
       antes_depois: "Antes e depois",
-      tela_app: "Tela do app",
+      tela_app: "Imagem em destaque",
       story_chamada: "Chamada",
     };
     const CAMPOS_ARTE = [
@@ -3253,47 +3254,114 @@
       }
     });
 
-    document.getElementById("criar-agora").addEventListener("click", async () => {
-      const nota = document.getElementById("nota-agenda");
-      const publicado = textoDoPost();
-      if (!publicado) {
-        nota.textContent = "Escreva a legenda na prévia ou anexe uma foto ou um vídeo.";
-        return;
+    const notaAgenda = document.getElementById("nota-agenda");
+    let textoFalhaAgenda = "";
+    new MutationObserver(() => {
+      if (notaAgenda.textContent !== textoFalhaAgenda) notaAgenda.classList.remove("falha");
+    }).observe(notaAgenda, { childList: true, characterData: true, subtree: true });
+
+    function avisarAgenda(mensagem, falha = false) {
+      textoFalhaAgenda = falha ? mensagem : "";
+      notaAgenda.textContent = mensagem;
+      notaAgenda.classList.toggle("falha", falha);
+      notaAgenda.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+
+    const CAMPOS_RECUSADOS = {
+      dia: "Escolha o dia na agenda.",
+      hora: "Escolha o horário.",
+      titulo: "Escreva a legenda na prévia.",
+      legenda: "Escreva a legenda na prévia.",
+      rede: "Escolha onde publicar.",
+      imagem_url: "O link da foto é longo demais. Anexe a foto de novo.",
+      video_url: "O link do vídeo é longo demais. Anexe o vídeo de novo.",
+      tema: "Escolha o tipo de post de novo.",
+    };
+
+    function erroDaAgenda(resposta, dados) {
+      const detalhe = dados?.detail;
+      if (typeof detalhe === "string" && detalhe.trim()) return detalhe;
+      const item = Array.isArray(detalhe) ? detalhe[0] : null;
+      if (item) {
+        const campo = Array.isArray(item.loc) ? String(item.loc[item.loc.length - 1] || "") : "";
+        const texto = CAMPOS_RECUSADOS[campo] || `O servidor recusou o campo "${campo}": ${item.msg || "valor inválido"}.`;
+        return `${texto} (erro ${resposta.status})`;
       }
-      if (!redeAgenda) {
-        nota.textContent = "Escolha onde publicar.";
-        return;
-      }
-      if (!window.confirm("Publicar agora em " + nomeRede(redeAgenda) + ", " + nomeFormato(formatoAgenda) + "?")) return;
-      const botao = document.getElementById("criar-agora");
-      botao.disabled = true;
-      botao.textContent = "Publicando";
+      return `O servidor respondeu com erro ${resposta.status}. Tente de novo em instantes.`;
+    }
+
+    async function enviarAgenda(url, corpo) {
+      let resposta;
       try {
-        const resposta = await fetch("/publicar-agora", {
+        resposta = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            rede: redeAgenda,
-            formato: formatoAgenda,
-            tema,
-            marca_id: marcaAtual.id,
-            titulo: publicado.titulo,
-            legenda: publicado.legenda,
-            imagem_url: imagemProjeto,
-            video_url: videoProjeto,
-            ...dadosMemoriaPost(),
-          }),
+          body: JSON.stringify(corpo),
         });
-        const dados = await lerResposta(resposta);
-        if (!resposta.ok) throw new Error(mensagemErro(dados));
+      } catch {
+        throw new Error("Sem conexão com o servidor. Confira a internet e tente de novo.");
+      }
+      const bruto = await resposta.text();
+      let dados = null;
+      try {
+        dados = bruto.trim() ? JSON.parse(bruto) : null;
+      } catch {
+        dados = null;
+      }
+      if (!resposta.ok) throw new Error(erroDaAgenda(resposta, dados));
+      if (!dados) throw new Error(`O servidor não respondeu direito (código ${resposta.status}). Tente de novo.`);
+      return dados;
+    }
+
+    function corpoDoPost(publicado) {
+      return {
+        rede: redeAgenda,
+        formato: formatoAgenda,
+        tema,
+        marca_id: marcaAtual.id || 0,
+        titulo: publicado.titulo,
+        legenda: publicado.legenda,
+        imagem_url: imagemProjeto || "",
+        video_url: videoProjeto || "",
+        ...dadosMemoriaPost(),
+      };
+    }
+
+    function conferirPost() {
+      const publicado = textoDoPost();
+      if (!publicado) {
+        avisarAgenda("Escreva a legenda na prévia ou anexe uma foto ou um vídeo.", true);
+        return null;
+      }
+      if (!redeAgenda) {
+        avisarAgenda("Escolha onde publicar.", true);
+        return null;
+      }
+      return publicado;
+    }
+
+    document.getElementById("criar-agora").addEventListener("click", async () => {
+      const botao = document.getElementById("criar-agora");
+      try {
+        const publicado = conferirPost();
+        if (!publicado) return;
+        const destino = nomeRede(redeAgenda) + ", " + nomeFormato(formatoAgenda);
+        if (!window.confirm("Publicar agora em " + destino + "?")) {
+          avisarAgenda("Publicação cancelada. Nada foi enviado.");
+          return;
+        }
+        botao.disabled = true;
+        botao.textContent = "Publicando";
+        avisarAgenda("Publicando em " + destino + "...");
+        const dados = await enviarAgenda("/publicar-agora", corpoDoPost(publicado));
         if (dados.status === "publicado") {
-          nota.textContent = "Saiu agora. " + nomeRede(redeAgenda) + ", " + nomeFormato(formatoAgenda) + ".";
+          avisarAgenda("Saiu agora. " + destino + "." + (dados.detalhe ? " " + dados.detalhe : ""));
           carregarResumo();
         } else {
-          nota.textContent = dados.detalhe || "Não consegui publicar agora.";
+          avisarAgenda(dados.detalhe || "Não consegui publicar agora.", true);
         }
       } catch (falha) {
-        nota.textContent = falha.message || "Não consegui publicar agora.";
+        avisarAgenda(falha?.message || "Não consegui publicar agora.", true);
       } finally {
         botao.disabled = false;
         botao.textContent = "Publicar agora";
@@ -3301,49 +3369,34 @@
     });
 
     document.getElementById("agendar").addEventListener("click", async () => {
-      const nota = document.getElementById("nota-agenda");
-      const publicado = textoDoPost();
-      if (!publicado) {
-        nota.textContent = "Escreva a legenda na prévia ou anexe uma foto ou um vídeo.";
-        return;
-      }
-      if (!redeAgenda) {
-        nota.textContent = "Escolha onde publicar.";
-        return;
-      }
-      const hora = document.getElementById("hora-post").value;
-      if (!hora) {
-        nota.textContent = "Escolha o horário.";
-        return;
-      }
-      const repetido = itensDaMarca().some((item) => item.dia === diaEscolhido && item.hora === hora);
       const botao = document.getElementById("agendar");
-      botao.disabled = true;
       try {
-        const resposta = await fetch("/agenda", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            dia: diaEscolhido,
-            hora,
-            rede: redeAgenda,
-            formato: formatoAgenda,
-            tema,
-            marca_id: marcaAtual.id,
-            titulo: publicado.titulo,
-            legenda: publicado.legenda,
-            imagem_url: imagemProjeto,
-            video_url: videoProjeto,
-            ...dadosMemoriaPost(),
-          }),
-        });
-        const dados = await lerResposta(resposta);
-        if (!resposta.ok) throw new Error(mensagemErro(dados));
-        await carregarAgenda();
-        nota.textContent = "Marcado às " + hora + ". " + nomeRede(redeAgenda) + ", " + nomeFormato(formatoAgenda) + "."
+        const publicado = conferirPost();
+        if (!publicado) return;
+        if (!diaEscolhido) {
+          avisarAgenda("Escolha o dia na agenda.", true);
+          return;
+        }
+        const hora = document.getElementById("hora-post").value;
+        if (!hora) {
+          avisarAgenda("Escolha o horário.", true);
+          return;
+        }
+        const repetido = itensDaMarca().some((item) => item.dia === diaEscolhido && item.hora === hora);
+        botao.disabled = true;
+        avisarAgenda("Guardando na agenda...");
+        await enviarAgenda("/agenda", { dia: diaEscolhido, hora, ...corpoDoPost(publicado) });
+        const mensagem = "Marcado às " + hora + ". " + nomeRede(redeAgenda) + ", " + nomeFormato(formatoAgenda) + "."
           + (repetido ? " Atenção: esta marca já tinha post nesse dia e horário." : "");
+        try {
+          await carregarAgenda();
+        } catch {
+          avisarAgenda(mensagem + " Não consegui atualizar a lista agora; recarregue a página.");
+          return;
+        }
+        avisarAgenda(mensagem);
       } catch (falha) {
-        nota.textContent = falha.message || "Não consegui guardar o horário.";
+        avisarAgenda(falha?.message || "Não consegui guardar o horário.", true);
       } finally {
         botao.disabled = false;
       }
@@ -3466,17 +3519,40 @@
     });
 
     const CAMPOS_MEMORIA = ["oferta", "itens", "horarios", "diferenciais", "promocoes", "tom", "nunca"];
-    const TIPOS_FOTO = ["print do app", "prato", "fachada", "ambiente", "equipe", "produto", "outro"];
+    const TIPOS_FOTO = [
+      ["auto", "Automático (a IA identifica)"],
+      ["produto", "Produto"],
+      ["servico", "Serviço"],
+      ["local", "Local / ambiente"],
+      ["pessoas", "Pessoas / equipe"],
+      ["bastidores", "Bastidores"],
+      ["captura", "Captura de tela"],
+      ["arte", "Logo ou arte"],
+      ["outro", "Outro"],
+    ];
+    const TIPOS_ANTIGOS = { "print do app": "captura", prato: "produto", fachada: "local", ambiente: "local", equipe: "pessoas" };
     const PAPEIS_FOTO = [
+      ["auto", "Automático (a IA decide)"],
       ["postar", "Pode postar como está"],
       ["base", "Usar como base para editar"],
       ["estilo", "Só inspiração de estilo"],
     ];
     const NOTAS_PAPEL = {
-      postar: "Sai igual, só com a arte por cima. Sem custo de IA.",
-      base: "A IA mantém o produto real e melhora fundo, luz e detalhes.",
-      estilo: "Nunca aparece no post: só inspira clima, cores e enquadramento.",
+      auto: "A IA escolhe em cada post como usar a foto.",
+      postar: "Sai igual, com a arte por cima.",
+      base: "A IA melhora a foto sem mudar o que aparece.",
+      estilo: "Serve só de referência de estilo.",
     };
+
+    function tipoFoto(valor) {
+      const tipo = TIPOS_ANTIGOS[valor] || valor;
+      return TIPOS_FOTO.some(([chave]) => chave === tipo) ? tipo : "auto";
+    }
+
+    function nomeTipoFoto(valor) {
+      const achado = TIPOS_FOTO.find(([chave]) => chave === tipoFoto(valor));
+      return achado && achado[0] !== "auto" ? achado[1] : "Foto";
+    }
     let fotosMarcaDe = 0;
     let pedidoFotos = 0;
 
@@ -3512,13 +3588,13 @@
       grade.innerHTML = "";
       document.getElementById("contagem-fotos").textContent = `${itens.length} de ${dados.limite || 60} fotos`;
       if (!itens.length) {
-        grade.append(elemento("p", "nota", "Nenhuma foto ainda. Para um app: 4 a 8 prints das telas principais. Para restaurante: fachada, salão, pratos e equipe."));
+        grade.append(elemento("p", "nota", "Nenhuma foto ainda. Mande de 4 a 10 fotos reais: o que você vende ou faz, o local, a equipe e os bastidores."));
         return;
       }
-      itens.forEach((foto) => grade.append(cartaoFotoMarca(foto, dados.tipos || TIPOS_FOTO)));
+      itens.forEach((foto) => grade.append(cartaoFotoMarca(foto)));
     }
 
-    function cartaoFotoMarca(foto, tipos) {
+    function cartaoFotoMarca(foto) {
       const cartao = elemento("div", "cartao-foto" + (foto.usar_em_posts ? "" : " desligada"));
       const imagem = document.createElement("img");
       imagem.src = foto.miniatura_url;
@@ -3526,14 +3602,15 @@
       imagem.loading = "lazy";
       const campos = elemento("div", "campos-foto");
       const tipo = document.createElement("select");
-      tipos.forEach((valor) => {
+      TIPOS_FOTO.forEach(([valor, rotulo]) => {
         const opcao = document.createElement("option");
         opcao.value = valor;
-        opcao.textContent = valor.charAt(0).toUpperCase() + valor.slice(1);
+        opcao.textContent = rotulo;
         tipo.append(opcao);
       });
-      tipo.value = foto.tipo || "outro";
+      tipo.value = tipoFoto(foto.tipo);
       tipo.setAttribute("aria-label", "Tipo da foto");
+      tipo.title = "O que a foto mostra (opcional)";
       const papel = document.createElement("select");
       PAPEIS_FOTO.forEach(([valor, rotulo]) => {
         const opcao = document.createElement("option");
@@ -3541,7 +3618,7 @@
         opcao.textContent = rotulo;
         papel.append(opcao);
       });
-      papel.value = foto.papel || "base";
+      papel.value = PAPEIS_FOTO.some(([valor]) => valor === foto.papel) ? foto.papel : "auto";
       papel.setAttribute("aria-label", "Como a IA usa esta foto");
       papel.title = "Como a IA usa esta foto nas artes";
       const papelNota = elemento("span", "papel-nota", NOTAS_PAPEL[papel.value] || "");
@@ -3549,7 +3626,7 @@
       const descricao = document.createElement("textarea");
       descricao.maxLength = 1500;
       descricao.value = foto.descricao || "";
-      descricao.placeholder = "O que a foto mostra e o que isso resolve para o cliente.";
+      descricao.placeholder = "O que a foto mostra.";
       descricao.setAttribute("aria-label", "Descrição da foto");
       const tags = document.createElement("input");
       tags.maxLength = 500;
@@ -3608,7 +3685,7 @@
           if (!resposta.ok) throw new Error(mensagemErro(dados));
           descricao.value = dados.descricao || "";
           tags.value = dados.tags || "";
-          tipo.value = dados.tipo || "outro";
+          tipo.value = tipoFoto(dados.tipo);
           estado.textContent = "Lida de novo. Corrija se quiser.";
         } catch (falha) {
           estado.textContent = falha.message || "A IA não conseguiu ler agora.";
@@ -3704,7 +3781,7 @@
         if (seletorAtual !== opcoes) return;
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         const usaveis = (dados.itens || []).filter((foto) => foto.usar_em_posts && foto.papel !== "estilo");
-        const textoComArte = "Escolha a foto da arte. As de \"pode postar\" entram como estão (sem custo de IA); as de \"base para editar\" a IA melhora mantendo o produto real.";
+        const textoComArte = "Escolha a foto da arte. As de \"pode postar\" entram como estão (sem custo de IA); as de \"base para editar\" a IA melhora sem mudar o que aparece.";
         nota.textContent = usaveis.length
           ? (opcoes.arte ? textoComArte : "Escolha uma foto da Memória da marca. Ela entra sem custo de IA.")
           : "Esta marca ainda não tem fotos para posts na memória. Mande em Minha marca > Fotos da marca.";
@@ -3716,10 +3793,11 @@
           imagem.src = foto.miniatura_url;
           imagem.alt = "";
           imagem.loading = "lazy";
-          const legenda = (foto.descricao || foto.tipo || "").slice(0, 70);
-          const rotulo = elemento("span", "", `${foto.tipo} · ${legenda}`);
-          const editada = opcoes.arte && foto.papel === "base" && foto.tipo !== "print do app";
-          if (opcoes.arte) rotulo.prepend(elemento("em", "", editada ? "A IA edita" : "Entra como está"));
+          const legenda = (foto.descricao || "").slice(0, 70);
+          const rotulo = elemento("span", "", legenda ? `${nomeTipoFoto(foto.tipo)} · ${legenda}` : nomeTipoFoto(foto.tipo));
+          const editada = opcoes.arte && foto.papel === "base" && tipoFoto(foto.tipo) !== "captura";
+          const decide = opcoes.arte && foto.papel === "auto" && tipoFoto(foto.tipo) !== "captura";
+          if (opcoes.arte) rotulo.prepend(elemento("em", "", editada ? "A IA edita" : decide ? "A IA decide" : "Entra como está"));
           botao.append(imagem, rotulo);
           botao.addEventListener("click", async () => {
             grade.querySelectorAll("button").forEach((item) => { item.disabled = true; });
@@ -3771,7 +3849,7 @@
         const final = dados.plano_arte || {};
         let texto = "Arte refeita, sem gastar IA.";
         if (final.modelo && final.modelo !== plano.modelo) {
-          const falta = plano.modelo === "selo" ? "o Selo está vazio" : plano.modelo === "antes_depois" ? "o Antes está vazio" : "esse modelo não combina com print de tela";
+          const falta = plano.modelo === "selo" ? "o Selo está vazio" : plano.modelo === "antes_depois" ? "o Antes está vazio" : "esse modelo não combina com captura de tela";
           texto += ` O modelo ficou ${NOMES_MODELOS[final.modelo] || final.modelo}: ${falta}.`;
         }
         document.getElementById("nota-arte").textContent = texto;

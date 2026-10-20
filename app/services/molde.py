@@ -25,7 +25,7 @@ NOMES_MODELOS = {
     "selo": "Selo",
     "destaque": "Destaque",
     "antes_depois": "Antes e depois",
-    "tela_app": "Tela do app",
+    "tela_app": "Imagem em destaque",
     "story_chamada": "Chamada",
 }
 COR_PRINCIPAL = "#1B2A41"

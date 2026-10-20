@@ -16,10 +16,13 @@ from app.services.memoria import (
     LIMITE_FOTOS,
     PAPEIS,
     TIPOS,
+    TIPOS_ANTIGOS,
     adicionar_foto,
     apagar_foto,
     imagem_da_memoria,
     listar_fotos,
+    normalizar_papel,
+    normalizar_tipo,
     reanalisar,
 )
 
@@ -55,8 +58,8 @@ def _item(foto) -> ItemFotoMemoria:
         altura=foto.altura or 0,
         descricao=foto.descricao or "",
         tags=foto.tags or "",
-        tipo=foto.tipo or "outro",
-        papel=foto.papel if foto.papel in PAPEIS else "base",
+        tipo=normalizar_tipo(foto.tipo),
+        papel=normalizar_papel(foto.papel),
         usar_em_posts=bool(foto.usar_em_posts),
     )
 
@@ -119,13 +122,14 @@ async def put_foto(
     foto_id: int, pedido: PedidoFotoMemoria, session: AsyncSession = Depends(get_session)
 ) -> ItemFotoMemoria:
     foto = await _foto(session, foto_id)
-    if pedido.tipo not in TIPOS:
+    tipo = pedido.tipo.strip().lower()
+    if tipo not in TIPOS and tipo not in TIPOS_ANTIGOS:
         raise HTTPException(status_code=422, detail="Escolha um tipo da lista.")
     if pedido.papel not in PAPEIS:
         raise HTTPException(status_code=422, detail="Escolha como a IA usa a foto.")
     foto.descricao = pedido.descricao.strip()
     foto.tags = pedido.tags.strip()
-    foto.tipo = pedido.tipo
+    foto.tipo = normalizar_tipo(tipo)
     foto.papel = pedido.papel
     foto.usar_em_posts = pedido.usar_em_posts
     await session.commit()

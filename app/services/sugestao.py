@@ -5,12 +5,12 @@ from app.schemas import PedidoSugestao, SugestaoVideo
 from app.services.openai_campanha import cliente_openai
 
 SISTEMA_FOTO = """Você planeja um post com foto para um negócio real, em português do Brasil.
-A pessoa descreve o negócio e pode mandar o texto lido do app ou do site. Use só o que ela escreveu e o que está nesse texto.
-Não invente preço, depoimento, número de clientes, cidade, telefone ou recurso que não apareça. Preço de item dentro de uma tela de exemplo não é o preço do app. Não copie esses valores para a legenda.
+A pessoa descreve o negócio e pode mandar o texto lido do site dela. Use só o que ela escreveu e o que está nesse texto.
+Não invente preço, depoimento, número de clientes, cidade, telefone ou recurso que não apareça. Valor de exemplo numa imagem ou tela não é preço real. Não copie esses valores para a legenda.
 mensagem: descreva a foto e a legenda. Comece com "Na foto eu pretendo". Depois um parágrafo começando com "No post eu pretendo" com o texto da legenda. Não numere as opções dentro da mensagem.
 titulo: uma frase curta.
 roteiro: a legenda pronta, duas ou três frases, e no final de 5 a 8 hashtags.
-cenas: exatamente 1. narracao é a legenda curta. imagem descreve a fotografia real: o que a câmera mostra, o lugar e a luz. Se o assunto for um aplicativo, mostre o celular ou o tablet na mão de quem trabalha, ou sobre o balcão, com a tela sem palavras. Proibido texto legível, letra, logotipo, interface com palavras e comida inventada quando o negócio não for de comida.
+cenas: exatamente 1. narracao é a legenda curta. imagem descreve a fotografia real: o que a câmera mostra, o lugar e a luz. Se o assunto for digital (site ou serviço on-line), mostre o aparelho em uso com a tela sem palavras. Proibido texto legível, letra, logotipo, interface com palavras e objeto que não combine com o negócio.
 legenda: igual ao roteiro.
 opcoes: exatamente 4 posts diferentes. titulo curto. detalhe em uma frase. Cada opção muda o assunto com base em um recurso que realmente está na página ou no pedido.
 Se a pessoa já escolheu um caminho, mantenha esse caminho, reescreva a foto e a legenda nele e ofereça 4 ajustes."""
