@@ -1,8 +1,11 @@
+from html import escape
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.config import get_settings
 from app.database import get_session
 from app.models import Agendamento
 from app.schemas import (
@@ -10,14 +13,12 @@ from app.schemas import (
     ItemAgenda,
     PedidoAgenda,
     ItemMarca,
-    PedidoFicha,
     PedidoFormato,
     PedidoMarca,
     PedidoPagina,
     PedidoPublicarAgora,
     PedidoSemana,
     RespostaAgenda,
-    RespostaFicha,
     RespostaMarcas,
     RespostaPaginas,
     RespostaPublicacao,
@@ -38,7 +39,6 @@ from app.services.publicar import (
     meta_pronta,
     paginas_facebook,
     publicar_agora,
-    publicar_vencidos,
     url_oauth,
     url_oauth_facebook,
 )
@@ -46,10 +46,8 @@ from app.services.semana import (
     apagar_marca,
     atualizar_marca,
     criar_marca,
-    guardar_ficha,
     listar_marcas,
     montar_dias,
-    texto_ficha,
 )
 
 router = APIRouter()
@@ -58,7 +56,7 @@ PAGINA_FALTA = """<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <title>Contas</title>
+  <title>Contas · __PRODUTO__</title>
   <style>
     body { margin: 0; font-family: Inter, Segoe UI, sans-serif; background: #f3f4f6; color: #1a1d23; }
     main { max-width: 460px; margin: 64px auto; background: white; border: 1px solid #e6e8ee; border-radius: 16px; padding: 28px; }
@@ -69,11 +67,15 @@ PAGINA_FALTA = """<!DOCTYPE html>
   <main>
     <h1>A agenda já guarda o dia e o horário</h1>
     <p>Para o post sair sozinho, falta criar o aplicativo na Meta e ligar o Instagram e o Facebook.</p>
-    <p><a href="/">Voltar</a></p>
+    <p><a href="/">Voltar ao __PRODUTO__</a></p>
   </main>
 </body>
 </html>
 """
+
+
+def _pagina_falta() -> str:
+    return PAGINA_FALTA.replace("__PRODUTO__", escape(get_settings().produto_nome))
 
 
 def _item(registro: Agendamento) -> ItemAgenda:
@@ -103,6 +105,8 @@ async def post_anexo(arquivo: UploadFile = File()) -> dict[str, str]:
     dados = await arquivo.read(25_000_001)
     if len(dados) > 25_000_000:
         raise HTTPException(status_code=422, detail="O vídeo precisa ter até 25 MB.")
+    if (arquivo.content_type or "").lower() == "video/webm" or (arquivo.filename or "").lower().endswith(".webm"):
+        raise HTTPException(status_code=422, detail="Envie o vídeo em MP4.")
     try:
         url, tipo = salvar_anexo(dados)
     except ValueError as erro:
@@ -112,8 +116,9 @@ async def post_anexo(arquivo: UploadFile = File()) -> dict[str, str]:
 
 @router.get("/agenda", response_model=RespostaAgenda)
 async def get_agenda(marca_id: int = 0, session: AsyncSession = Depends(get_session)) -> RespostaAgenda:
-    await publicar_vencidos(session)
-    resultado = await session.exec(select(Agendamento).order_by(Agendamento.dia))
+    resultado = await session.exec(
+        select(Agendamento).order_by(Agendamento.dia, Agendamento.hora, Agendamento.id)
+    )
     contas = await estado_contas(session, await marca_efetiva(session, marca_id))
     return RespostaAgenda(
         itens=[_item(item) for item in resultado.all()],
@@ -132,40 +137,19 @@ async def post_agenda(
         hora = pedido.hora_normalizada()
     except ValueError as erro:
         raise HTTPException(status_code=422, detail=str(erro)) from erro
-    resultado = await session.exec(select(Agendamento).where(Agendamento.dia == pedido.dia))
-    registro = resultado.first()
-    if registro is None:
-        registro = Agendamento(
-            dia=pedido.dia,
-            hora=hora,
-            rede=pedido.rede.strip(),
-            titulo=pedido.titulo.strip(),
-            legenda=pedido.legenda.strip(),
-            imagem_url=pedido.imagem_url.strip()[:500],
-            video_url=pedido.video_url.strip()[:500],
-            formato=pedido.formato if pedido.formato in {"feed", "story", "ambos"} else "feed",
-            tema=pedido.tema.strip()[:30],
-            marca_id=pedido.marca_id,
-        )
-        session.add(registro)
-    else:
-        registro.rede = pedido.rede.strip()
-        registro.titulo = pedido.titulo.strip()
-        registro.legenda = pedido.legenda.strip()
-        registro.hora = hora
-        registro.status = "na_fila"
-        registro.detalhe = ""
-        registro.imagem_url = pedido.imagem_url.strip()[:500]
-        registro.video_url = pedido.video_url.strip()[:500]
-        registro.cena = ""
-        registro.tentativas = 0
-        registro.tentativas_marca = 0
-        registro.ok_instagram = False
-        registro.ok_facebook = False
-        registro.formato = pedido.formato if pedido.formato in {"feed", "story", "ambos"} else "feed"
-        registro.feito = ""
-        registro.tema = pedido.tema.strip()[:30]
-        registro.marca_id = pedido.marca_id
+    registro = Agendamento(
+        dia=pedido.dia,
+        hora=hora,
+        rede=pedido.rede.strip(),
+        titulo=pedido.titulo.strip(),
+        legenda=pedido.legenda.strip(),
+        imagem_url=pedido.imagem_url.strip()[:500],
+        video_url=pedido.video_url.strip()[:500],
+        formato=pedido.formato if pedido.formato in {"feed", "story", "ambos"} else "feed",
+        tema=pedido.tema.strip()[:30],
+        marca_id=pedido.marca_id,
+    )
+    session.add(registro)
     formato = registro.formato or "feed"
     precisa_foto = formato in {"story", "ambos"} or registro.rede in {"Instagram", "Ambos"}
     contas = await estado_contas(session, await marca_efetiva(session, registro.marca_id))
@@ -203,19 +187,6 @@ async def post_publicar_agora(
         pedido.marca_id,
     )
     return RespostaPublicacao(status=status, detalhe=detalhe)
-
-
-@router.get("/ficha", response_model=RespostaFicha)
-async def get_ficha(session: AsyncSession = Depends(get_session)) -> RespostaFicha:
-    return RespostaFicha(texto=await texto_ficha(session))
-
-
-@router.put("/ficha", response_model=RespostaFicha)
-async def put_ficha(
-    pedido: PedidoFicha,
-    session: AsyncSession = Depends(get_session),
-) -> RespostaFicha:
-    return RespostaFicha(texto=await guardar_ficha(session, pedido.texto))
 
 
 def _marca(registro) -> ItemMarca:
@@ -272,6 +243,8 @@ async def delete_agenda(item_id: int, session: AsyncSession = Depends(get_sessio
         raise HTTPException(status_code=404, detail="Esse post não está na fila.")
     if registro.status == "publicado":
         raise HTTPException(status_code=422, detail="Esse post já saiu.")
+    if registro.status == "publicando":
+        raise HTTPException(status_code=422, detail="Esse post está saindo agora.")
     await session.delete(registro)
     await session.commit()
     return {"ok": True}
@@ -291,6 +264,8 @@ async def put_formato_agenda(
         raise HTTPException(status_code=404, detail="Esse post não está na fila.")
     if registro.status == "publicado":
         raise HTTPException(status_code=422, detail="Esse post já saiu.")
+    if registro.status == "publicando":
+        raise HTTPException(status_code=422, detail="Esse post está saindo agora.")
     registro.formato = pedido.formato
     precisa_foto = pedido.formato in {"story", "ambos"} or registro.rede in {"Instagram", "Ambos"}
     tem_foto = bool(registro.imagem_url or registro.video_url or (registro.cena or "").strip())
@@ -366,10 +341,10 @@ async def iniciar_contas(
     marca = await _marca_existente(session, marca_id)
     if rede == "facebook":
         if not facebook_pronta():
-            return HTMLResponse(PAGINA_FALTA)
+            return HTMLResponse(_pagina_falta())
         return RedirectResponse(url_oauth_facebook(marca))
     if not meta_pronta():
-        return HTMLResponse(PAGINA_FALTA)
+        return HTMLResponse(_pagina_falta())
     return RedirectResponse(url_oauth(marca))
 
 

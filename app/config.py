@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     instagram_app_secret: str = ""
     google_places_api_key: str = ""
     app_url: str = "https://ferramenta-ooun.onrender.com"
+    produto_nome: str = "Risca Aí Posts"
     empresa_nome: str = "Risca Aí"
     empresa_cnpj: str = ""
     contato_email: str = ""

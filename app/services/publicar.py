@@ -8,6 +8,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import or_, update
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -216,9 +217,13 @@ def publicar_facebook_video(pagina_id: str, token: str, texto: str, video_url: s
     )
 
 
-def _esperar_midia(criacao: str, token: str, o_que: str) -> None:
-    for _ in range(12):
-        time.sleep(2)
+ESPERA_FOTO = [2] * 12
+ESPERA_VIDEO = [3, 5, 8, 12, 15] + [20] * 7
+
+
+def _esperar_midia(criacao: str, token: str, o_que: str, video: bool = False) -> None:
+    for pausa in ESPERA_VIDEO if video else ESPERA_FOTO:
+        time.sleep(pausa)
         consulta = urllib.parse.urlencode({"fields": "status_code,status", "access_token": token})
         estado = _pedir(f"https://graph.instagram.com/{VERSAO}/{criacao}?{consulta}")
         codigo = str(estado.get("status_code") or "")
@@ -260,7 +265,7 @@ def publicar_instagram_video(conta_id: str, token: str, texto: str, video_url: s
     criacao = str(criado.get("id") or "")
     if not criacao:
         raise RuntimeError("O Instagram não preparou o vídeo.")
-    _esperar_midia(criacao, token, "o vídeo")
+    _esperar_midia(criacao, token, "o vídeo", video=True)
     _pedir(
         f"https://graph.instagram.com/{VERSAO}/{conta_id}/media_publish",
         {"creation_id": criacao, "access_token": token},
@@ -309,7 +314,7 @@ def publicar_instagram_story_video(conta_id: str, token: str, video_url: str) ->
     criacao = str(criado.get("id") or "")
     if not criacao:
         raise RuntimeError("O Instagram não preparou o Story.")
-    _esperar_midia(criacao, token, "o Story")
+    _esperar_midia(criacao, token, "o Story", video=True)
     _pedir(
         f"https://graph.instagram.com/{VERSAO}/{conta_id}/media_publish",
         {"creation_id": criacao, "access_token": token},
@@ -678,7 +683,25 @@ def _feitos(item: Agendamento) -> set[str]:
     return feitos
 
 
+TENTATIVAS_PUBLICAR = 3
+PRESO_DEPOIS = timedelta(minutes=10)
+
+
+def _falhou_publicar(item: Agendamento, motivo: str) -> None:
+    """Conta uma tentativa de publicar; na terceira o post para com status 'erro'."""
+    item.tentativas_publicar = (item.tentativas_publicar or 0) + 1
+    if item.tentativas_publicar >= TENTATIVAS_PUBLICAR:
+        item.status = "erro"
+        saiu = _feitos(item)
+        parcial = f" Já saiu em: {', '.join(alvo.replace(':', ' ') for alvo in sorted(saiu))}." if saiu else ""
+        item.detalhe = f"Não saiu: {motivo[:180]}{parcial}"[:300]
+        return
+    item.status = "na_fila"
+    item.detalhe = f"{motivo} Tento de novo em instantes."[:300]
+
+
 async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
+    """Publica um post já reservado como 'publicando' e deixa o status final no item."""
     formato = (item.formato or "feed").strip().lower()
     if formato not in {"feed", "story", "ambos"}:
         formato = "feed"
@@ -690,6 +713,7 @@ async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
     precisa_midia = any(alvo.endswith(":story") or alvo.startswith("Instagram:") for alvo in alvos)
     if precisa_midia and not item.imagem_url and not item.video_url:
         if (item.cena or "").strip():
+            item.status = "na_fila"
             return
         item.status = "falta_imagem"
         item.detalhe = "Falta a foto."
@@ -700,7 +724,12 @@ async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
     texto = com_site(f"{item.titulo}\n\n{item.legenda}".strip(), site)
     pendentes = [alvo for alvo in alvos if alvo not in feitos]
     faltam = await contas_faltando(session, pendentes, marca)
+    avisos_conta = [falta_conta(nome) for nome in faltam]
     prontos = [alvo for alvo in pendentes if alvo.split(":", 1)[0] not in faltam]
+    if not prontos:
+        item.status = "publicado" if not pendentes else "na_fila"
+        item.detalhe = " ".join(avisos_conta)[:300]
+        return
     try:
         foto_feed, foto_story = await asyncio.to_thread(
             fotos_com_marca, prontos, item.imagem_url, item.video_url, marca_dagua
@@ -711,16 +740,15 @@ async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
             item.status = "erro"
             item.detalhe = "A marca d'água não entrou na foto depois de 3 tentativas. O post não saiu sem ela."
         else:
+            item.status = "na_fila"
             item.detalhe = (erro_marca(erro) + " Tento de novo em instantes.")[:300]
         return
     erros: list[str] = []
-    for alvo in alvos:
-        if alvo in feitos:
-            continue
+    for alvo in prontos:
         nome = alvo.split(":", 1)[0]
         conta = await _conta(session, nome.lower(), marca)
         if conta is None or not conta.token:
-            erros.append(falta_conta(nome))
+            avisos_conta.append(falta_conta(nome))
             continue
         try:
             await asyncio.to_thread(
@@ -732,39 +760,79 @@ async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
                 item.video_url,
                 foto_story,
             )
-            feitos.add(alvo)
-            item.feito = ",".join(sorted(feitos))[:80]
-            if alvo == "Instagram:feed":
-                item.ok_instagram = True
-            if alvo == "Facebook:feed":
-                item.ok_facebook = True
-            await session.commit()
         except Exception as erro:
             erros.append(_erro_foto(erro)[:180])
+            continue
+        feitos.add(alvo)
+        item.feito = ",".join(sorted(feitos))[:80]
+        if alvo == "Instagram:feed":
+            item.ok_instagram = True
+        if alvo == "Facebook:feed":
+            item.ok_facebook = True
+        await session.commit()
     if all(alvo in feitos for alvo in alvos):
         item.status = "publicado"
         item.detalhe = ""
-    else:
-        item.detalhe = " ".join(erros)[:300]
+        return
+    if erros:
+        _falhou_publicar(item, " ".join(erros + avisos_conta))
+        return
+    item.status = "na_fila"
+    item.detalhe = " ".join(avisos_conta)[:300]
+
+
+async def publicar_um(session: AsyncSession, ident: int) -> bool:
+    """Reserva o post (na_fila -> publicando) numa única UPDATE e publica. False se outro já pegou."""
+    reserva = await session.exec(
+        update(Agendamento)
+        .where(Agendamento.id == ident, Agendamento.status == "na_fila")
+        .values(status="publicando", reservado_em=agora())
+        .returning(Agendamento.id)
+    )
+    pegou = reserva.first() is not None
+    await session.commit()
+    if not pegou:
+        return False
+    item = await session.get(Agendamento, ident, populate_existing=True)
+    if item is None:
+        return False
+    try:
+        await _publicar_item(session, item)
+    except Exception as erro:
+        await session.rollback()
+        item = await session.get(Agendamento, ident, populate_existing=True)
+        if item is None:
+            return True
+        _falhou_publicar(item, _erro_foto(erro)[:180])
+    if item.status == "publicando":
+        item.status = "na_fila"
+    item.reservado_em = None
+    await session.commit()
+    return True
 
 
 async def publicar_vencidos(session: AsyncSession) -> None:
     agora_local = datetime.now(ZONA)
     resultado = await session.exec(select(Agendamento).where(Agendamento.status == "na_fila"))
-    mudou = False
-    for item in resultado.all():
-        if momento(item.dia, item.hora) > agora_local:
-            continue
-        antes = (item.status, item.detalhe, item.feito, item.ok_instagram, item.ok_facebook, item.tentativas_marca)
-        await _publicar_item(session, item)
-        if (
-            item.status,
-            item.detalhe,
-            item.feito,
-            item.ok_instagram,
-            item.ok_facebook,
-            item.tentativas_marca,
-        ) != antes:
-            mudou = True
-    if mudou:
-        await session.commit()
+    vencidos = sorted(
+        (momento(item.dia, item.hora), item.id)
+        for item in resultado.all()
+        if item.id and momento(item.dia, item.hora) <= agora_local
+    )
+    for _quando, ident in vencidos:
+        await publicar_um(session, ident)
+
+
+async def soltar_presos(session: AsyncSession) -> int:
+    """Devolve à fila o que ficou 'publicando' há mais de 10 minutos (o servidor caiu no meio)."""
+    limite = agora() - PRESO_DEPOIS
+    resultado = await session.exec(
+        update(Agendamento)
+        .where(
+            Agendamento.status == "publicando",
+            or_(Agendamento.reservado_em.is_(None), Agendamento.reservado_em < limite),
+        )
+        .values(status="na_fila", reservado_em=None)
+    )
+    await session.commit()
+    return resultado.rowcount or 0

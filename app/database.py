@@ -116,6 +116,35 @@ async def criar_tabelas() -> None:
             )
         )
         await conexao.execute(
+            text(
+                "ALTER TABLE mkt_agendamentos ADD COLUMN IF NOT EXISTS tentativas_publicar INTEGER NOT NULL DEFAULT 0"
+            )
+        )
+        await conexao.execute(
+            text("ALTER TABLE mkt_agendamentos ADD COLUMN IF NOT EXISTS reservado_em TIMESTAMPTZ NULL")
+        )
+        await conexao.execute(
+            text(
+                "DO $$ DECLARE r record; BEGIN "
+                "FOR r IN SELECT i.relname AS indice, c.conname AS restricao "
+                "FROM pg_index x "
+                "JOIN pg_class t ON t.oid = x.indrelid "
+                "JOIN pg_class i ON i.oid = x.indexrelid "
+                "JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = x.indkey[0] "
+                "LEFT JOIN pg_constraint c ON c.conindid = x.indexrelid AND c.contype = 'u' "
+                "WHERE t.relname = 'mkt_agendamentos' AND pg_table_is_visible(t.oid) "
+                "AND x.indisunique AND NOT x.indisprimary AND x.indnatts = 1 AND a.attname = 'dia' "
+                "LOOP "
+                "IF r.restricao IS NOT NULL THEN "
+                "EXECUTE format('ALTER TABLE mkt_agendamentos DROP CONSTRAINT %I', r.restricao); "
+                "ELSE EXECUTE format('DROP INDEX %I', r.indice); END IF; "
+                "END LOOP; END $$"
+            )
+        )
+        await conexao.execute(
+            text("CREATE INDEX IF NOT EXISTS ix_mkt_agendamentos_dia ON mkt_agendamentos (dia)")
+        )
+        await conexao.execute(
             text("ALTER TABLE mkt_contas ADD COLUMN IF NOT EXISTS marca_id INTEGER NOT NULL DEFAULT 0")
         )
         await conexao.execute(

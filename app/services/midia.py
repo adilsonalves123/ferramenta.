@@ -4,7 +4,7 @@ import subprocess
 import uuid
 from pathlib import Path
 
-from app.schemas import CampanhaGerada, PedidoCampanha
+from app.schemas import PedidoCampanha
 from app.services.openai_campanha import cliente_openai
 
 PASTA_MIDIA = Path(__file__).resolve().parent.parent.parent / "midia"
@@ -198,7 +198,7 @@ def salvar_anexo(dados: bytes) -> tuple[str, str]:
     elif len(dados) > 12 and dados[4:8] == b"ftyp":
         ext, tipo = ".mp4", "video"
     elif dados.startswith(b"\x1a\x45\xdf\xa3"):
-        ext, tipo = ".webm", "video"
+        raise ValueError("Envie o vídeo em MP4.")
     else:
         raise ValueError("Envie uma foto JPG, PNG ou WebP, ou um vídeo MP4.")
     limite = 25_000_000 if tipo == "video" else 8_000_000
@@ -233,7 +233,7 @@ def _aviso(rotulo: str, erro: Exception) -> str:
     return f"{rotulo}: {detalhe[:160]}"
 
 
-def _prompt_foto(pedido: PedidoCampanha, acao: str, tem_referencia: bool) -> str:
+def _prompt_foto(pedido: PedidoCampanha, tem_referencia: bool) -> str:
     nicho = pedido.nicho.strip()
     produto = pedido.produto.strip()
     brief = pedido.brief_foto.strip()
@@ -255,13 +255,6 @@ def _prompt_foto(pedido: PedidoCampanha, acao: str, tem_referencia: bool) -> str
             "Ajuste só a luz e o enquadramento para um post quadrado. "
             "Não troque o produto, não invente pessoa, não adicione texto, letra, logotipo nem marca d'água. "
             f"Negócio: {nicho}. O que deve continuar em destaque: {produto}."
-        )
-    if acao == "video":
-        return (
-            "Fotografia realista, feita dentro do estabelecimento, luz natural de fim de tarde. "
-            f"Ambiente de {nicho}. Produto em destaque, de perto: {produto}. "
-            "Uma pessoa do lugar pode aparecer ao fundo, de lado, sem olhar para a câmera e sem pose de apresentador. "
-            "Sem texto, sem letras, sem logotipo, sem marca d'água."
         )
     return (
         "Fotografia realista de comida e bebida, luz natural, câmera perto do produto. "
@@ -290,16 +283,6 @@ def _referencia(pedido: PedidoCampanha) -> tuple[bytes | None, str | None]:
     if len(dados) > 12 and dados.startswith(b"RIFF") and dados[8:12] == b"WEBP":
         return dados, "image/webp"
     raise ValueError("Envie a foto em JPG, PNG ou WebP.")
-
-
-def _fala(gerada: CampanhaGerada) -> str:
-    roteiro = gerada.roteiro_video
-    texto = " ".join(
-        parte.strip()
-        for parte in (roteiro.gancho, roteiro.problema, roteiro.solucao, roteiro.cta)
-        if parte.strip()
-    )
-    return texto[:4000]
 
 
 async def _foto(
@@ -334,53 +317,6 @@ async def _foto(
     destino.write_bytes(base64.b64decode(conteudo))
 
 
-async def _audio(fala: str, destino: Path, instrucao: str = "") -> None:
-    pedido = {
-        "model": "gpt-4o-mini-tts",
-        "voice": "coral",
-        "input": fala,
-        "response_format": "mp3",
-    }
-    if instrucao:
-        pedido["instructions"] = instrucao
-    try:
-        resposta = await cliente_openai().audio.speech.create(**pedido)
-    except Exception:
-        resposta = await cliente_openai().audio.speech.create(
-            model="tts-1",
-            voice="alloy",
-            input=fala,
-            response_format="mp3",
-        )
-    destino.write_bytes(resposta.content)
-
-
-def _quadro(destino: Path) -> None:
-    import imageio_ffmpeg
-
-    ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
-    resultado = subprocess.run(
-        [
-            ffmpeg,
-            "-y",
-            "-f",
-            "lavfi",
-            "-i",
-            "color=c=0x1e1b4b:s=1024x1024:d=1",
-            "-frames:v",
-            "1",
-            "-update",
-            "1",
-            str(destino),
-        ],
-        capture_output=True,
-        text=True,
-        timeout=20,
-    )
-    if resultado.returncode != 0 or not destino.exists() or destino.stat().st_size < 1000:
-        raise RuntimeError("Não consegui criar a imagem do vídeo.")
-
-
 def _executar_ffmpeg(comando: list[str]) -> subprocess.CompletedProcess[str]:
     try:
         return subprocess.run(
@@ -391,144 +327,23 @@ def _executar_ffmpeg(comando: list[str]) -> subprocess.CompletedProcess[str]:
             timeout=120,
         )
     except subprocess.TimeoutExpired as erro:
-        raise RuntimeError("O vídeo não foi montado.") from erro
+        raise RuntimeError("A foto não pôde ser preparada.") from erro
 
 
-def _duracao_audio(ffmpeg: str, audio: Path) -> str:
-    import re
-
-    consulta = subprocess.run([ffmpeg, "-i", str(audio)], capture_output=True, text=True, timeout=20)
-    achado = re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", consulta.stderr or "")
-    if not achado:
-        return "20"
-    horas, minutos, segundos = achado.groups()
-    total = int(horas) * 3600 + int(minutos) * 60 + float(segundos)
-    if total <= 0:
-        return "20"
-    return f"{total + 0.2:.2f}"
-
-
-def _video(foto: Path, audio: Path, destino: Path) -> None:
-    import imageio_ffmpeg
-
-    ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
-    duracao = _duracao_audio(ffmpeg, audio)
-    comando = [
-        ffmpeg,
-        "-nostdin",
-        "-y",
-        "-loop",
-        "1",
-        "-framerate",
-        "25",
-        "-t",
-        duracao,
-        "-i",
-        str(foto),
-        "-i",
-        str(audio),
-        "-t",
-        duracao,
-        "-c:v",
-        "libx264",
-        "-threads",
-        "1",
-        "-preset",
-        "ultrafast",
-        "-tune",
-        "stillimage",
-        "-c:a",
-        "aac",
-        "-b:a",
-        "128k",
-        "-pix_fmt",
-        "yuv420p",
-        "-movflags",
-        "+faststart",
-        str(destino),
-    ]
-    resultado = _executar_ffmpeg(comando)
-    if resultado.returncode != 0 or not destino.exists() or destino.stat().st_size < 1000:
-        raise RuntimeError("O vídeo não foi montado.")
-
-
-async def montar_midia(
-    pedido: PedidoCampanha,
-    gerada: CampanhaGerada | None,
-    acao: str,
-) -> dict[str, str | None]:
+async def montar_midia(pedido: PedidoCampanha) -> dict[str, str | None]:
     ident, pasta = nova_pasta()
-    avisos: list[str] = []
-    foto: Path | None = pasta / "foto.png"
-    audio: Path | None = pasta / "audio.mp3" if acao == "video" and gerada else None
-    video: Path | None = pasta / "video.mp4" if acao == "video" and gerada else None
-    modelo = "gpt-image-1-mini" if acao == "video" else "gpt-image-1"
-    qualidade = "low" if acao == "video" else "medium"
-    fala = _fala(gerada) if gerada else ""
-    if video is not None and not fala.strip():
-        avisos.append("O vídeo não saiu: a fala veio vazia.")
-        audio = None
-        video = None
-
-    async def gerar_foto() -> None:
+    foto = pasta / "foto.png"
+    aviso: str | None = None
+    try:
         referencia, tipo = _referencia(pedido)
-        await _foto(
-            _prompt_foto(pedido, acao, referencia is not None),
-            foto,  # type: ignore[arg-type]
-            referencia,
-            tipo,
-            modelo,
-            qualidade,
-        )
-
-    foto_erro: Exception | None = None
-    audio_erro: Exception | None = None
-    if audio is not None:
-        resultado_foto, resultado_audio = await asyncio.gather(gerar_foto(), _audio(fala, audio), return_exceptions=True)
-        if isinstance(resultado_foto, Exception):
-            foto_erro = resultado_foto
-        if isinstance(resultado_audio, Exception):
-            audio_erro = resultado_audio
-    else:
-        try:
-            await gerar_foto()
-        except Exception as erro:
-            foto_erro = erro
-
-    if foto_erro is not None:
-        avisos.append(_aviso("A foto não saiu", foto_erro))
-        if video is not None and foto is not None:
-            try:
-                await asyncio.to_thread(_quadro, foto)
-            except Exception as falha_quadro:
-                avisos.append(_aviso("A imagem do vídeo não saiu", falha_quadro))
-                foto = None
-        else:
-            foto = None
-    if audio_erro is not None:
-        avisos.append(_aviso("O áudio não saiu", audio_erro))
-        audio = None
-        video = None
-
-    if video is not None and audio is not None and foto is not None and audio.exists() and foto.exists():
-        try:
-            await asyncio.to_thread(_video, foto, audio, video)
-        except Exception as erro:
-            avisos.append(_aviso("O vídeo não foi montado", erro))
-            video = None
-    elif video is not None:
-        video = None
-
-    def url(arquivo: Path | None, nome: str) -> str | None:
-        if arquivo is None or not arquivo.exists():
-            return None
-        return f"/midia/{ident}/{nome}"
-
+        await _foto(_prompt_foto(pedido, referencia is not None), foto, referencia, tipo, "gpt-image-1", "medium")
+    except Exception as erro:
+        aviso = _aviso("A foto não saiu", erro)
     return {
-        "foto_url": url(foto, "foto.png"),
-        "audio_url": url(audio, "audio.mp3"),
-        "video_url": url(video, "video.mp4"),
-        "aviso_midia": " ".join(avisos) or None,
+        "foto_url": f"/midia/{ident}/foto.png" if foto.exists() else None,
+        "audio_url": None,
+        "video_url": None,
+        "aviso_midia": aviso,
     }
 
 
@@ -539,7 +354,7 @@ async def foto_da_cena(cena: str) -> str:
         acao="foto",
         brief_foto=cena.strip()[:800],
     )
-    midia = await montar_midia(pedido, None, "foto")
+    midia = await montar_midia(pedido)
     url = midia.get("foto_url") or ""
     if not url:
         raise RuntimeError(midia.get("aviso_midia") or "A foto não saiu.")
@@ -550,140 +365,3 @@ async def foto_da_cena(cena: str) -> str:
     destino = PASTA_MIDIA / ident / "anexo.jpg"
     await asyncio.to_thread(_jpeg_instagram, PASTA_MIDIA / ident / "foto.png", destino)
     return f"/midia/{ident}/anexo.jpg"
-
-
-def _video_cenas(fotos: list[Path], audio: Path, destino: Path) -> None:
-    import imageio_ffmpeg
-
-    ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
-    duracao = float(_duracao_audio(ffmpeg, audio))
-    cada = max(duracao / len(fotos), 0.8)
-    total = f"{cada * len(fotos):.2f}"
-    comando = [ffmpeg, "-nostdin", "-y"]
-    for foto in fotos:
-        comando += ["-loop", "1", "-framerate", "25", "-t", f"{cada:.2f}", "-i", str(foto)]
-    comando += ["-i", str(audio)]
-    filtros = []
-    for indice in range(len(fotos)):
-        filtros.append(f"[{indice}:v]scale=1024:1024,format=yuv420p,setsar=1[v{indice}]")
-    entradas = "".join(f"[v{indice}]" for indice in range(len(fotos)))
-    filtro = ";".join(filtros) + f";{entradas}concat=n={len(fotos)}:v=1:a=0[v]"
-    comando += [
-        "-filter_complex",
-        filtro,
-        "-map",
-        "[v]",
-        "-map",
-        f"{len(fotos)}:a",
-        "-c:v",
-        "libx264",
-        "-threads",
-        "1",
-        "-preset",
-        "ultrafast",
-        "-tune",
-        "stillimage",
-        "-c:a",
-        "aac",
-        "-b:a",
-        "128k",
-        "-t",
-        total,
-        "-movflags",
-        "+faststart",
-        str(destino),
-    ]
-    resultado = _executar_ffmpeg(comando)
-    if resultado.returncode != 0 or not destino.exists() or destino.stat().st_size < 1000:
-        raise RuntimeError("O vídeo não foi montado.")
-
-
-async def montar_historia(
-    nicho: str,
-    cenas: list[tuple[str, str]],
-    fala: str,
-    referencia: bytes | None = None,
-    tipo: str | None = None,
-) -> dict[str, str | None]:
-    ident, pasta = nova_pasta()
-    avisos: list[str] = []
-    fotos: list[Path] = []
-
-    async def uma_cena(indice: int, descricao: str) -> Path | None:
-        destino = pasta / f"cena-{indice}.png"
-        prompt = (
-            "Fotografia documental feita com câmera real. Pele com textura, poros, cabelo natural, "
-            "roupa de quem trabalha, luz do próprio lugar. "
-            "Sem plástico, sem boneco, sem pele lisa de anúncio, sem ilustração, sem 3D, sem desenho. "
-            "Sem texto, sem letras, sem logotipo, sem marca d'água. "
-            f"Lugar: {nicho}. Cena: {descricao}"
-        )
-        try:
-            await _foto(
-                prompt,
-                destino,
-                referencia if indice == 0 else None,
-                tipo if indice == 0 else None,
-                "gpt-image-1",
-                "low",
-            )
-            return destino
-        except Exception as erro:
-            avisos.append(_aviso(f"A cena {indice + 1} não saiu", erro))
-            return None
-
-    audio = pasta / "audio.mp3"
-    video = pasta / "video.mp4"
-
-    async def narrar() -> None:
-        await _audio(
-            fala,
-            audio,
-            "Narração de uma história curta em português do Brasil. Voz calma, próxima, como quem conta o que aconteceu. Sem tom de comercial.",
-        )
-
-    prontas, audio_resultado = await asyncio.gather(
-        asyncio.gather(*(uma_cena(indice, descricao) for indice, (_, descricao) in enumerate(cenas))),
-        narrar(),
-        return_exceptions=True,
-    )
-    if isinstance(prontas, Exception):
-        avisos.append(_aviso("As cenas não saíram", prontas))
-        prontas = []
-    fotos = [foto for foto in prontas if foto is not None and foto.exists()]
-    if not fotos:
-        quadro = pasta / "cena-0.png"
-        try:
-            await asyncio.to_thread(_quadro, quadro)
-            fotos = [quadro]
-        except Exception as erro:
-            avisos.append(_aviso("A imagem do vídeo não saiu", erro))
-    if isinstance(audio_resultado, Exception):
-        avisos.append(_aviso("O áudio não saiu", audio_resultado))
-        audio = None
-    elif not audio.exists():
-        audio = None
-
-    if audio is not None and fotos:
-        try:
-            if len(fotos) == 1:
-                await asyncio.to_thread(_video, fotos[0], audio, video)
-            else:
-                await asyncio.to_thread(_video_cenas, fotos, audio, video)
-        except Exception as erro:
-            avisos.append(_aviso("O vídeo não foi montado", erro))
-            video = None
-    else:
-        video = None
-
-    def url(arquivo: Path | None, nome: str) -> str | None:
-        if arquivo is None or not arquivo.exists():
-            return None
-        return f"/midia/{ident}/{nome}"
-
-    return {
-        "foto_url": url(fotos[0], fotos[0].name) if fotos else None,
-        "audio_url": url(audio, "audio.mp3"),
-        "video_url": url(video, "video.mp4"),
-        "aviso_midia": " ".join(avisos) or None,
-    }

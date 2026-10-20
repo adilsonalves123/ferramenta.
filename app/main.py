@@ -1,5 +1,7 @@
 import asyncio
+import os
 from contextlib import asynccontextmanager
+from html import escape
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -10,8 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.database import criar_tabelas, fechar_engine, get_sessionmaker
-from app.services.fila_video import retomar
-from app.services.publicar import preparar_fotos, publicar_vencidos
+from app.services.publicar import preparar_fotos, publicar_vencidos, soltar_presos
 from app.routers.agenda import router as router_agenda
 from app.routers.campanhas import router
 from app.routers.legal import router as router_legal
@@ -22,14 +23,25 @@ from app.services.midia import PASTA_MIDIA
 PAGINA = Path(__file__).with_name("pagina.html")
 PASTA_QUADROS = Path(__file__).resolve().parent.parent / "quadros"
 
+trava_robo = asyncio.Lock()
+
+
+def robo_desligado() -> bool:
+    return os.environ.get("DESLIGAR_ROBO", "").strip() == "1"
+
+
+async def rodada() -> None:
+    async with trava_robo:
+        async with get_sessionmaker()() as session:
+            await preparar_fotos(session)
+            await publicar_vencidos(session)
+
 
 async def vigia() -> None:
     await asyncio.sleep(45)
     while True:
         try:
-            async with get_sessionmaker()() as session:
-                await preparar_fotos(session)
-                await publicar_vencidos(session)
+            await rodada()
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -40,20 +52,24 @@ async def vigia() -> None:
 @asynccontextmanager
 async def vida(app: FastAPI):
     await criar_tabelas()
-    await retomar()
-    tarefa = asyncio.create_task(vigia())
+    tarefa = None
+    if not robo_desligado():
+        async with get_sessionmaker()() as session:
+            await soltar_presos(session)
+        tarefa = asyncio.create_task(vigia())
     yield
-    tarefa.cancel()
-    try:
-        await tarefa
-    except asyncio.CancelledError:
-        pass
+    if tarefa is not None:
+        tarefa.cancel()
+        try:
+            await tarefa
+        except asyncio.CancelledError:
+            pass
     await fechar_engine()
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="Ferramenta de campanha", version="0.1.0", lifespan=vida)
+    app = FastAPI(title=settings.produto_nome, version="0.1.0", lifespan=vida)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.origens_cors(),
@@ -88,7 +104,7 @@ def create_app() -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse, include_in_schema=False)
     async def inicio() -> str:
-        return PAGINA.read_text(encoding="utf-8")
+        return PAGINA.read_text(encoding="utf-8").replace("__PRODUTO__", escape(settings.produto_nome))
 
     @app.get("/saude")
     async def saude() -> dict[str, str]:

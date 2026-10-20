@@ -18,59 +18,34 @@ class PedidoCampanha(BaseModel):
         validation_alias=AliasChoices("produto", "produto_servico"),
         examples=["combo de cerveja gelada no happy hour"],
     )
-    acao: Literal["texto", "foto", "video", "google"] = "texto"
+    acao: Literal["texto", "foto"] = "texto"
     foto_base64: str = Field(default="", max_length=6_000_000)
     brief_foto: str = Field(default="", max_length=800)
 
 
 class RoteiroVideo(BaseModel):
-    gancho: str
-    problema: str
-    solucao: str
-    cta: str
+    gancho: str = ""
+    problema: str = ""
+    solucao: str = ""
+    cta: str = ""
 
 
 class GoogleMeuNegocio(BaseModel):
-    nome_otimizado: str
-    categoria: str
-    descricao_seo: str
+    nome_otimizado: str = ""
+    categoria: str = ""
+    descricao_seo: str = ""
 
 
 class CampanhaGerada(BaseModel):
     titulo_anuncio: str
     legenda_redes: str
-    roteiro_video: RoteiroVideo
-    google_meu_negocio: GoogleMeuNegocio
 
 
 class CampanhaCompleta(CampanhaGerada):
+    roteiro_video: RoteiroVideo = Field(default_factory=RoteiroVideo)
+    google_meu_negocio: GoogleMeuNegocio = Field(default_factory=GoogleMeuNegocio)
     foto_url: str | None = None
     audio_url: str | None = None
-    video_url: str | None = None
-    aviso_midia: str | None = None
-
-
-class PedidoClonador(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-
-    nicho: str = Field(min_length=2, max_length=120, validation_alias=AliasChoices("nicho", "nicho_negocio"))
-    produto: str = Field(min_length=2, max_length=200, validation_alias=AliasChoices("produto", "produto_servico"))
-    link_video: str = Field(default="", max_length=500)
-    nome_arquivo: str = Field(default="", max_length=200)
-
-
-class ClonagemTexto(BaseModel):
-    titulo: str
-    referencia: str
-    gancho: str
-    retencao: str
-    desenvolvimento: str
-    cta: str
-    legenda: str
-
-
-class ClonagemGerada(ClonagemTexto):
-    foto_url: str | None = None
     video_url: str | None = None
     aviso_midia: str | None = None
 
@@ -85,7 +60,7 @@ class PedidoSugestao(BaseModel):
 
     nicho: str = Field(min_length=2, max_length=120, validation_alias=AliasChoices("nicho", "nicho_negocio"))
     produto: str = Field(min_length=2, max_length=4000, validation_alias=AliasChoices("produto", "produto_servico"))
-    origem: Literal["video", "clonador", "foto"] = "video"
+    origem: Literal["foto"] = "foto"
     transcricao: str = Field(default="", max_length=8000)
     link: str = Field(default="", max_length=500)
     mensagens: list[MensagemCriacao] = Field(default_factory=list, max_length=12)
@@ -105,10 +80,6 @@ class SugestaoVideo(BaseModel):
     mensagem: str
     titulo: str
     cena: str
-    gancho: str
-    problema: str
-    solucao: str
-    cta: str
     legenda: str
     transcricao: str = ""
     roteiro: str = ""
@@ -125,44 +96,6 @@ class PedidoFotoConfirmada(BaseModel):
     legenda: str = Field(default="", max_length=1000)
     cena: str = Field(min_length=2, max_length=800)
     foto_base64: str = Field(default="", max_length=6_000_000)
-
-
-class PedidoVideoConfirmado(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-
-    nicho: str = Field(min_length=2, max_length=120, validation_alias=AliasChoices("nicho", "nicho_negocio"))
-    produto: str = Field(min_length=2, max_length=4000, validation_alias=AliasChoices("produto", "produto_servico"))
-    titulo: str = Field(min_length=2, max_length=200)
-    cena: str = Field(min_length=2, max_length=500)
-    gancho: str = Field(min_length=2, max_length=500)
-    problema: str = Field(min_length=2, max_length=500)
-    solucao: str = Field(min_length=2, max_length=500)
-    cta: str = Field(min_length=2, max_length=500)
-    legenda: str = Field(default="", max_length=1000)
-    foto_base64: str = Field(default="", max_length=6_000_000)
-    roteiro: str = Field(default="", max_length=2500)
-    cenas: list[CenaHistoria] = Field(default_factory=list, max_length=4)
-
-
-class PedidoRadar(BaseModel):
-    cidade: str = Field(min_length=2, max_length=80)
-    redes: list[Literal["instagram", "tiktok", "facebook", "google"]] = Field(min_length=1, max_length=4)
-    tipo_busca: Literal["geral", "determinada"] = "geral"
-    tags: str = Field(default="", max_length=200)
-    categoria: str = Field(default="", max_length=80)
-
-
-class EmpresaRadar(BaseModel):
-    nome: str
-    categoria: str
-    bairro: str
-    endereco: str
-    telefone: str
-    porque: str
-    site: str = ""
-    mapa: str = ""
-    nota: float | None = None
-    avaliacoes: int | None = None
 
 
 class PedidoProjeto(BaseModel):
@@ -195,14 +128,6 @@ class PedidoPublicarAgora(BaseModel):
 class RespostaPublicacao(BaseModel):
     status: str
     detalhe: str = ""
-
-
-class PedidoFicha(BaseModel):
-    texto: str = Field(min_length=20, max_length=8000)
-
-
-class RespostaFicha(BaseModel):
-    texto: str
 
 
 class PedidoMarca(BaseModel):
@@ -325,13 +250,3 @@ class RespostaPaginas(BaseModel):
 class PedidoPagina(BaseModel):
     pagina_id: str = Field(min_length=2, max_length=40)
     marca_id: int = 0
-
-
-class RadarResposta(BaseModel):
-    cidade: str
-    categoria: str
-    redes: list[str]
-    tipo_busca: str
-    tags: str
-    aviso: str
-    empresas: list[EmpresaRadar]

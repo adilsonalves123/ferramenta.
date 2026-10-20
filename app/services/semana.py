@@ -119,7 +119,9 @@ async def apagar_marca(session: AsyncSession, marca_id: int) -> None:
     if alvo is None:
         raise ValueError("Essa marca não existe mais.")
     fila = await session.exec(
-        select(Agendamento).where(Agendamento.marca_id == marca_id, Agendamento.status == "na_fila")
+        select(Agendamento).where(
+            Agendamento.marca_id == marca_id, col(Agendamento.status).in_(["na_fila", "publicando"])
+        )
     )
     if fila.first() is not None:
         raise ValueError("Essa marca tem post na fila. Cancele os posts dela antes.")
@@ -128,27 +130,6 @@ async def apagar_marca(session: AsyncSession, marca_id: int) -> None:
         await session.delete(conta)
     await session.delete(alvo)
     await session.commit()
-
-
-async def texto_ficha(session: AsyncSession) -> str:
-    marcas = await listar_marcas(session)
-    texto = (marcas[0].texto if marcas else "").strip()
-    return texto or FICHA_PADRAO
-
-
-async def guardar_ficha(session: AsyncSession, texto: str) -> str:
-    limpo = texto.strip()
-    resultado = await session.exec(select(Ficha).order_by(Ficha.id))
-    registro = resultado.first()
-    if registro is None:
-        registro = Ficha(texto=limpo)
-        session.add(registro)
-    else:
-        registro.texto = limpo
-        registro.atualizado_em = agora()
-    await session.commit()
-    await session.refresh(registro)
-    return registro.texto
 
 
 TEMAS = {
@@ -212,8 +193,8 @@ async def montar_dias(
     if len(pedidos) > 14:
         raise ValueError("Marque no máximo 14 dias.")
     dias = [dia for dia, _hora in pedidos]
-    if len(dias) != len(set(dias)):
-        raise ValueError("Esse dia foi marcado duas vezes.")
+    if len(pedidos) != len(set(pedidos)):
+        raise ValueError("Esse dia e horário foram marcados duas vezes.")
     agora_local = datetime.now(ZONA)
     limite = agora_local.date() + timedelta(days=21)
     from app.services.publicar import momento
@@ -224,12 +205,14 @@ async def montar_dias(
             raise ValueError("Escolha um dia dos próximos 21 dias.")
         if momento(dia, hora) <= agora_local:
             raise ValueError("Um desses horários já passou.")
-    resultado = await session.exec(select(Agendamento).where(col(Agendamento.dia).in_(dias)))
-    if resultado.first() is not None:
-        raise ValueError("Um desses dias já tem publicação. Cancele primeiro.")
     marca = await marca_por_id(session, marca_id)
     if marca is None:
         raise ValueError("Crie uma marca no Prompt antes.")
+    existentes = await session.exec(
+        select(Agendamento).where(col(Agendamento.dia).in_(dias), Agendamento.marca_id == (marca.id or 0))
+    )
+    ocupados = {(item.dia, item.hora) for item in existentes.all()}
+    repetidos = [par for par in pedidos if par in ocupados]
     cabecalho = f"Marca: {marca.nome}."
     if (marca.publico or "").strip():
         cabecalho += f" Público: {marca.publico}."
@@ -263,4 +246,6 @@ async def montar_dias(
     aviso = f"Post de {marca.nome} na fila. A foto é criada perto do horário marcado."
     if len(criados) < len(pedidos):
         aviso = "Parte dos dias entrou na fila. " + aviso
+    if repetidos:
+        aviso += f" Atenção: {marca.nome} já tinha post nesse dia e horário."
     return criados, aviso

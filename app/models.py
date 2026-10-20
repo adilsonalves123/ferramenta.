@@ -26,7 +26,7 @@ class Agendamento(SQLModel, table=True):
     __tablename__ = "mkt_agendamentos"
 
     id: int | None = Field(default=None, primary_key=True)
-    dia: str = Field(max_length=10, unique=True, index=True)
+    dia: str = Field(max_length=10, index=True)
     hora: str = Field(default="09:00", max_length=5)
     rede: str = Field(max_length=40)
     titulo: str = Field(sa_type=Text)
@@ -36,6 +36,8 @@ class Agendamento(SQLModel, table=True):
     cena: str = Field(default="", sa_type=Text)
     tentativas: int = Field(default=0)
     tentativas_marca: int = Field(default=0)
+    tentativas_publicar: int = Field(default=0)
+    reservado_em: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     ok_instagram: bool = Field(default=False)
     ok_facebook: bool = Field(default=False)
     formato: str = Field(default="feed", max_length=20)
@@ -83,18 +85,6 @@ class Ficha(SQLModel, table=True):
     marca_dagua: str = Field(default="", max_length=60)
     texto: str = Field(sa_type=Text)
     atualizado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
-
-
-class VideoTrabalho(SQLModel, table=True):
-    __tablename__ = "mkt_video_trabalhos"
-
-    id: str = Field(primary_key=True, max_length=32)
-    status: str = Field(default="montando", max_length=20, index=True)
-    tentativas: int = Field(default=0)
-    pedido: str = Field(default="", sa_type=Text)
-    resultado: str = Field(default="", sa_type=Text)
-    detalhe: str = Field(default="", sa_type=Text)
-    criado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
 
 
 class Roteiro(SQLModel, table=True):
