@@ -141,9 +141,84 @@
       gap: 14px;
       padding: 8px 32px 8px;
     }
-    .vazio-conversa { margin: auto; max-width: 460px; text-align: center; }
-    .vazio-conversa h2 { margin: 0 0 6px; font-size: 22px; letter-spacing: -0.03em; font-weight: 600; }
-    .vazio-conversa p { margin: 0; color: var(--mudo); line-height: 1.5; }
+    .coluna-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .coluna-topo button.link-mini { display: inline-flex; align-items: center; gap: 6px; }
+    .fio.com-resumo { justify-content: flex-start; }
+    .resumo-dia { width: 100%; max-width: 640px; margin: 4px auto 0; display: grid; gap: 10px; }
+    .resumo-ola h2 { margin: 0 0 4px; font-size: 22px; letter-spacing: -0.03em; font-weight: 600; }
+    .resumo-ola p { margin: 0; color: var(--mudo); line-height: 1.5; }
+    .cartao-dia {
+      padding: 12px 16px;
+      background: var(--papel);
+      border: 1px solid var(--linha);
+      border-radius: 12px;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    }
+    .cartao-dia.erro-dia { border-left: 3px solid #e11d48; }
+    p.cartao-dia-topo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 10px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #8b919a;
+    }
+    p.cartao-dia-topo i { font-size: 12px; color: var(--azul); }
+    .erro-dia p.cartao-dia-topo, .erro-dia p.cartao-dia-topo i { color: #e11d48; }
+    .cartao-dia-vazio { margin: 0; color: var(--mudo); line-height: 1.45; }
+    .proximo-post { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; align-items: start; }
+    .proximo-foto {
+      width: 64px;
+      height: 64px;
+      border-radius: 10px;
+      object-fit: cover;
+      display: grid;
+      place-items: center;
+      color: var(--mudo);
+      font-size: 18px;
+      background: linear-gradient(160deg, #e0e7ff, #fce7f3);
+    }
+    .proximo-corpo { min-width: 0; display: grid; gap: 3px; }
+    .proximo-corpo strong { font-size: 14.5px; font-weight: 600; }
+    .proximo-corpo .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--mudo); font-size: 12.5px; }
+    .proximo-corpo .linha-post { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; }
+    .proximo-corpo small { color: var(--mudo); font-size: 12px; line-height: 1.4; }
+    .erro-dia .motivo { margin: 0; color: #9f1239; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+    .acoes-dia { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 12px; }
+    .acoes-dia button.secundario { width: auto; height: 32px; padding: 0 12px; font-size: 13px; }
+    .acoes-dia button.cancelar-dia {
+      border: 0;
+      background: transparent;
+      color: #e11d48;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0;
+    }
+    .acoes-dia button:disabled { opacity: 0.6; cursor: wait; }
+    .numeros-semana { display: grid; grid-template-columns: 90px 120px minmax(0, 1fr); gap: 12px; }
+    .numeros-semana small { display: block; color: var(--mudo); font-size: 12px; }
+    .numeros-semana b { display: block; margin-top: 2px; font-size: 22px; letter-spacing: -0.03em; font-weight: 600; }
+    .numeros-semana .melhor-semana { min-width: 0; }
+    .melhor-semana span { display: block; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+    .melhor-semana a, .cartao-dia a.ver-todos { color: var(--azul); font-weight: 600; font-size: 12.5px; text-decoration: none; }
+    .melhor-semana a:hover, .cartao-dia a.ver-todos:hover { text-decoration: underline; }
+    .dica-semana { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--linha); line-height: 1.45; }
+    .dica-semana i { margin-top: 3px; color: #f59e0b; }
+    .cartao-dia a.ver-todos { display: inline-block; margin-top: 10px; cursor: pointer; }
+    .resumo-ideias p.cartao-dia-topo { margin: 6px 2px 8px; }
+    #resumo-ideias button.chip { background: var(--papel); }
+    #resumo-ideias button.chip:hover { border-color: #c7cbff; background: var(--azul-suave); color: var(--azul); }
+    .lista-agenda li.destaque { animation: destacar 2.4s ease-out; border-radius: 8px; }
+    @keyframes destacar { 0%, 40% { background: var(--azul-suave); box-shadow: 0 0 0 4px var(--azul-suave); } 100% { background: transparent; box-shadow: none; } }
+    @media (max-width: 640px) {
+      .numeros-semana { grid-template-columns: 1fr 1fr; }
+      .numeros-semana .melhor-semana { grid-column: 1 / -1; }
+    }
     .balao { max-width: 78%; line-height: 1.5; white-space: pre-wrap; font-size: 14.5px; }
     .balao.assistente { color: var(--tinta); padding: 2px 0; }
     .balao.pessoa {
@@ -854,11 +929,29 @@
         <p class="legal"><a href="/privacidade" target="_blank" rel="noopener">Privacidade</a> · <a href="/termos" target="_blank" rel="noopener">Termos</a></p>
       </aside>
       <section class="conversa">
-        <div class="coluna-topo" id="topo-conversa">Novo post</div>
-        <div class="fio" id="fio">
-          <div class="vazio-conversa" id="vazio-conversa">
-            <h2>Descreva o post</h2>
-            <p>Escolha a marca, o tipo de post e onde publicar. Anexe uma foto ou um vídeo, se quiser. A prévia aparece ao lado e você pode mudar o texto nela.</p>
+        <div class="coluna-topo" id="topo-conversa">
+          <span>Novo post</span>
+          <button class="link-mini" type="button" id="voltar-resumo" hidden><i class="fa-solid fa-arrow-left"></i> Voltar ao resumo</button>
+        </div>
+        <div class="fio com-resumo" id="fio">
+          <div class="resumo-dia" id="resumo-dia">
+            <header class="resumo-ola">
+              <h2 id="resumo-saudacao">Olá</h2>
+              <p id="resumo-data"></p>
+            </header>
+            <section class="cartao-dia erro-dia" id="resumo-erro" hidden></section>
+            <section class="cartao-dia" id="resumo-proximo">
+              <p class="cartao-dia-topo"><i class="fa-regular fa-calendar"></i>Próximo post</p>
+              <p class="cartao-dia-vazio">Carregando a fila...</p>
+            </section>
+            <section class="cartao-dia" id="resumo-semana">
+              <p class="cartao-dia-topo"><i class="fa-solid fa-chart-simple"></i>Como foi a semana</p>
+              <p class="cartao-dia-vazio">Carregando os números...</p>
+            </section>
+            <section class="resumo-ideias">
+              <p class="cartao-dia-topo"><i class="fa-regular fa-lightbulb"></i>Ideias rápidas</p>
+              <div class="atalhos em-linha" id="resumo-ideias"></div>
+            </section>
           </div>
         </div>
         <form class="composer" id="composer">
@@ -1673,6 +1766,9 @@
     let sugestoes = [];
     let sugestoesAbertas = false;
     let pedidoSugestoes = 0;
+    let sugestoesDe = -1;
+    let resumoAtual = null;
+    let pedidoResumo = 0;
     const DIAS_CURTOS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
     function dataDoIso(iso) {
@@ -1722,6 +1818,7 @@
         lista.appendChild(linha);
       });
       if (clima !== undefined) nota.textContent = clima && clima !== "ok" ? clima : "";
+      desenharIdeias();
     }
 
     async function carregarSugestoes(atualizar) {
@@ -1737,6 +1834,7 @@
         return;
       }
       sugestoes = dados.itens || [];
+      sugestoesDe = marcaId;
       desenharSugestoes(dados.clima_status || "");
       desenharSemana();
     }
@@ -1796,6 +1894,7 @@
       atualizarMarcaVisual();
       desenharListaMarcas();
       carregarSugestoes(false).catch(() => {});
+      carregarResumo();
     }
 
     function desenharListaMarcas() {
@@ -1848,8 +1947,7 @@
     }
 
     function falar(quem, mensagem) {
-      const vazio = document.getElementById("vazio-conversa");
-      if (vazio) vazio.remove();
+      if (!document.getElementById("resumo-dia").hidden) mostrarResumoDia(false);
       const bloco = document.createElement("div");
       bloco.className = `balao ${quem}`;
       bloco.textContent = mensagem;
@@ -1904,6 +2002,7 @@
       }
       visiveis.forEach((item) => {
         const linha = document.createElement("li");
+        linha.dataset.id = String(item.id);
         const corpo = document.createElement("div");
         const titulo = document.createElement("strong");
         const temaItem = item.tema ? ` · ${item.tema.charAt(0).toUpperCase()}${item.tema.slice(1)}` : "";
@@ -1922,6 +2021,14 @@
         }
         linha.append(corpo);
         if (item.status !== "publicado" && item.status !== "publicando") {
+          if (item.status === "erro") {
+            const deNovo = document.createElement("button");
+            deNovo.type = "button";
+            deNovo.className = "trocar-foto";
+            deNovo.textContent = "Tentar de novo";
+            deNovo.addEventListener("click", () => tentarDeNovo(item.id, deNovo));
+            corpo.append(deNovo);
+          }
           if (item.pode_trocar_foto) {
             const trocar = document.createElement("button");
             trocar.type = "button";
@@ -2062,6 +2169,21 @@
       }
     }
 
+    async function tentarDeNovo(id, botao) {
+      const nota = document.getElementById("nota-agenda");
+      botao.disabled = true;
+      try {
+        const resposta = await fetch("/agenda/" + id + "/tentar-de-novo", { method: "POST" });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        await carregarAgenda();
+        nota.textContent = "O post voltou para a fila. Se o horário já passou, ele sai em poucos minutos.";
+      } catch (falha) {
+        nota.textContent = falha.message || "Não consegui pôr o post de volta na fila.";
+        botao.disabled = false;
+      }
+    }
+
     async function trocarFormato(id, formato) {
       const nota = document.getElementById("nota-agenda");
       try {
@@ -2087,6 +2209,7 @@
       agendaItens = dados.itens || [];
       metaPronta = Boolean(dados.meta_pronta);
       desenharSemana();
+      if (marcas.length) carregarResumo();
     }
 
     function colocarMidiaPrevia(url, tipo) {
@@ -2206,6 +2329,289 @@
       }
     }
 
+    const IDEIAS_TEMA = {
+      bastidores: { rotulo: "Bastidores do dia", pedido: "Crie um post de bastidores mostrando como é o dia a dia da marca, de um jeito próximo e verdadeiro." },
+      dica: { rotulo: "Dica da semana", pedido: "Crie um post com uma dica útil para o nosso público, ligada ao que a marca faz." },
+      oferta: { rotulo: "Oferta para sexta", pedido: "Crie um post chamando os clientes para a sexta-feira, destacando um produto ou serviço da marca. Se precisar de preço, deixe [preço] para eu completar." },
+      "história": { rotulo: "História da marca", pedido: "Crie um post contando um pedaço da história da marca e de quem está por trás dela." },
+      prova: { rotulo: "Por que escolher a gente", pedido: "Crie um post mostrando por que os clientes escolhem a marca, sem inventar depoimento nem número de clientes." },
+      "interação": { rotulo: "Pergunta para os clientes", pedido: "Crie um post com uma pergunta simples para os clientes responderem nos comentários." },
+    };
+    const ORDEM_IDEIAS = ["bastidores", "dica", "oferta", "interação"];
+    const NAO_INVENTAR = "Não invente preço, horário de funcionamento nem promoção.";
+
+    function mostrarResumoDia(mostrar) {
+      document.getElementById("resumo-dia").hidden = !mostrar;
+      document.getElementById("voltar-resumo").hidden = mostrar;
+      fio.classList.toggle("com-resumo", mostrar);
+    }
+
+    function quandoPost(item) {
+      const hoje = resumoAtual ? resumoAtual.hoje : diaIso(new Date());
+      const amanha = resumoAtual ? resumoAtual.amanha : "";
+      const dia = item.dia === hoje ? "Hoje" : item.dia === amanha ? "Amanhã" : diaCurto(item.dia);
+      return `${dia} · ${item.hora}`;
+    }
+
+    function verNaAgenda(item) {
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      const alvo = dataDoIso(item.dia);
+      const limite = new Date(hoje);
+      limite.setDate(hoje.getDate() + 21);
+      const offset = (alvo.getFullYear() - hoje.getFullYear()) * 12 + alvo.getMonth() - hoje.getMonth();
+      if (alvo >= hoje && alvo <= limite && offset >= 0 && offset <= 1) {
+        mesOffset = offset;
+        diaEscolhido = item.dia;
+      }
+      desenharSemana();
+      const linha = document.querySelector(`#lista-agenda li[data-id="${item.id}"]`);
+      (linha || document.querySelector(".cartao-agenda")).scrollIntoView({ behavior: "smooth", block: "center" });
+      if (linha) {
+        linha.classList.remove("destaque");
+        void linha.offsetWidth;
+        linha.classList.add("destaque");
+      }
+    }
+
+    function topoCartao(icone, rotulo) {
+      const topo = elemento("p", "cartao-dia-topo");
+      const marca = document.createElement("i");
+      marca.className = icone;
+      topo.append(marca, document.createTextNode(rotulo));
+      return topo;
+    }
+
+    function fotoProximo(item) {
+      const vazio = elemento("div", "proximo-foto");
+      const icone = item.tem_video ? "fa-solid fa-film" : item.aguarda_foto ? "fa-solid fa-wand-magic-sparkles" : "fa-regular fa-image";
+      vazio.innerHTML = `<i class="${icone}"></i>`;
+      if (!item.imagem_url) return vazio;
+      const foto = document.createElement("img");
+      foto.className = "proximo-foto";
+      foto.src = item.imagem_url;
+      foto.alt = "Foto do post";
+      foto.addEventListener("error", () => foto.replaceWith(vazio));
+      return foto;
+    }
+
+    function metaPost(item) {
+      const meta = elemento("span", "meta", `${nomeRede(item.rede)} · ${nomeFormato(item.formato)}`);
+      if (item.tema) {
+        meta.append(elemento("span", "ponto " + classeTema(item.tema)), document.createTextNode(item.tema.charAt(0).toUpperCase() + item.tema.slice(1)));
+      }
+      return meta;
+    }
+
+    function botaoAgenda(item) {
+      const botao = elemento("button", "secundario", "Ver na agenda");
+      botao.type = "button";
+      botao.addEventListener("click", () => verNaAgenda(item));
+      return botao;
+    }
+
+    function desenharErroDia(erros) {
+      const lugar = document.getElementById("resumo-erro");
+      lugar.innerHTML = "";
+      lugar.hidden = !erros.length;
+      if (!erros.length) return;
+      const item = erros[0];
+      const corpo = elemento("div", "proximo-corpo");
+      corpo.append(elemento("strong", "", quandoPost(item)), metaPost(item));
+      if (item.linha) corpo.append(elemento("span", "linha-post", item.linha));
+      corpo.append(elemento("p", "motivo", item.detalhe || "Não publicou."));
+      const acoes = elemento("div", "acoes-dia");
+      acoes.append(botaoAgenda(item));
+      if (erros.length > 1) acoes.append(elemento("small", "", `Mais ${erros.length - 1} com erro na agenda.`));
+      lugar.append(topoCartao("fa-solid fa-triangle-exclamation", "Um post não saiu"), corpo, acoes);
+    }
+
+    function situacaoProximo(item) {
+      if (item.status === "publicando") return "Publicando agora.";
+      if (item.aguarda_foto) return "Foto criada perto do horário.";
+      if (item.status === "falta_imagem") return "Falta a foto. O Instagram pede uma imagem para sair sozinho.";
+      return item.detalhe || "";
+    }
+
+    async function preencherAmanha(botao, nota) {
+      const amanha = resumoAtual ? resumoAtual.amanha : diaIso(new Date(Date.now() + 86400000));
+      const hora = document.getElementById("hora-post").value;
+      if (!window.confirm(`A IA vai escrever um post de ${lerMarca().nome} para amanhã${hora ? " às " + hora : ""} e colocar na fila. Continuar?`)) return;
+      const hoje = new Date();
+      const alvo = dataDoIso(amanha);
+      mesOffset = Math.max(0, (alvo.getFullYear() - hoje.getFullYear()) * 12 + alvo.getMonth() - hoje.getMonth());
+      diaEscolhido = amanha;
+      desenharSemana();
+      botao.disabled = true;
+      botao.textContent = "Escrevendo o post";
+      const certo = await preencherDia();
+      botao.disabled = false;
+      botao.textContent = "Preencher amanhã";
+      if (!certo) nota.textContent = document.getElementById("nota-agenda").textContent;
+    }
+
+    function desenharProximo(item) {
+      const lugar = document.getElementById("resumo-proximo");
+      lugar.innerHTML = "";
+      lugar.append(topoCartao("fa-regular fa-calendar", "Próximo post"));
+      const acoes = elemento("div", "acoes-dia");
+      if (!item) {
+        lugar.append(elemento("p", "cartao-dia-vazio", "Nenhum post na fila."));
+        const preencher = elemento("button", "secundario", "Preencher amanhã");
+        preencher.type = "button";
+        const nota = elemento("small", "");
+        preencher.addEventListener("click", () => preencherAmanha(preencher, nota));
+        acoes.append(preencher, nota);
+        lugar.append(acoes);
+        return;
+      }
+      const linha = elemento("div", "proximo-post");
+      const corpo = elemento("div", "proximo-corpo");
+      corpo.append(elemento("strong", "", quandoPost(item)), metaPost(item));
+      if (item.linha) corpo.append(elemento("span", "linha-post", item.linha));
+      const situacao = situacaoProximo(item);
+      if (situacao) corpo.append(elemento("small", "", situacao));
+      linha.append(fotoProximo(item), corpo);
+      acoes.append(botaoAgenda(item));
+      if (item.status !== "publicando") {
+        const cancelar = elemento("button", "cancelar-dia", "Cancelar");
+        cancelar.type = "button";
+        cancelar.addEventListener("click", async () => {
+          if (!window.confirm("Tirar este post da fila?")) return;
+          cancelar.disabled = true;
+          await cancelarPost(item.id);
+          cancelar.disabled = false;
+        });
+        acoes.append(cancelar);
+      }
+      lugar.append(linha, acoes);
+    }
+
+    function desenharSemanaResumo(semana) {
+      const lugar = document.getElementById("resumo-semana");
+      lugar.innerHTML = "";
+      lugar.append(topoCartao("fa-solid fa-chart-simple", "Como foi a semana"));
+      const numeros = elemento("div", "numeros-semana");
+      const posts = elemento("div", "");
+      posts.append(elemento("small", "", "Posts em 7 dias"), elemento("b", "", numeroBr(semana.posts || 0)));
+      const alcance = elemento("div", "");
+      alcance.append(elemento("small", "", "Alcance somado"), elemento("b", "", numeroBr(semana.alcance_total)));
+      const melhor = elemento("div", "melhor-semana");
+      melhor.append(elemento("small", "", "Melhor post"));
+      if (semana.melhor) {
+        const legenda = (semana.melhor.legenda || "").trim();
+        melhor.append(elemento("span", "", `${numeroBr(semana.melhor.numero)} ${semana.melhor.rotulo}${legenda ? " · " + legenda : ""}`));
+        const link = linkSeguro(semana.melhor.permalink);
+        if (link) {
+          const abrirPost = elemento("a", "", "Ver no " + semana.melhor.rede);
+          abrirPost.href = link;
+          abrirPost.target = "_blank";
+          abrirPost.rel = "noopener";
+          melhor.append(abrirPost);
+        }
+      } else {
+        melhor.append(elemento("span", "", "Ainda sem números"));
+      }
+      numeros.append(posts, alcance, melhor);
+      const dica = elemento("p", "dica-semana");
+      const lampada = document.createElement("i");
+      lampada.className = "fa-regular fa-lightbulb";
+      dica.append(lampada, elemento("span", "", semana.dica || "Ainda estamos medindo. Os números aparecem uns dias depois de cada post."));
+      const todos = elemento("a", "ver-todos", "Ver todos os resultados");
+      todos.href = "#";
+      todos.addEventListener("click", (evento) => {
+        evento.preventDefault();
+        abrirResultados();
+      });
+      lugar.append(numeros, dica, todos);
+    }
+
+    function rotuloSugestao(item, prefixo) {
+      const partes = String(item.titulo || "").replace(/^Vem aí · /, "").split(" · ");
+      if (item.tipo === "clima") {
+        const sinal = (partes[0] || "").split(" ")[0].toLowerCase();
+        return partes[1] ? `${prefixo} de ${sinal} para ${partes[1]}` : `${prefixo} de ${sinal}`;
+      }
+      return `${prefixo} de ${partes.length >= 3 ? partes[1] : partes[0]}`;
+    }
+
+    function desenharIdeias() {
+      const lugar = document.getElementById("resumo-ideias");
+      if (!lugar) return;
+      const prefixo = formatoAgenda === "story" ? "Story" : "Post";
+      const fonte = sugestoesDe === marcaAtual.id ? sugestoes : (resumoAtual && resumoAtual.marca_id === marcaAtual.id ? resumoAtual.sugestoes || [] : []);
+      const ideias = [];
+      fonte.forEach((item) => {
+        const rotulo = rotuloSugestao(item, prefixo);
+        if (ideias.length >= 2 || ideias.some((ideia) => ideia.rotulo === rotulo)) return;
+        const detalhe = String(item.detalhe || item.titulo).trim();
+        const pedido = (formatoAgenda === "story" ? "Crie um Story. " : "") + detalhe + (/não invente/i.test(detalhe) ? "" : " " + NAO_INVENTAR);
+        ideias.push({ rotulo, pedido, icone: item.tipo === "clima" ? "fa-solid fa-cloud-sun" : "fa-regular fa-calendar" });
+      });
+      const quantas = ideias.length + (ideias.length ? 2 : 3);
+      [tema, ...ORDEM_IDEIAS].forEach((chave) => {
+        const base = IDEIAS_TEMA[chave];
+        if (!base || ideias.length >= quantas || ideias.some((ideia) => ideia.tema === chave)) return;
+        const rotulo = formatoAgenda === "story" ? base.rotulo.replace(/^Oferta/, "Story de oferta") : base.rotulo;
+        ideias.push({ rotulo, pedido: `${base.pedido} ${NAO_INVENTAR}`, tema: chave, icone: "fa-solid fa-wand-magic-sparkles" });
+      });
+      lugar.innerHTML = "";
+      ideias.forEach((ideia) => {
+        const botao = elemento("button", "chip");
+        botao.type = "button";
+        const icone = document.createElement("i");
+        icone.className = ideia.icone;
+        botao.append(icone, document.createTextNode(ideia.rotulo));
+        botao.addEventListener("click", () => usarIdeia(ideia));
+        lugar.append(botao);
+      });
+    }
+
+    function usarIdeia(ideia) {
+      if (ideia.tema && ideia.tema !== tema) {
+        const botaoTema = [...document.querySelectorAll("[data-tema]")].find((item) => item.dataset.tema === ideia.tema);
+        if (botaoTema) botaoTema.click();
+      }
+      pedidoCampo.value = ideia.pedido;
+      document.getElementById("enviar-chat").click();
+    }
+
+    function desenharResumoDia(dados) {
+      resumoAtual = dados;
+      document.getElementById("resumo-saudacao").textContent = `${dados.saudacao}, ${dados.nome}`;
+      const partes = [dados.data_extenso];
+      if (dados.cidade) partes.push(dados.uf ? `${dados.cidade} (${dados.uf})` : dados.cidade);
+      if (dados.clima && dados.clima.maxima !== null && dados.clima.maxima !== undefined) partes.push(`máx. ${dados.clima.maxima} °C`);
+      document.getElementById("resumo-data").textContent = partes.join(" · ");
+      desenharErroDia(dados.erros || []);
+      desenharProximo(dados.proximo || null);
+      desenharSemanaResumo(dados.semana || {});
+      desenharIdeias();
+    }
+
+    async function carregarResumo() {
+      const numero = ++pedidoResumo;
+      try {
+        const resposta = await fetch("/resumo?marca_id=" + (marcaAtual.id || 0));
+        const dados = await lerResposta(resposta);
+        if (numero !== pedidoResumo) return;
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        desenharResumoDia(dados);
+      } catch {
+        if (numero !== pedidoResumo || resumoAtual) return;
+        document.querySelectorAll("#resumo-dia .cartao-dia-vazio").forEach((item) => {
+          item.textContent = "Não consegui abrir o resumo agora.";
+        });
+      }
+    }
+
+    document.getElementById("voltar-resumo").addEventListener("click", () => {
+      fio.querySelectorAll(".balao").forEach((bloco) => bloco.remove());
+      mostrarResumoDia(true);
+      fio.scrollTop = 0;
+      carregarResumo();
+    });
+
     carregarAgenda().catch(() => {
       document.getElementById("nota-agenda").textContent = "Não consegui abrir a agenda agora.";
       desenharSemana();
@@ -2319,6 +2725,7 @@
         document.querySelectorAll("[data-tema]").forEach((item) => item.classList.remove("ativo"));
         botao.classList.add("ativo");
         atualizarMarcaVisual();
+        desenharIdeias();
       });
     });
 
@@ -2341,6 +2748,7 @@
         botao.classList.add("ativo");
         vistaPrevia = "feed";
         aplicarVista();
+        desenharIdeias();
       });
     });
     document.getElementById("semana-antes").addEventListener("click", () => {
@@ -2449,6 +2857,7 @@
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         if (dados.status === "publicado") {
           nota.textContent = "Saiu agora. " + nomeRede(redeAgenda) + ", " + nomeFormato(formatoAgenda) + ".";
+          carregarResumo();
         } else {
           nota.textContent = dados.detalhe || "Não consegui publicar agora.";
         }

@@ -40,6 +40,7 @@ from app.services.publicar import (
     meta_pronta,
     paginas_facebook,
     publicar_agora,
+    tentar_de_novo,
     trocar_foto,
     url_oauth,
     url_oauth_facebook,
@@ -307,6 +308,18 @@ async def post_trocar_foto(item_id: int, session: AsyncSession = Depends(get_ses
     if registro is None:
         raise HTTPException(status_code=404, detail="Esse post não está na fila.")
     falha = await trocar_foto(session, registro)
+    if falha:
+        raise HTTPException(status_code=422, detail=falha)
+    await session.refresh(registro)
+    return _item(registro)
+
+
+@router.post("/agenda/{item_id}/tentar-de-novo", response_model=ItemAgenda)
+async def post_tentar_de_novo(item_id: int, session: AsyncSession = Depends(get_session)) -> ItemAgenda:
+    registro = await session.get(Agendamento, item_id)
+    if registro is None:
+        raise HTTPException(status_code=404, detail="Esse post não está na fila.")
+    falha = await tentar_de_novo(session, registro)
     if falha:
         raise HTTPException(status_code=422, detail=falha)
     await session.refresh(registro)

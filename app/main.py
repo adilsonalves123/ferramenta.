@@ -21,6 +21,7 @@ from app.routers.legal import router as router_legal
 from app.routers.novas import router as router_novas
 from app.routers.projetos import router as router_projetos
 from app.routers.resultados import router as router_resultados
+from app.routers.resumo import router as router_resumo
 from app.routers.sugestoes import router as router_sugestoes
 from app.services.midia import PASTA_MIDIA
 
@@ -99,6 +100,7 @@ def create_app() -> FastAPI:
     app.include_router(router_agenda)
     app.include_router(router_legal)
     app.include_router(router_resultados)
+    app.include_router(router_resumo)
     app.include_router(router_sugestoes)
     PASTA_MIDIA.mkdir(parents=True, exist_ok=True)
     PASTA_QUADROS.mkdir(parents=True, exist_ok=True)

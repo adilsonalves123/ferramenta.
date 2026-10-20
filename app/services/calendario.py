@@ -28,6 +28,9 @@ ZONA = timezone(timedelta(hours=-3))
 JANELA = 14
 SEMANA = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"]
 CLIMA_BLOQUEADO = "Clima desligado: ative a Weather API no Google Cloud e libere na chave"
+CLIMA_FORA = "Clima indisponível agora. Tento de novo mais tarde."
+REPETIR_CLIMA_ROBO = 30 * 60
+REPETIR_CLIMA_TELA = 10 * 60
 AVISO_FIM = "Não invente horário de funcionamento, preço nem promoção; se precisar, peça para o dono confirmar."
 
 _feriados_ano: dict[int, list[tuple[date, str]]] = {}
@@ -35,6 +38,7 @@ _ibge: dict[tuple[str, str], str] = {}
 _municipais: dict[tuple[str, int], list[tuple[date, str]]] = {}
 _clima: dict[tuple[float, float], tuple[float, list["DiaClima"]]] = {}
 _gerado: dict[int, str] = {}
+_tentado: dict[int, float] = {}
 
 
 class ErroHttp(Exception):
@@ -315,12 +319,17 @@ async def previsao(latitude: float, longitude: float) -> tuple[list[DiaClima], s
             return [], CLIMA_BLOQUEADO
         if erro.status in {400, 404}:
             return [], "Clima indisponível para essa cidade."
-        return [], "Clima indisponível agora. Tento de novo mais tarde."
+        return [], CLIMA_FORA
     except Exception:
-        return [], "Clima indisponível agora. Tento de novo mais tarde."
+        return [], CLIMA_FORA
     dias = ler_previsao(dados if isinstance(dados, dict) else {})
     _clima[lugar] = (time.time(), dias)
     return dias, "ok"
+
+
+def clima_guardado(latitude: float, longitude: float) -> list[DiaClima] | None:
+    guardado = _clima.get((round(latitude, 3), round(longitude, 3)))
+    return guardado[1] if guardado else None
 
 
 def sinais_do_clima(dias: list[DiaClima]) -> list[tuple[DiaClima, str, str]]:
@@ -435,8 +444,9 @@ async def calcular(marca: Ficha, hoje: date | None = None) -> tuple[list[dict], 
 
 async def gerar_sugestoes(session: AsyncSession, marca: Ficha, hoje: date | None = None) -> int:
     hoje = hoje or hoje_local()
-    itens, status = await calcular(marca, hoje)
     marca_id = marca.id or 0
+    _tentado[marca_id] = time.time()
+    itens, status = await calcular(marca, hoje)
     if (marca.clima_status or "") != status[:300]:
         marca.clima_status = status[:300]
         session.add(marca)
@@ -468,19 +478,31 @@ async def gerar_sugestoes(session: AsyncSession, marca: Ficha, hoje: date | None
     return len(itens)
 
 
+def clima_volta_sozinho(status: str) -> bool:
+    """Erros que somem sem o dono mexer na marca (API recém-ligada no Google, Google fora do ar)."""
+    return status.startswith(CLIMA_BLOQUEADO) or status.startswith(CLIMA_FORA)
+
+
+def precisa_gerar(marca: Ficha, espera_clima: float) -> bool:
+    marca_id = marca.id or 0
+    if _gerado.get(marca_id) != hoje_local().isoformat():
+        return True
+    if not clima_volta_sozinho(marca.clima_status or ""):
+        return False
+    return time.time() - _tentado.get(marca_id, 0.0) >= espera_clima
+
+
 async def garantir_sugestoes(session: AsyncSession, marca: Ficha, forcar: bool = False) -> None:
-    if forcar or _gerado.get(marca.id or 0) != hoje_local().isoformat():
+    if forcar or precisa_gerar(marca, REPETIR_CLIMA_TELA):
         await gerar_sugestoes(session, marca)
 
 
 async def sugestoes_de_todas(session: AsyncSession) -> None:
     ids = await session.exec(select(Ficha.id).order_by(Ficha.id))
     for marca_id in [item for item in ids.all() if item]:
-        if _gerado.get(marca_id) == hoje_local().isoformat():
-            continue
         try:
             marca = await session.get(Ficha, marca_id)
-            if marca is not None:
+            if marca is not None and precisa_gerar(marca, REPETIR_CLIMA_ROBO):
                 await gerar_sugestoes(session, marca)
         except asyncio.CancelledError:
             raise

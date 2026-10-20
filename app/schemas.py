@@ -334,3 +334,57 @@ class RespostaResultados(BaseModel):
     contas_ligadas: bool
     falta_permissao: list[str] = Field(default_factory=list)
     aviso: str = ""
+
+
+class PostResumo(BaseModel):
+    id: int
+    dia: str
+    hora: str
+    rede: str
+    formato: str = "feed"
+    tema: str = ""
+    status: str
+    detalhe: str = ""
+    linha: str = ""
+    imagem_url: str = ""
+    aguarda_foto: bool = False
+    tem_video: bool = False
+
+
+class MelhorSemana(BaseModel):
+    rede: str
+    legenda: str = ""
+    permalink: str = ""
+    numero: int
+    rotulo: str
+
+
+class SemanaResumo(BaseModel):
+    posts: int = 0
+    alcance_total: int | None = None
+    medidos: int = 0
+    melhor: MelhorSemana | None = None
+    dica: str = ""
+    contas_ligadas: bool = False
+
+
+class ClimaHoje(BaseModel):
+    maxima: int | None = None
+    minima: int | None = None
+    chuva: int | None = None
+
+
+class RespostaResumo(BaseModel):
+    marca_id: int
+    nome: str
+    cidade: str = ""
+    uf: str = ""
+    hoje: str
+    amanha: str
+    saudacao: str
+    data_extenso: str
+    clima: ClimaHoje | None = None
+    proximo: PostResumo | None = None
+    erros: list[PostResumo] = Field(default_factory=list)
+    semana: SemanaResumo = Field(default_factory=SemanaResumo)
+    sugestoes: list[ItemSugestao] = Field(default_factory=list)

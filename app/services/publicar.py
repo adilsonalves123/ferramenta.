@@ -690,8 +690,11 @@ def _refaz_foto(item: Agendamento) -> bool:
     return bool((item.cena or "").strip()) and not item.video_url and foto_sumiu(item.imagem_url or "")
 
 
-async def _gerar_foto(session: AsyncSession, item: Agendamento) -> str:
-    """Cria a foto da cena do post (conta uma tentativa). Devolve o erro, ou '' quando deu certo."""
+async def _gerar_foto(session: AsyncSession, item: Agendamento, automatica: bool = False) -> str:
+    """Cria a foto da cena do post (conta uma tentativa). Devolve o erro, ou '' quando deu certo.
+
+    Na do robô (automatica), acertar zera a conta: o disco do servidor some a cada deploy e
+    refazer uma foto que sumiu não pode gastar as tentativas do post."""
     from app.services.midia import foto_da_cena
 
     item.tentativas = (item.tentativas or 0) + 1
@@ -699,6 +702,8 @@ async def _gerar_foto(session: AsyncSession, item: Agendamento) -> str:
     try:
         item.imagem_url = (await foto_da_cena(item.cena))[:500]
         item.detalhe = ""
+        if automatica:
+            item.tentativas = 0
         falha = ""
     except Exception as erro:
         falha = _erro_foto(erro)
@@ -731,6 +736,20 @@ async def trocar_foto(session: AsyncSession, item: Agendamento) -> str:
     return falha
 
 
+async def tentar_de_novo(session: AsyncSession, item: Agendamento) -> str:
+    """Põe um post com erro de volta na fila, com as tentativas zeradas. O que já saiu não sai de novo."""
+    if item.status != "erro":
+        return "Só dá para tentar de novo um post que deu erro."
+    item.status = "na_fila"
+    item.detalhe = ""
+    item.tentativas = 0
+    item.tentativas_publicar = 0
+    item.tentativas_marca = 0
+    item.reservado_em = None
+    await session.commit()
+    return ""
+
+
 async def preparar_fotos(session: AsyncSession) -> None:
     limite = datetime.now(ZONA) + ANTECEDENCIA_FOTO
     resultado = await session.exec(select(Agendamento).where(Agendamento.status == "na_fila"))
@@ -751,12 +770,12 @@ async def preparar_fotos(session: AsyncSession) -> None:
                     item.detalhe = aviso
                     await session.commit()
                 continue
-        if (item.tentativas or 0) >= LIMITE_FOTOS:
+        if not item.imagem_url and (item.tentativas or 0) >= LIMITE_FOTOS:
             _sem_mais_fotos(item)
             await session.commit()
             return
         item.imagem_url = ""
-        await _gerar_foto(session, item)
+        await _gerar_foto(session, item, automatica=True)
         return
 
 
@@ -802,10 +821,7 @@ async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
     alvos = alvos_de(item.rede, formato)
     if _refaz_foto(item):
         item.imagem_url = ""
-        if (item.tentativas or 0) >= LIMITE_FOTOS:
-            _sem_mais_fotos(item)
-            return
-        if await _gerar_foto(session, item):
+        if await _gerar_foto(session, item, automatica=True):
             item.status = "na_fila"
             return
     precisa_midia = any(alvo.endswith(":story") or alvo.startswith("Instagram:") for alvo in alvos)
