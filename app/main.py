@@ -106,12 +106,23 @@ def create_app() -> FastAPI:
     app.mount("/quadros", StaticFiles(directory=PASTA_QUADROS), name="quadros")
 
     @app.exception_handler(RequestValidationError)
-    async def pedido_invalido(_request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def pedido_invalido(request: Request, exc: RequestValidationError) -> JSONResponse:
         erros = exc.errors()
         primeiro = erros[0] if erros else {}
         loc = primeiro.get("loc") or ()
         campo = str(loc[-1]) if loc else ""
         tipo = str(primeiro.get("type") or "")
+        if request.url.path.startswith("/marcas"):
+            detalhe = {
+                "nome": "Escreva o nome da marca com até 120 letras.",
+                "publico": "O público pode ter até 200 letras.",
+                "site": "O site pode ter até 200 letras.",
+                "marca_dagua": "A marca d'água pode ter até 60 letras.",
+                "cidade": "A cidade pode ter até 120 letras.",
+                "uf": "Escreva a sigla do estado com 2 letras, por exemplo SP.",
+                "texto": "O prompt precisa ter entre 20 e 8000 letras.",
+            }.get(campo, "Não consegui salvar a marca. Confira os campos.")
+            return JSONResponse(status_code=422, content={"detail": detalhe})
         if tipo == "string_too_long" and campo in {"produto", "produto_servico"}:
             detalhe = "O texto ficou longo demais. Encurte um pouco e tente de novo."
         elif tipo == "string_too_short" and campo in {"nicho", "nicho_negocio", "produto", "produto_servico"}:

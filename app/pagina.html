@@ -1814,6 +1814,18 @@
         });
         lista.appendChild(botao);
       });
+      if (marcaAtual.id) {
+        const editar = document.createElement("button");
+        editar.type = "button";
+        editar.className = "nova";
+        editar.textContent = "Editar marca";
+        editar.addEventListener("click", () => {
+          lista.hidden = true;
+          document.getElementById("seta-marca").className = "fa-solid fa-chevron-down";
+          abrirFicha();
+        });
+        lista.appendChild(editar);
+      }
       const nova = document.createElement("button");
       nova.type = "button";
       nova.className = "nova";
@@ -2529,10 +2541,12 @@
       const nota = document.getElementById("nota-ficha");
       nota.textContent = "";
       try {
-        if (!marcas.length) await carregarMarcas(marcaAtual.id);
-        preencherFicha(id);
-        if (!id) document.getElementById("ficha-nome").focus();
+        if (!marcas.length || id === undefined) await carregarMarcas(marcaAtual.id);
+        const alvo = id === undefined ? marcaAtual.id : id;
+        preencherFicha(alvo);
+        if (!alvo) document.getElementById("ficha-nome").focus();
       } catch (falha) {
+        if (marcas.length) preencherFicha(id === undefined ? marcaAtual.id : id);
         nota.textContent = falha.message || "Não consegui abrir as marcas.";
       }
     }
@@ -2732,7 +2746,7 @@
       document.getElementById("pagina-resultados").hidden = true;
     });
 
-    document.getElementById("abrir-ficha").addEventListener("click", () => abrirFicha(marcaAtual.id));
+    document.getElementById("abrir-ficha").addEventListener("click", () => abrirFicha());
     document.getElementById("ficha-escolha").addEventListener("change", (evento) => {
       document.getElementById("nota-ficha").textContent = "";
       preencherFicha(Number(evento.target.value) || 0);
