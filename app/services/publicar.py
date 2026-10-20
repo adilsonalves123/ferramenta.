@@ -233,7 +233,7 @@ def _esperar_midia(criacao: str, token: str, o_que: str, video: bool = False) ->
             detalhe = str(estado.get("status") or "").lower()
             if "ratio" in detalhe or "aspect" in detalhe:
                 raise RuntimeError("O Instagram não aceitou a proporção da foto. Anexe de novo.")
-            raise RuntimeError(f"O Instagram não aceitou {o_que}. Anexe de novo e clique em Criar agora.")
+            raise RuntimeError(f"O Instagram não aceitou {o_que}. Anexe de novo e clique em Publicar agora.")
     raise RuntimeError(f"O Instagram ainda está preparando {o_que}. Tente de novo em instantes.")
 
 
@@ -379,6 +379,14 @@ def com_site(texto: str, site: str) -> str:
         return texto
     corpo = texto.rstrip()[: max(0, LIMITE_LEGENDA - len(site) - 2)].rstrip()
     return f"{corpo}\n\n{site}" if corpo else site
+
+
+def texto_do_post(titulo: str, legenda: str) -> str:
+    """A legenda editada na prévia já começa pelo título; aí o título não entra de novo."""
+    titulo, legenda = titulo.strip(), legenda.strip()
+    if titulo and legenda.startswith(titulo):
+        return legenda
+    return f"{titulo}\n\n{legenda}".strip()
 
 
 def _usa_foto(alvo: str, imagem_url: str, video_url: str) -> bool:
@@ -604,7 +612,7 @@ async def publicar_agora(
     if faltam:
         return "falta_conta", " ".join(falta_conta(nome) for nome in faltam)
     site, marca_dagua = await dados_marca(session, marca)
-    texto = com_site(f"{titulo.strip()}\n\n{legenda.strip()}".strip(), site)
+    texto = com_site(texto_do_post(titulo, legenda), site)
     try:
         foto_feed, foto_story = await asyncio.to_thread(fotos_com_marca, alvos, imagem_url, video_url, marca_dagua)
     except Exception as erro:
@@ -636,15 +644,80 @@ def _erro_foto(erro: Exception) -> str:
     return detalhe[:300]
 
 
-async def preparar_fotos(session: AsyncSession) -> None:
+ANTECEDENCIA_FOTO = timedelta(hours=3)
+LIMITE_FOTOS = 3
+
+
+def foto_sumiu(imagem_url: str) -> bool:
+    """True quando a foto é do /midia deste servidor e o arquivo não está mais no disco."""
+    from app.services.midia import PASTA_MIDIA
+
+    caminho = imagem_url.strip().split("?", 1)[0]
+    base = get_settings().app_url.rstrip("/")
+    if base and caminho.startswith(base + "/midia/"):
+        caminho = caminho[len(base) :]
+    if not caminho.startswith("/midia/"):
+        return False
+    partes = caminho.strip("/").split("/")
+    if len(partes) != 3 or ".." in partes:
+        return False
+    return not (PASTA_MIDIA / partes[1] / partes[2]).is_file()
+
+
+def _refaz_foto(item: Agendamento) -> bool:
+    return bool((item.cena or "").strip()) and not item.video_url and foto_sumiu(item.imagem_url or "")
+
+
+async def _gerar_foto(session: AsyncSession, item: Agendamento) -> str:
+    """Cria a foto da cena do post (conta uma tentativa). Devolve o erro, ou '' quando deu certo."""
     from app.services.midia import foto_da_cena
 
-    agora_local = datetime.now(ZONA)
+    item.tentativas = (item.tentativas or 0) + 1
+    await session.commit()
+    try:
+        item.imagem_url = (await foto_da_cena(item.cena))[:500]
+        item.detalhe = ""
+        falha = ""
+    except Exception as erro:
+        falha = _erro_foto(erro)
+        item.detalhe = falha
+    await session.commit()
+    return falha
+
+
+def _sem_mais_fotos(item: Agendamento) -> None:
+    item.status = "erro"
+    item.detalhe = f"A foto não saiu depois de {LIMITE_FOTOS} tentativas. O texto não foi publicado."
+
+
+async def trocar_foto(session: AsyncSession, item: Agendamento) -> str:
+    """Refaz a foto de um post que a IA preencheu. Devolve o erro, ou '' quando deu certo."""
+    if not (item.cena or "").strip() or item.video_url:
+        return "Só dá para trocar a foto dos posts que a IA preencheu."
+    if item.status not in {"na_fila", "falta_imagem"}:
+        return "Esse post não está mais na fila."
+    if (item.tentativas or 0) >= LIMITE_FOTOS:
+        return f"A foto deste post já foi criada {LIMITE_FOTOS} vezes. Cancele e preencha o dia de novo."
+    antes = item.detalhe
+    falha = await _gerar_foto(session, item)
+    if falha:
+        item.detalhe = antes
+        await session.commit()
+    elif item.status == "falta_imagem":
+        item.status = "na_fila"
+        await session.commit()
+    return falha
+
+
+async def preparar_fotos(session: AsyncSession) -> None:
+    limite = datetime.now(ZONA) + ANTECEDENCIA_FOTO
     resultado = await session.exec(select(Agendamento).where(Agendamento.status == "na_fila"))
     for item in resultado.all():
-        if momento(item.dia, item.hora) > agora_local:
+        if momento(item.dia, item.hora) > limite:
             continue
-        if item.imagem_url or item.video_url or not (item.cena or "").strip():
+        if item.video_url or not (item.cena or "").strip():
+            continue
+        if item.imagem_url and not foto_sumiu(item.imagem_url):
             continue
         if item.rede in REDES_PUBLICAVEIS:
             formato = (item.formato or "feed").strip().lower()
@@ -656,19 +729,12 @@ async def preparar_fotos(session: AsyncSession) -> None:
                     item.detalhe = aviso
                     await session.commit()
                 continue
-        if item.tentativas >= 3:
-            item.status = "erro"
-            item.detalhe = "A foto não saiu depois de 3 tentativas. O texto não foi publicado."
+        if (item.tentativas or 0) >= LIMITE_FOTOS:
+            _sem_mais_fotos(item)
             await session.commit()
             return
-        item.tentativas += 1
-        await session.commit()
-        try:
-            item.imagem_url = (await foto_da_cena(item.cena))[:500]
-            item.detalhe = ""
-        except Exception as erro:
-            item.detalhe = _erro_foto(erro)
-        await session.commit()
+        item.imagem_url = ""
+        await _gerar_foto(session, item)
         return
 
 
@@ -710,6 +776,14 @@ async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
         item.detalhe = "Essa rede ainda não publica sozinha."
         return
     alvos = alvos_de(item.rede, formato)
+    if _refaz_foto(item):
+        item.imagem_url = ""
+        if (item.tentativas or 0) >= LIMITE_FOTOS:
+            _sem_mais_fotos(item)
+            return
+        if await _gerar_foto(session, item):
+            item.status = "na_fila"
+            return
     precisa_midia = any(alvo.endswith(":story") or alvo.startswith("Instagram:") for alvo in alvos)
     if precisa_midia and not item.imagem_url and not item.video_url:
         if (item.cena or "").strip():
@@ -721,7 +795,7 @@ async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
     feitos = _feitos(item)
     marca = await marca_efetiva(session, item.marca_id)
     site, marca_dagua = await dados_marca(session, marca)
-    texto = com_site(f"{item.titulo}\n\n{item.legenda}".strip(), site)
+    texto = com_site(texto_do_post(item.titulo, item.legenda), site)
     pendentes = [alvo for alvo in alvos if alvo not in feitos]
     faltam = await contas_faltando(session, pendentes, marca)
     avisos_conta = [falta_conta(nome) for nome in faltam]

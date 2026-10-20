@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     database_url: str
     openai_api_key: str
     openai_model: str = "gpt-4o-mini"
+    openai_image_model: str = "gpt-image-2.5-flare"
     cors_origins: str = "http://localhost:3000,https://www.riscaai.com.br"
     meta_app_id: str = ""
     meta_app_secret: str = ""

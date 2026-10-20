@@ -303,7 +303,7 @@ async def _foto(
     }
     if referencia:
         nome = "referencia.jpg" if tipo == "image/jpeg" else "referencia.webp" if tipo == "image/webp" else "referencia.png"
-        extra = {} if modelo.endswith("mini") else {"input_fidelity": "high"}
+        extra = {"input_fidelity": "high"} if modelo in ("gpt-image-1", "gpt-image-1.5") else {}
         imagem = await cliente.images.edit(
             image=(nome, referencia, tipo or "image/png"),
             **extra,
@@ -331,12 +331,15 @@ def _executar_ffmpeg(comando: list[str]) -> subprocess.CompletedProcess[str]:
 
 
 async def montar_midia(pedido: PedidoCampanha) -> dict[str, str | None]:
+    from app.config import get_settings
+
     ident, pasta = nova_pasta()
     foto = pasta / "foto.png"
     aviso: str | None = None
     try:
         referencia, tipo = _referencia(pedido)
-        await _foto(_prompt_foto(pedido, referencia is not None), foto, referencia, tipo, "gpt-image-1", "medium")
+        modelo = get_settings().openai_image_model.strip() or "gpt-image-2.5-flare"
+        await _foto(_prompt_foto(pedido, referencia is not None), foto, referencia, tipo, modelo, "medium")
     except Exception as erro:
         aviso = _aviso("A foto não saiu", erro)
     return {
@@ -349,8 +352,8 @@ async def montar_midia(pedido: PedidoCampanha) -> dict[str, str | None]:
 
 async def foto_da_cena(cena: str) -> str:
     pedido = PedidoCampanha(
-        nicho="bares, adegas e restaurantes",
-        produto=(cena.strip()[:200] or "o movimento do bar"),
+        nicho="pequeno negócio local",
+        produto=(cena.strip()[:200] or "o dia a dia do negócio"),
         acao="foto",
         brief_foto=cena.strip()[:800],
     )

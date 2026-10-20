@@ -209,7 +209,23 @@
       color: white; font-weight: 600; font-size: 13px;
       display: grid; place-items: center; flex: none;
     }
-    .post p { margin: 0; padding: 0 14px 14px; white-space: pre-wrap; font-size: 13px; line-height: 1.45; }
+    .post textarea.legenda {
+      display: block;
+      width: 100%;
+      min-height: 64px;
+      margin: 0;
+      padding: 0 14px 14px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: inherit;
+      font-size: 13px;
+      line-height: 1.45;
+      resize: none;
+      overflow: hidden;
+    }
+    .post textarea.legenda:focus { outline: none; box-shadow: inset 0 -2px 0 var(--azul); }
+    .post textarea.legenda::placeholder { color: var(--mudo); }
     .post img, .post video, .post .vazio-foto {
       width: 100%; height: 210px; object-fit: cover;
       background: linear-gradient(160deg, #e0e7ff, #fce7f3); display: block;
@@ -244,21 +260,56 @@
     .post.modo-story video,
     .post.modo-story .vazio-foto { height: 460px; }
     .post.modo-story .post-acoes { display: none; }
-    .post.modo-story p { color: white; }
-    .previa-abre {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      margin: 2px 2px 8px;
+    .post.modo-story textarea.legenda { color: white; }
+    .post.modo-story textarea.legenda::placeholder { color: rgba(255, 255, 255, 0.6); }
+    .previa-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 2px 2px 8px; }
+    .previa-topo .secao { margin: 0; }
+    button.link-mini, .lista-agenda button.trocar-foto {
       border: 0;
       background: transparent;
-      cursor: pointer;
+      color: var(--azul);
       font: inherit;
-      text-align: left;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
       padding: 0;
     }
-    #painel-formato { margin: 0 0 8px; }
+    button.criar-foto {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: calc(100% - 28px);
+      margin: 0 14px 12px;
+      height: 36px;
+      border: 1px solid var(--linha);
+      border-radius: 8px;
+      background: var(--azul-suave);
+      color: var(--azul);
+      font: inherit;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    button.criar-foto:disabled { opacity: 0.7; cursor: wait; }
+    button.criar-foto .spinner { border-color: rgba(79, 70, 229, 0.25); border-top-color: var(--azul); }
+    #nota-foto { margin: -4px 14px 12px; }
+    .atalhos.em-linha { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+    .atalhos.em-linha button.chip {
+      width: auto;
+      padding: 6px 10px;
+      border: 1px solid var(--linha);
+      background: white;
+      font-size: 12.5px;
+      gap: 6px;
+    }
+    .atalhos.em-linha button.chip i { width: auto; }
+    .atalhos.em-linha button.chip.ativo { border-color: #c7cbff; background: var(--azul-suave); }
+    .bloco-ia { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--linha); }
+    .bloco-ia .nota { margin: 0 2px 8px; }
+    .lista-agenda li.com-foto { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 8px; align-items: start; }
+    .lista-agenda img.miniatura-fila { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: #eceff3; }
+    .lista-agenda button.trocar-foto { margin: 4px 10px 0 0; }
     .semana-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .semana-nav button {
       border: 0;
@@ -524,7 +575,6 @@
     .cartao-agenda .secao { margin: 0 0 4px; }
     .botoes-agenda { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
     .botoes-agenda button.principal { margin-top: 0; }
-    #montar-semana { grid-column: 1 / -1; }
     .ficha-corpo { padding: 24px 28px 40px; max-width: 760px; display: flex; flex-direction: column; gap: 12px; }
     .ficha-corpo textarea { min-height: 320px; resize: vertical; }
     .marca-campos { min-width: 0; flex: 1; display: grid; gap: 2px; text-align: left; }
@@ -578,13 +628,11 @@
     .tema-dica { background: #0891b2; }
     .tema-historia { background: #db2777; }
     .tema-prova { background: #16a34a; }
-    button.chip[data-rede-post="Instagram"] i,
+    .tema-interacao { background: #2563eb; }
+    button.chip[data-rede-agenda="Instagram"] i,
     #ligar-instagram i { color: #e1306c; }
-    button.chip[data-rede-post="Facebook"] i,
+    button.chip[data-rede-agenda="Facebook"] i,
     #ligar-facebook i { color: #1877f2; }
-    button.atalho[data-objetivo="interação"] i { color: #2563eb; }
-    button.atalho[data-objetivo="gancho de venda"] i { color: #d97706; }
-    button.atalho[data-objetivo="viral"] i { color: #e11d48; }
     .conta-nota { margin: 8px 10px 0; }
     #alternar-paginas span { flex: 1; }
     #alternar-paginas i:last-child { margin-left: auto; font-size: 11px; }
@@ -702,22 +750,11 @@
           <div class="avatar" id="avatar-marca">R</div>
           <div class="marca-campos">
             <strong id="nome-marca">Risca Aí</strong>
-            <span id="publico-marca">Donos de bar no Brasil</span>
+            <span id="publico-marca"></span>
           </div>
           <i class="fa-solid fa-chevron-down" id="seta-marca"></i>
         </button>
         <div class="lista-marcas" id="lista-marcas" hidden></div>
-        <p class="secao">Objetivo</p>
-        <div class="atalhos" id="objetivos">
-          <button class="atalho" type="button" data-objetivo="interação"><i class="fa-regular fa-comment"></i>Interação</button>
-          <button class="atalho" type="button" data-objetivo="gancho de venda"><i class="fa-solid fa-bullhorn"></i>Gancho de venda</button>
-          <button class="atalho" type="button" data-objetivo="viral"><i class="fa-solid fa-arrow-trend-up"></i>Viral</button>
-        </div>
-        <p class="secao">Canal</p>
-        <div class="atalhos" id="redes-post">
-          <button class="chip" type="button" data-rede-post="Instagram"><i class="fa-brands fa-instagram"></i>Instagram</button>
-          <button class="chip" type="button" data-rede-post="Facebook"><i class="fa-brands fa-facebook"></i>Facebook</button>
-        </div>
         <p class="secao" id="titulo-contas">Contas</p>
         <div class="atalhos">
           <button class="atalho" type="button" id="ligar-instagram"><i class="fa-brands fa-instagram"></i><span id="estado-instagram">Instagram desligado</span></button>
@@ -729,7 +766,7 @@
         <p class="secao">Ferramentas</p>
         <div class="atalhos">
           <button class="atalho" type="button" id="abrir-projetos"><i class="fa-solid fa-folder-open"></i>Projetos</button>
-          <button class="atalho" type="button" id="abrir-ficha"><i class="fa-solid fa-book"></i>Prompt</button>
+          <button class="atalho" type="button" id="abrir-ficha"><i class="fa-solid fa-book"></i>Minha marca</button>
         </div>
         <p class="legal"><a href="/privacidade" target="_blank" rel="noopener">Privacidade</a> · <a href="/termos" target="_blank" rel="noopener">Termos</a></p>
       </aside>
@@ -738,25 +775,21 @@
         <div class="fio" id="fio">
           <div class="vazio-conversa" id="vazio-conversa">
             <h2>Descreva o post</h2>
-            <p>Escolha a marca, o tema e o canal. Anexe uma foto ou um vídeo, se quiser. A prévia aparece ao lado.</p>
+            <p>Escolha a marca, o tipo de post e onde publicar. Anexe uma foto ou um vídeo, se quiser. A prévia aparece ao lado e você pode mudar o texto nela.</p>
           </div>
         </div>
         <form class="composer" id="composer">
           <label class="anexar" for="anexo-post" title="Foto ou vídeo"><i class="fa-regular fa-image"></i></label>
           <input id="anexo-post" type="file" accept="image/jpeg,image/png,image/webp,video/mp4" hidden />
-          <textarea id="pedido" required minlength="2" placeholder="Descreva a publicação. Ex.: interação para donos de bar"></textarea>
+          <textarea id="pedido" required minlength="2" placeholder="Descreva a publicação. Ex.: novidade da semana para os clientes"></textarea>
           <button class="principal" type="submit" id="enviar-chat">Gerar</button>
           <p class="nota" id="anexo-nota" hidden></p>
         </form>
       </section>
       <aside class="lado">
-        <button class="secao previa-abre" type="button" id="abrir-previa">
-          Prévia · <span class="canal-nome" id="canal-previa">Feed</span>
-          <i class="fa-solid fa-chevron-down" id="seta-previa"></i>
-        </button>
-        <div class="atalhos" id="painel-formato" hidden>
-          <button class="chip ativo" type="button" data-vista="feed">Feed</button>
-          <button class="chip" type="button" data-vista="story">Story</button>
+        <div class="previa-topo">
+          <p class="secao">Prévia · <span class="canal-nome" id="canal-previa">Feed</span></p>
+          <button class="link-mini" type="button" id="ver-outro" hidden>Ver Story</button>
         </div>
         <div class="cartao-previa">
           <div class="post" id="previa">
@@ -770,9 +803,11 @@
               <i class="fa-regular fa-comment"></i>
               <i class="fa-regular fa-paper-plane"></i>
             </div>
-            <p id="legenda-previa">A legenda aparece aqui, no formato do post, depois que você gerar.</p>
+            <textarea class="legenda" id="legenda-previa" rows="3" aria-label="Legenda do post" placeholder="A legenda aparece aqui depois que você gerar. Você pode escrever ou mudar o texto aqui mesmo."></textarea>
+            <button class="criar-foto" type="button" id="criar-foto"><i class="fa-solid fa-wand-magic-sparkles"></i><span id="criar-foto-texto">Criar foto com IA</span></button>
+            <p class="nota" id="nota-foto" hidden></p>
           </div>
-          <button class="atalho" type="button" id="adicionar-projeto">Adicionar projeto</button>
+          <button class="atalho" type="button" id="adicionar-projeto">Usar algo que já criei</button>
         </div>
         <div class="cartao-agenda">
           <p class="secao">Agenda</p>
@@ -788,38 +823,43 @@
             <input id="hora-post" type="time" value="09:00" required />
           </div>
           <div class="grupo">
-            <p class="secao">Rede</p>
-            <div class="atalhos" id="redes-agenda">
+            <p class="secao">Tipo de post</p>
+            <div class="atalhos em-linha" id="temas">
+              <button class="chip" type="button" data-tema="bastidores"><span class="ponto tema-bastidores"></span>Bastidores</button>
+              <button class="chip" type="button" data-tema="oferta"><span class="ponto tema-oferta"></span>Oferta</button>
+              <button class="chip" type="button" data-tema="dica"><span class="ponto tema-dica"></span>Dica</button>
+              <button class="chip" type="button" data-tema="história"><span class="ponto tema-historia"></span>História</button>
+              <button class="chip" type="button" data-tema="prova"><span class="ponto tema-prova"></span>Prova</button>
+              <button class="chip" type="button" data-tema="interação"><span class="ponto tema-interacao"></span>Interação</button>
+            </div>
+          </div>
+          <div class="grupo">
+            <p class="secao">Onde publicar</p>
+            <div class="atalhos em-linha" id="redes-agenda">
               <button class="chip" type="button" data-rede-agenda="Instagram"><i class="fa-brands fa-instagram"></i>Instagram</button>
               <button class="chip" type="button" data-rede-agenda="Facebook"><i class="fa-brands fa-facebook"></i>Facebook</button>
-              <button class="chip ativo" type="button" data-rede-agenda="Ambos">Ambos</button>
+              <button class="chip ativo" type="button" data-rede-agenda="Ambos">Instagram e Facebook</button>
             </div>
           </div>
           <div class="grupo">
             <p class="secao">Formato</p>
-            <div class="atalhos" id="formatos-agenda">
+            <div class="atalhos em-linha" id="formatos-agenda">
               <button class="chip ativo" type="button" data-formato-agenda="feed">Feed</button>
               <button class="chip" type="button" data-formato-agenda="story">Story</button>
-              <button class="chip" type="button" data-formato-agenda="ambos">Ambos</button>
-            </div>
-          </div>
-          <div class="grupo">
-            <p class="secao">Tema</p>
-            <div class="atalhos" id="temas">
-              <button class="atalho" type="button" data-tema="bastidores"><span class="ponto tema-bastidores"></span>Bastidores</button>
-              <button class="atalho" type="button" data-tema="oferta"><span class="ponto tema-oferta"></span>Oferta</button>
-              <button class="atalho" type="button" data-tema="dica"><span class="ponto tema-dica"></span>Dica</button>
-              <button class="atalho" type="button" data-tema="história"><span class="ponto tema-historia"></span>História</button>
-              <button class="atalho" type="button" data-tema="prova"><span class="ponto tema-prova"></span>Prova</button>
+              <button class="chip" type="button" data-formato-agenda="ambos">Feed e Story</button>
             </div>
           </div>
           <div class="botoes-agenda">
-            <button class="principal" type="button" id="criar-agora">Criar agora</button>
+            <button class="principal" type="button" id="criar-agora">Publicar agora</button>
             <button class="principal" type="button" id="agendar">Agendar</button>
-            <button class="principal" type="button" id="montar-semana">Criar este dia</button>
+          </div>
+          <div class="bloco-ia">
+            <p class="secao">Deixar a IA preencher o dia</p>
+            <p class="nota">A IA escreve o post com o prompt da marca e cria a foto antes do horário. Você vê na fila antes de sair.</p>
+            <button class="secundario" type="button" id="montar-semana">Preencher este dia</button>
           </div>
           <ul class="lista-agenda" id="lista-agenda"></ul>
-          <p class="nota" id="nota-agenda">Escolha o dia, o horário, a rede, o formato e o tema. Cancelar tira o post da fila.</p>
+          <p class="nota" id="nota-agenda">Escolha o dia e o horário. Cancelar tira o post da fila.</p>
         </div>
       </aside>
     </section>
@@ -827,22 +867,22 @@
     <section id="pagina-ficha" class="pagina-projetos" hidden>
       <header class="topo-projetos">
         <button class="voltar" type="button" id="voltar-ficha">Voltar</button>
-        <h1>Prompt</h1>
+        <h1>Minha marca</h1>
       </header>
       <form id="form-ficha" class="ficha-corpo">
-        <p class="nota">Cada marca tem o seu prompt. Fica tudo gravado no servidor. Criar este dia usa o prompt da marca escolhida.</p>
+        <p class="nota">Cada marca tem o seu prompt. Fica tudo gravado no servidor. Gerar e Preencher este dia usam o prompt da marca escolhida.</p>
         <label for="ficha-escolha">Marca</label>
         <select id="ficha-escolha"></select>
         <label for="ficha-nome">Nome da marca</label>
         <input id="ficha-nome" required minlength="2" maxlength="120" placeholder="Ex.: Risca Aí" />
         <label for="ficha-publico">Público</label>
-        <input id="ficha-publico" maxlength="200" placeholder="Ex.: Donos de bar no Brasil" />
+        <input id="ficha-publico" maxlength="200" placeholder="Ex.: Famílias do bairro" />
         <label for="ficha-site">Site (vai no final de toda legenda)</label>
         <input id="ficha-site" maxlength="200" placeholder="Ex.: https://www.riscaai.com.br" />
         <label for="ficha-marca-dagua">Marca d'água (texto no canto de toda foto)</label>
         <input id="ficha-marca-dagua" maxlength="60" placeholder="Ex.: Risca Aí" />
-        <label for="texto-ficha">Prompt</label>
-        <textarea id="texto-ficha" required minlength="20" placeholder="O que o sistema deve lembrar dessa marca: o que vende, para quem, o que não pode inventar e quais fotos combinam."></textarea>
+        <label for="texto-ficha">Prompt da marca</label>
+        <textarea id="texto-ficha" required minlength="20" placeholder="O que a IA deve lembrar dessa marca: o que vende, para quem, o que não pode inventar e quais fotos combinam."></textarea>
         <div class="ficha-botoes">
           <button class="principal" type="submit" id="salvar-ficha">Salvar marca</button>
           <button class="apagar-marca" type="button" id="apagar-marca">Apagar marca</button>
@@ -875,9 +915,9 @@
       <form id="formulario">
         <div id="campos-base">
           <label id="rotulo-nicho" for="nicho_negocio">Nicho do negócio</label>
-          <input id="nicho_negocio" name="nicho_negocio" required minlength="2" placeholder="Ex.: bar e petiscaria" />
+          <input id="nicho_negocio" name="nicho_negocio" required minlength="2" placeholder="Ex.: padaria, salão de beleza, loja de roupas" />
           <label id="rotulo-produto" for="produto_servico">Produto ou serviço</label>
-          <textarea id="produto_servico" name="produto_servico" required minlength="2" rows="3" placeholder="Ex.: combo de cerveja gelada no happy hour"></textarea>
+          <textarea id="produto_servico" name="produto_servico" required minlength="2" rows="3" placeholder="Ex.: a promoção da semana"></textarea>
         </div>
         <div id="campos-foto" hidden>
           <div id="campo-link-app" hidden>
@@ -885,7 +925,7 @@
             <input id="link_app" name="link_app" type="url" inputmode="url" maxlength="500" placeholder="https://www.riscaai.com.br" />
             <p class="nota">Opcional. Se colar, o chat lê a página e sugere o que criar e postar.</p>
           </div>
-          <label for="foto_referencia">Foto do seu bar</label>
+          <label for="foto_referencia">Foto do seu negócio</label>
           <input id="foto_referencia" name="foto_referencia" type="file" accept="image/jpeg,image/png,image/webp" />
           <p class="nota">Opcional. Se enviar, a imagem usa essa foto como base e não inventa outro lugar.</p>
         </div>
@@ -1100,13 +1140,9 @@
     }
 
     function colocarNaPrevia(projeto) {
-      const legenda = projeto.legenda || projeto.titulo;
-      postAtual = { titulo_anuncio: projeto.titulo, legenda_redes: legenda };
       imagemProjeto = projeto.video_url ? "" : (projeto.imagem_url || "");
       videoProjeto = projeto.video_url || "";
-      document.getElementById("legenda-previa").textContent = projeto.legenda
-        ? projeto.titulo + "\n\n" + projeto.legenda
-        : projeto.titulo;
+      escreverLegenda(projeto.legenda ? projeto.titulo + "\n\n" + projeto.legenda : projeto.titulo);
       if (videoProjeto) colocarMidiaPrevia(videoProjeto, "video");
       else if (imagemProjeto) colocarMidiaPrevia(imagemProjeto, "foto");
       document.getElementById("nota-agenda").textContent = "Projeto na prévia. Escolha o dia e o horário.";
@@ -1391,7 +1427,7 @@
       document.getElementById("fio-criacao").innerHTML = "";
       const linkApp = document.getElementById("link_app").value.trim();
       etapaPulso = linkApp ? "Lendo a página" : "Pensando no post";
-      document.getElementById("pedido-criacao").placeholder = "Peça um ajuste. Ex.: foque no controle de fiados";
+      document.getElementById("pedido-criacao").placeholder = "Peça um ajuste. Ex.: foque no produto principal";
       mostrarMiniatura(10, etapaPulso, "");
       document.getElementById("miniatura-criacao").dataset.fase = "pulso";
       pulsarAte(30, etapaPulso);
@@ -1440,7 +1476,6 @@
         window.clearTimeout(pulsoMiniatura);
         mostrarMiniatura(100, "Foto pronta", fotoPronta.foto_url || "");
         mostrarResultado(fotoPronta);
-        postAtual = fotoPronta;
         imagemProjeto = fotoPronta.foto_url || "";
         videoProjeto = "";
         if (document.getElementById("legenda-previa")) mostrarPrevia(fotoPronta, imagemProjeto);
@@ -1508,11 +1543,8 @@
     const fio = document.getElementById("fio");
     const pedidoCampo = document.getElementById("pedido");
     let marcas = [];
-    let marcaAtual = { id: 0, nome: "Risca Aí", publico: "Donos de bar no Brasil", texto: "" };
-    let objetivo = "";
+    let marcaAtual = { id: 0, nome: "Risca Aí", publico: "", texto: "" };
     let tema = "";
-    let redePost = "";
-    let postAtual = null;
     let imagemProjeto = "";
     let videoProjeto = "";
     let diaEscolhido = "";
@@ -1534,7 +1566,7 @@
       document.getElementById("nome-topo").textContent = marca.nome;
       document.getElementById("nome-previa").textContent = marca.nome;
       document.getElementById("nome-marca").textContent = marca.nome;
-      document.getElementById("publico-marca").textContent = marca.publico;
+      document.getElementById("publico-marca").textContent = (marcaAtual.publico || "").trim();
       document.getElementById("avatar-marca").textContent = letra;
       document.getElementById("avatar-previa").textContent = letra;
       localStorage.setItem("ferramenta-marca", JSON.stringify({ marca_id: marca.id, tema }));
@@ -1607,7 +1639,7 @@
       if (item.status === "erro") return item.detalhe || "Não publicou.";
       if (item.status === "manual") return "Guardado. Essa rede ainda não publica sozinha.";
       if (item.detalhe) return "Na fila das " + item.hora + ". " + item.detalhe;
-      if (item.aguarda_foto) return "Sai às " + item.hora + ". A foto é criada perto desse horário.";
+      if (item.aguarda_foto) return "Sai às " + item.hora + ". A foto é criada até 3 horas antes.";
       return "Sai às " + item.hora + ".";
     }
 
@@ -1641,13 +1673,32 @@
       }
       visiveis.forEach((item) => {
         const linha = document.createElement("li");
+        const corpo = document.createElement("div");
         const titulo = document.createElement("strong");
         const temaItem = item.tema ? ` · ${item.tema.charAt(0).toUpperCase()}${item.tema.slice(1)}` : "";
         titulo.textContent = `${item.dia.slice(8)} · ${item.hora} · ${nomeRede(item.rede)} · ${nomeFormato(item.formato)}${temaItem} · ${item.titulo}`;
         const estado = document.createElement("span");
         estado.textContent = textoStatus(item);
-        linha.append(titulo, estado);
+        corpo.append(titulo, estado);
+        if (item.imagem_url) {
+          const miniatura = document.createElement("img");
+          miniatura.className = "miniatura-fila";
+          miniatura.src = item.imagem_url;
+          miniatura.alt = "Foto do post";
+          miniatura.loading = "lazy";
+          linha.className = "com-foto";
+          linha.append(miniatura);
+        }
+        linha.append(corpo);
         if (item.status !== "publicado" && item.status !== "publicando") {
+          if (item.pode_trocar_foto) {
+            const trocar = document.createElement("button");
+            trocar.type = "button";
+            trocar.className = "trocar-foto";
+            trocar.textContent = "Trocar foto";
+            trocar.addEventListener("click", () => trocarFoto(item.id, trocar));
+            corpo.append(trocar);
+          }
           const escolha = document.createElement("select");
           escolha.className = "formato-fila";
           escolha.title = "Formato deste post";
@@ -1659,13 +1710,13 @@
           });
           escolha.value = item.formato || "feed";
           escolha.addEventListener("change", () => trocarFormato(item.id, escolha.value));
-          linha.append(escolha);
+          corpo.append(escolha);
           const cancelar = document.createElement("button");
           cancelar.type = "button";
           cancelar.className = "cancelar";
           cancelar.textContent = "Cancelar";
           cancelar.addEventListener("click", () => cancelarPost(item.id));
-          linha.append(cancelar);
+          corpo.append(cancelar);
         }
         lista.appendChild(linha);
       });
@@ -1751,6 +1802,28 @@
       }
     }
 
+    async function trocarFoto(id, botao) {
+      const nota = document.getElementById("nota-agenda");
+      if (!window.confirm("Criar outra foto para este post?")) return;
+      botao.disabled = true;
+      botao.textContent = "Criando a foto";
+      try {
+        const resposta = await fetch("/agenda/" + id + "/trocar-foto", {
+          method: "POST",
+          signal: AbortSignal.timeout(180000),
+        });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        await carregarAgenda();
+        nota.textContent = "Foto trocada.";
+      } catch (falha) {
+        const demorou = falha.name === "TimeoutError" || falha.name === "AbortError";
+        nota.textContent = demorou ? "A foto demorou demais. Tente de novo." : (falha.message || "Não consegui trocar a foto.");
+        botao.disabled = false;
+        botao.textContent = "Trocar foto";
+      }
+    }
+
     async function trocarFormato(id, formato) {
       const nota = document.getElementById("nota-agenda");
       try {
@@ -1787,6 +1860,7 @@
         vazio.className = "vazio-foto";
         vazio.innerHTML = '<i class="fa-regular fa-image"></i><span>A imagem aparece aqui</span>';
         lugar.replaceWith(vazio);
+        mostrarBotaoFoto();
         return;
       }
       const midia = tipo === "video" ? document.createElement("video") : document.createElement("img");
@@ -1799,24 +1873,67 @@
         midia.alt = "Mídia do post";
       }
       lugar.replaceWith(midia);
+      mostrarBotaoFoto();
+    }
+
+    function mostrarBotaoFoto() {
+      const semMidia = !imagemProjeto && !videoProjeto;
+      document.getElementById("criar-foto").hidden = !semMidia;
+      if (!semMidia) document.getElementById("nota-foto").hidden = true;
+    }
+
+    function ajustarLegenda() {
+      const campo = document.getElementById("legenda-previa");
+      campo.style.height = "auto";
+      campo.style.height = campo.scrollHeight + "px";
+    }
+
+    function escreverLegenda(valor) {
+      document.getElementById("legenda-previa").value = String(valor || "").trim();
+      ajustarLegenda();
     }
 
     function mostrarPrevia(dados, foto) {
-      document.getElementById("legenda-previa").textContent = `${dados.titulo_anuncio}\n\n${dados.legenda_redes}`;
+      escreverLegenda(`${dados.titulo_anuncio || ""}\n\n${dados.legenda_redes || ""}`);
       if (foto) colocarMidiaPrevia(foto, "foto");
     }
 
+    let vistaPrevia = "feed";
+
+    function aplicarVista() {
+      const vista = formatoAgenda === "ambos" ? vistaPrevia : formatoAgenda;
+      const story = vista === "story";
+      document.getElementById("previa").classList.toggle("modo-story", story);
+      document.getElementById("canal-previa").textContent = story ? "Story" : "Feed";
+      const outro = document.getElementById("ver-outro");
+      outro.hidden = formatoAgenda !== "ambos";
+      outro.textContent = story ? "Ver Feed" : "Ver Story";
+    }
+
     function textoDoPost() {
-      if (postAtual && (postAtual.titulo_anuncio || postAtual.legenda_redes)) {
-        return {
-          titulo: postAtual.titulo_anuncio || "Publicação",
-          legenda: postAtual.legenda_redes || postAtual.titulo_anuncio || "Publicação",
-        };
+      const escrito = document.getElementById("legenda-previa").value.trim();
+      if (escrito) {
+        const primeira = escrito.split("\n").find((linha) => linha.trim()) || escrito;
+        return { titulo: primeira.trim().slice(0, 300), legenda: escrito };
       }
-      const escrito = pedidoCampo.value.trim();
-      if (escrito.length >= 2) return { titulo: escrito.slice(0, 80), legenda: escrito };
       if (imagemProjeto || videoProjeto) return { titulo: "Publicação", legenda: "Publicação" };
       return null;
+    }
+
+    function redeDoTexto() {
+      return redeAgenda === "Facebook" ? "Facebook" : "Instagram";
+    }
+
+    function corpoGerar(textoPedido) {
+      const marca = lerMarca();
+      const memoria = (marca.texto || "").trim();
+      const base = `${marca.produto}. Pedido: ${textoPedido}. Tipo de post: ${tema || "livre"}. Público: ${marca.publico}. Rede: ${redeDoTexto()}.`;
+      return {
+        nicho_negocio: marca.nicho,
+        produto_servico: (memoria ? `${base} Ficha: ${memoria}` : base).slice(0, 4000),
+        acao: "texto",
+        tema,
+      };
     }
 
     function marcarAnexo(mensagem) {
@@ -1829,33 +1946,21 @@
       const textoPedido = pedidoCampo.value.trim();
       if (textoPedido.length < 2) return;
       falar("pessoa", textoPedido);
-      if (!redePost) {
-        falar("assistente", "Onde você quer postar? Escolha Instagram ou Facebook ao lado e mande de novo.");
-        return;
-      }
       pedidoCampo.value = "";
-      const marca = lerMarca();
-      const memoria = (marca.texto || "").trim();
-      const base = `${marca.produto}. Pedido: ${textoPedido}. Objetivo: ${objetivo || "publicação"}. Tema: ${tema || "livre"}. Público: ${marca.publico}. Rede: ${redePost}.`;
-      const produto = (memoria ? `${base} Ficha: ${memoria}` : base).slice(0, 4000);
-      falar("assistente", "Estou montando o post de " + marca.nome + " para " + marca.publico + ", no " + redePost + ".");
+      const corpo = corpoGerar(textoPedido);
+      falar("assistente", "Estou montando o post de " + lerMarca().nome + " para " + nomeRede(redeAgenda) + ".");
       const botao = document.getElementById("enviar-chat");
       botao.disabled = true;
       try {
         const resposta = await fetch("/gerar-campanha", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            nicho_negocio: marca.nicho,
-            produto_servico: produto,
-            acao: "texto",
-          }),
+          body: JSON.stringify(corpo),
         });
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
-        postAtual = dados;
         mostrarPrevia(dados);
-        falar("assistente", "O post está na prévia ao lado. Crie agora ou escolha o dia para agendar.");
+        falar("assistente", "O post está na prévia ao lado. Mude o texto lá se quiser, depois publique agora ou escolha o dia para agendar.");
       } catch (falha) {
         falar("assistente", falha.message || "Não foi possível criar agora.");
       } finally {
@@ -1979,37 +2084,11 @@
       });
     });
 
-    document.querySelectorAll("[data-objetivo]").forEach((botao) => {
-      botao.addEventListener("click", () => {
-        objetivo = botao.dataset.objetivo;
-        document.querySelectorAll("[data-objetivo]").forEach((item) => item.classList.remove("ativo"));
-        botao.classList.add("ativo");
-        if (!pedidoCampo.value.trim()) pedidoCampo.value = "Preciso de uma publicação de " + objetivo;
-      });
+    document.getElementById("ver-outro").addEventListener("click", () => {
+      vistaPrevia = vistaPrevia === "story" ? "feed" : "story";
+      aplicarVista();
     });
-
-    document.querySelectorAll("[data-rede-post]").forEach((botao) => {
-      botao.addEventListener("click", () => {
-        redePost = botao.dataset.redePost;
-        document.querySelectorAll("[data-rede-post]").forEach((item) => item.classList.remove("ativo"));
-        botao.classList.add("ativo");
-      });
-    });
-
-    document.getElementById("abrir-previa").addEventListener("click", () => {
-      const painel = document.getElementById("painel-formato");
-      painel.hidden = !painel.hidden;
-      document.getElementById("seta-previa").className = painel.hidden ? "fa-solid fa-chevron-down" : "fa-solid fa-chevron-up";
-    });
-    document.querySelectorAll("[data-vista]").forEach((botao) => {
-      botao.addEventListener("click", () => {
-        document.querySelectorAll("[data-vista]").forEach((item) => item.classList.remove("ativo"));
-        botao.classList.add("ativo");
-        const story = botao.dataset.vista === "story";
-        document.getElementById("previa").classList.toggle("modo-story", story);
-        document.getElementById("canal-previa").textContent = story ? "Story" : "Feed";
-      });
-    });
+    document.getElementById("legenda-previa").addEventListener("input", ajustarLegenda);
     document.querySelectorAll("[data-rede-agenda]").forEach((botao) => {
       botao.addEventListener("click", () => {
         redeAgenda = botao.dataset.redeAgenda;
@@ -2022,11 +2101,8 @@
         formatoAgenda = botao.dataset.formatoAgenda;
         document.querySelectorAll("[data-formato-agenda]").forEach((item) => item.classList.remove("ativo"));
         botao.classList.add("ativo");
-        if (formatoAgenda === "feed" || formatoAgenda === "story") {
-          document.querySelectorAll("[data-vista]").forEach((item) => item.classList.toggle("ativo", item.dataset.vista === formatoAgenda));
-          document.getElementById("previa").classList.toggle("modo-story", formatoAgenda === "story");
-          document.getElementById("canal-previa").textContent = formatoAgenda === "story" ? "Story" : "Feed";
-        }
+        vistaPrevia = "feed";
+        aplicarVista();
       });
     });
     document.getElementById("semana-antes").addEventListener("click", () => {
@@ -2105,11 +2181,11 @@
       const nota = document.getElementById("nota-agenda");
       const publicado = textoDoPost();
       if (!publicado) {
-        nota.textContent = "Escreva o post ou anexe uma foto ou um vídeo.";
+        nota.textContent = "Escreva a legenda na prévia ou anexe uma foto ou um vídeo.";
         return;
       }
       if (!redeAgenda) {
-        nota.textContent = "Escolha Instagram, Facebook ou Ambos.";
+        nota.textContent = "Escolha onde publicar.";
         return;
       }
       if (!window.confirm("Publicar agora em " + nomeRede(redeAgenda) + ", " + nomeFormato(formatoAgenda) + "?")) return;
@@ -2141,7 +2217,7 @@
         nota.textContent = falha.message || "Não consegui publicar agora.";
       } finally {
         botao.disabled = false;
-        botao.textContent = "Criar agora";
+        botao.textContent = "Publicar agora";
       }
     });
 
@@ -2149,11 +2225,11 @@
       const nota = document.getElementById("nota-agenda");
       const publicado = textoDoPost();
       if (!publicado) {
-        nota.textContent = "Escreva o post ou anexe uma foto ou um vídeo.";
+        nota.textContent = "Escreva a legenda na prévia ou anexe uma foto ou um vídeo.";
         return;
       }
       if (!redeAgenda) {
-        nota.textContent = "Escolha Instagram, Facebook ou Ambos.";
+        nota.textContent = "Escolha onde publicar.";
         return;
       }
       const hora = document.getElementById("hora-post").value;
@@ -2310,7 +2386,7 @@
       }
       const botao = document.getElementById("montar-semana");
       botao.disabled = true;
-      botao.textContent = "Criando o post";
+      botao.textContent = "Escrevendo o post";
       try {
         const resposta = await fetch("/semana", {
           method: "POST",
@@ -2326,14 +2402,57 @@
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         await carregarAgenda();
-        nota.textContent = dados.aviso || "O dia entrou na fila. A foto sai perto do horário.";
+        nota.textContent = dados.aviso || "O dia entrou na fila. A foto é criada até 3 horas antes do horário.";
       } catch (falha) {
-        nota.textContent = falha.message || "Não consegui criar esse dia.";
+        nota.textContent = falha.message || "Não consegui preencher esse dia.";
       } finally {
         botao.disabled = false;
-        botao.textContent = "Criar este dia";
+        botao.textContent = "Preencher este dia";
       }
     });
+
+    document.getElementById("criar-foto").addEventListener("click", async () => {
+      const nota = document.getElementById("nota-foto");
+      const legenda = document.getElementById("legenda-previa").value.trim();
+      nota.hidden = true;
+      if (legenda.length < 2) {
+        nota.textContent = "Escreva ou gere a legenda antes de criar a foto.";
+        nota.hidden = false;
+        return;
+      }
+      const botao = document.getElementById("criar-foto");
+      const rotulo = document.getElementById("criar-foto-texto");
+      const icone = botao.querySelector("i");
+      const giro = document.createElement("span");
+      giro.className = "spinner";
+      icone.replaceWith(giro);
+      botao.disabled = true;
+      rotulo.textContent = "Criando a foto";
+      try {
+        const resposta = await fetch("/foto-legenda", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(180000),
+          body: JSON.stringify({ legenda: legenda.slice(0, 5000), marca_id: marcaAtual.id }),
+        });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        imagemProjeto = dados.foto_url;
+        videoProjeto = "";
+        colocarMidiaPrevia(dados.foto_url, "foto");
+        marcarAnexo("Foto criada com IA.");
+      } catch (falha) {
+        const demorou = falha.name === "TimeoutError" || falha.name === "AbortError";
+        nota.textContent = demorou ? "A foto demorou demais. Tente de novo." : (falha.message || "Não consegui criar a foto agora.");
+        nota.hidden = false;
+      } finally {
+        giro.replaceWith(icone);
+        botao.disabled = false;
+        rotulo.textContent = "Criar foto com IA";
+      }
+    });
+
+    aplicarVista();
   </script>
 </body>
 </html>

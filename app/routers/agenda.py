@@ -39,6 +39,7 @@ from app.services.publicar import (
     meta_pronta,
     paginas_facebook,
     publicar_agora,
+    trocar_foto,
     url_oauth,
     url_oauth_facebook,
 )
@@ -91,6 +92,8 @@ def _item(registro: Agendamento) -> ItemAgenda:
         status=registro.status,
         detalhe=registro.detalhe,
         aguarda_foto=bool((registro.cena or "").strip()) and not registro.imagem_url and not registro.video_url,
+        imagem_url=registro.imagem_url or "",
+        pode_trocar_foto=bool((registro.cena or "").strip()) and not registro.video_url and bool(registro.imagem_url),
     )
 
 
@@ -277,6 +280,18 @@ async def put_formato_agenda(
             registro.status = "na_fila"
             registro.detalhe = ""
     await session.commit()
+    await session.refresh(registro)
+    return _item(registro)
+
+
+@router.post("/agenda/{item_id}/trocar-foto", response_model=ItemAgenda)
+async def post_trocar_foto(item_id: int, session: AsyncSession = Depends(get_session)) -> ItemAgenda:
+    registro = await session.get(Agendamento, item_id)
+    if registro is None:
+        raise HTTPException(status_code=404, detail="Esse post não está na fila.")
+    falha = await trocar_foto(session, registro)
+    if falha:
+        raise HTTPException(status_code=422, detail=falha)
     await session.refresh(registro)
     return _item(registro)
 

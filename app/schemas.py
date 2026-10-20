@@ -21,6 +21,16 @@ class PedidoCampanha(BaseModel):
     acao: Literal["texto", "foto"] = "texto"
     foto_base64: str = Field(default="", max_length=6_000_000)
     brief_foto: str = Field(default="", max_length=800)
+    tema: str = Field(default="", max_length=30)
+
+
+class PedidoFotoLegenda(BaseModel):
+    legenda: str = Field(min_length=2, max_length=5000)
+    marca_id: int = 0
+
+
+class RespostaFoto(BaseModel):
+    foto_url: str
 
 
 class RoteiroVideo(BaseModel):
@@ -223,6 +233,8 @@ class ItemAgenda(BaseModel):
     status: str
     detalhe: str
     aguarda_foto: bool = False
+    imagem_url: str = ""
+    pode_trocar_foto: bool = False
 
 
 class EstadoRede(BaseModel):

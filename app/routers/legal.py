@@ -10,7 +10,7 @@ from app.services.exclusao import apagar_contas_meta, criar_codigo, ler_codigo, 
 
 router = APIRouter()
 
-ATUALIZADO = "19 de outubro de 2026"
+ATUALIZADO = "20 de outubro de 2026"
 
 MOLDE = """<!DOCTYPE html>
 <html lang="pt-BR">
@@ -112,8 +112,10 @@ que usa esses dados, como guarda e como você pode apagar tudo.</p>
 
 <h2>1. O que o {produto} faz</h2>
 <p>O {produto} ajuda você a escrever posts e a publicar ou agendar no Instagram profissional e na Página do
-Facebook que você ligou. Uma publicação só sai quando você clica em <strong>Criar agora</strong> ou quando chega
-o dia e o horário que você mesmo agendou. O {produto} nunca publica nada por conta própria.</p>
+Facebook que você ligou. Uma publicação só sai quando você clica em <strong>Publicar agora</strong> ou quando chega
+o dia e o horário que você mesmo agendou. Quando você pede para a IA preencher um dia, o post aparece na fila,
+com a foto, antes do horário, e você pode revisar e cancelar antes de sair. O {produto} nunca publica nada por
+conta própria.</p>
 
 <h2>2. Dados do Instagram que acessamos</h2>
 <p>Quando você clica em ligar o Instagram, você entra pelo login oficial do Instagram e autoriza as permissões

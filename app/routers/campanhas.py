@@ -3,10 +3,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database import get_session
-from app.models import Campanha
-from app.schemas import CampanhaCompleta, PedidoCampanha
-from app.services.midia import montar_midia
-from app.services.openai_campanha import gerar_campanha
+from app.models import Campanha, Ficha
+from app.schemas import CampanhaCompleta, PedidoCampanha, PedidoFotoLegenda, RespostaFoto
+from app.services.midia import foto_da_cena, montar_midia
+from app.services.openai_campanha import cena_da_legenda, gerar_campanha
+from app.services.semana import TEMAS
 
 router = APIRouter()
 
@@ -20,6 +21,9 @@ async def post_gerar_campanha(
         midia = await montar_midia(pedido)
         return CampanhaCompleta(titulo_anuncio="", legenda_redes="", **midia)
 
+    guia = TEMAS.get(pedido.tema.strip().lower(), "")
+    if guia:
+        pedido = pedido.model_copy(update={"produto": f"{pedido.produto.strip()}\nTipo de post: {guia}"})
     try:
         gerada = await gerar_campanha(pedido)
     except ValueError as erro:
@@ -49,3 +53,22 @@ async def post_gerar_campanha(
         await session.rollback()
         raise HTTPException(status_code=503, detail="A campanha foi gerada, mas não entrou no banco.") from erro
     return CampanhaCompleta(**gerada.model_dump())
+
+
+@router.post("/foto-legenda", response_model=RespostaFoto)
+async def post_foto_legenda(
+    pedido: PedidoFotoLegenda,
+    session: AsyncSession = Depends(get_session),
+) -> RespostaFoto:
+    marca = await session.get(Ficha, pedido.marca_id) if pedido.marca_id > 0 else None
+    cena = await cena_da_legenda(pedido.legenda, (marca.texto or "") if marca else "")
+    try:
+        url = await foto_da_cena(cena)
+    except Exception as erro:
+        texto = str(erro)
+        if "insufficient_quota" in texto or "credit_balance" in texto or "sem créditos" in texto:
+            detalhe = "A conta da OpenAI está sem créditos. Adicione créditos no site da OpenAI e tente de novo."
+        else:
+            detalhe = "Não consegui criar a foto agora. Tente de novo em instantes."
+        raise HTTPException(status_code=502, detail=detalhe) from erro
+    return RespostaFoto(foto_url=url)

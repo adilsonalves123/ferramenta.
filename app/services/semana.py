@@ -21,7 +21,7 @@ SISTEMA = """Você monta publicações para Instagram e Facebook, em português 
 Cada item precisa de titulo, legenda e cena.
 titulo: uma frase curta.
 legenda: texto de post, com 5 a 8 hashtags no final.
-cena: descrição de uma fotografia realista, diferente da anterior. O celular pode aparecer, mas a tela fica virada ou apagada. Sem tela acesa, sem gráfico, sem botão, sem menu, sem caderno aberto e sem texto escrito.
+cena: descrição de uma fotografia realista, diferente da anterior, que combina com o negócio da ficha. Se aparecer celular ou tela, ela fica virada ou apagada. Sem gráfico, sem botão, sem menu e sem texto escrito.
 Use somente a ficha. Não invente preço, cidade, telefone, depoimento ou número de clientes.
 Não repita o mesmo assunto visual."""
 
@@ -133,11 +133,12 @@ async def apagar_marca(session: AsyncSession, marca_id: int) -> None:
 
 
 TEMAS = {
-    "bastidores": "Bastidores: mostra a rotina real do bar, como o dono organiza o dia.",
-    "oferta": "Oferta: chama para conhecer o sistema, sem inventar preço nem desconto.",
-    "dica": "Dica: ensina algo útil ao dono de bar sobre caixa, estoque, mesas ou fiado.",
-    "história": "História: conta uma situação comum de bar, com começo, problema e solução.",
-    "prova": "Prova: mostra o resultado de usar o sistema, sem inventar números nem depoimentos.",
+    "bastidores": "Bastidores: mostra a rotina real do negócio, quem faz e como é feito.",
+    "oferta": "Oferta: convida para conhecer ou comprar o que a marca oferece, sem inventar preço nem desconto.",
+    "dica": "Dica: ensina algo útil para o público da marca, ligado ao que ela faz.",
+    "história": "História: conta uma situação comum do dia a dia do público, com começo, problema e solução.",
+    "prova": "Prova: mostra o resultado de usar o produto ou serviço, sem inventar números nem depoimentos.",
+    "interação": "Interação: faz uma pergunta simples para o público responder nos comentários.",
 }
 
 
@@ -207,7 +208,7 @@ async def montar_dias(
             raise ValueError("Um desses horários já passou.")
     marca = await marca_por_id(session, marca_id)
     if marca is None:
-        raise ValueError("Crie uma marca no Prompt antes.")
+        raise ValueError("Crie uma marca em Minha marca antes.")
     existentes = await session.exec(
         select(Agendamento).where(col(Agendamento.dia).in_(dias), Agendamento.marca_id == (marca.id or 0))
     )
@@ -216,7 +217,7 @@ async def montar_dias(
     cabecalho = f"Marca: {marca.nome}."
     if (marca.publico or "").strip():
         cabecalho += f" Público: {marca.publico}."
-    ficha = f"{cabecalho}\n{(marca.texto or '').strip() or FICHA_PADRAO}"
+    ficha = f"{cabecalho}\n{(marca.texto or '').strip()}".strip()
     try:
         posts = await escrever_semana(ficha, len(pedidos), tema, marca.site or "")
     except APIError as erro:
@@ -243,7 +244,7 @@ async def montar_dias(
     await session.commit()
     for registro in criados:
         await session.refresh(registro)
-    aviso = f"Post de {marca.nome} na fila. A foto é criada perto do horário marcado."
+    aviso = f"Post de {marca.nome} na fila. A foto é criada até 3 horas antes do horário. Você pode revisar e cancelar antes de sair."
     if len(criados) < len(pedidos):
         aviso = "Parte dos dias entrou na fila. " + aviso
     if repetidos:
