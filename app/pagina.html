@@ -1355,7 +1355,7 @@
     </section>
 
     <section id="tarefa" hidden>
-      <button class="voltar" type="button" id="voltar">Voltar ao estúdio</button>
+      <button class="voltar" type="button" id="voltar"><i class="fa-solid fa-arrow-left"></i> Voltar</button>
       <h1 id="titulo-tarefa">Ferramenta</h1>
       <p class="ajuda" id="ajuda-tarefa"></p>
       <form id="formulario">
@@ -1541,7 +1541,7 @@
           <h3>Legenda</h3><p>${texto(dados.legenda_redes)}</p>
           <button class="copiar" type="button" id="copiar">Copiar texto</button>
         </article>
-        <p class="nota">O texto também foi para o rascunho do estúdio. Clique em Voltar ao estúdio para ajustar e aprovar.</p>`;
+        <p class="nota">O texto também foi para o rascunho do estúdio. Clique em Voltar para ajustar e aprovar.</p>`;
         resultado.innerHTML = corpo;
         resultado.hidden = false;
         salvarProjeto(dados);
@@ -1652,6 +1652,9 @@
       tarefa.hidden = true;
       tarefaAberta = false;
       atualizarEstudio();
+    });
+    document.addEventListener("keydown", (evento) => {
+      if (evento.key === "Escape" && !tarefa.hidden) document.getElementById("voltar").click();
     });
 
     async function lerFotoReferencia() {
@@ -1877,7 +1880,7 @@
         memoriaPrevia = null;
         artePrevia = null;
         if (document.getElementById("legenda-previa")) mostrarPrevia(fotoPronta, imagemProjeto);
-        falarCriacao("assistente", "A foto também foi para o rascunho do estúdio. Clique em Voltar ao estúdio para ajustar e aprovar.");
+        falarCriacao("assistente", "A foto também foi para o rascunho do estúdio. Clique em Voltar para ajustar e aprovar.");
       } catch (falha) {
         window.clearTimeout(pulsoMiniatura);
         const demorou = falha.name === "TimeoutError" || falha.name === "AbortError";
