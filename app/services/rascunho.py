@@ -857,6 +857,8 @@ async def criar_tres_artes(
         "As 3 compartilham a mesma foto e a mesma legenda. Cada uma muda o modelo, a paleta e a frase. "
         "Os 3 modelos têm de ser diferentes entre si. As 3 paletas têm de ser diferentes entre si. "
         "titulo_arte: 2 a 6 palavras, forte, para ler de longe. Sem emoji e sem hashtag. "
+        "Se a pessoa escreveu a frase, use essa frase como titulo_arte nas 3 artes. "
+        "Se ela pediu para você criar a frase, invente 3 frases diferentes, uma em cada arte, e não copie a instrução para o título. "
         "Não invente preço, telefone, desconto, endereço, dia nem horário. Use só o pedido e a memória.\n"
         + diretor.REGRAS_ARTE
     )

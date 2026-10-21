@@ -160,6 +160,32 @@
     .capa-atalho { display: grid; place-items: center; width: 100%; aspect-ratio: 4 / 3; border-radius: 10px; object-fit: cover; }
     .capa-imagem { background: #4f46e5; color: white; font-size: 34px; }
     .capa-arte { background: #111827; color: white; font-size: 34px; }
+    .assistente-criar { width: 100%; text-align: left; }
+    .assistente-criar[hidden], .assistente-criar > div[hidden] { display: none !important; }
+    .assistente-criar h2 { margin: 0 0 6px; font-size: 28px; letter-spacing: -0.03em; font-weight: 700; text-align: center; }
+    .assistente-criar .intro { margin: 0 0 18px; color: var(--mudo); line-height: 1.5; text-align: center; }
+    button.voltar-criar { display: inline-flex; margin: 0 0 8px; padding: 0; border: 0; background: transparent; color: var(--azul); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .tamanhos-criar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    button.tamanho-criar { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; min-height: 240px; margin: 0; padding: 18px 10px 16px; border: 1px solid var(--linha); border-radius: 14px; background: var(--papel); color: var(--tinta); font: inherit; cursor: pointer; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04); }
+    button.tamanho-criar:hover { border-color: #c7cbff; transform: translateY(-2px); }
+    .moldura { display: grid; place-items: end center; height: 128px; }
+    .recorte { display: block; background: #111827; border-radius: 8px; }
+    .recorte.feed { width: 78px; height: 98px; }
+    .recorte.story { width: 62px; height: 110px; }
+    .recorte.facebook { width: 96px; height: 96px; }
+    button.tamanho-criar strong { font-size: 15px; }
+    button.tamanho-criar small { color: var(--mudo); font-size: 12px; }
+    .origens-criar { display: grid; gap: 10px; }
+    button.origem-criar { display: grid; grid-template-columns: 36px minmax(0, 1fr); column-gap: 12px; row-gap: 2px; width: 100%; margin: 0; padding: 16px; border: 1px solid var(--linha); border-radius: 14px; background: var(--papel); color: var(--tinta); font: inherit; text-align: left; cursor: pointer; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04); }
+    button.origem-criar:hover { border-color: #c7cbff; }
+    button.origem-criar i { grid-row: 1 / span 2; align-self: center; font-size: 18px; color: var(--azul); }
+    button.origem-criar small { color: var(--mudo); font-size: 12.5px; line-height: 1.4; }
+    .grade-fluxo { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .grade-fluxo button { margin: 0; padding: 0; border: 2px solid transparent; border-radius: 10px; overflow: hidden; background: #eceff3; cursor: pointer; }
+    .grade-fluxo button:hover { border-color: var(--azul); }
+    .grade-fluxo img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+    #mini-fluxo { display: block; width: 140px; height: 140px; object-fit: cover; border-radius: 12px; margin: 12px auto 0; }
+    #mini-fluxo[hidden] { display: none !important; }
     button.cartao-atalho strong { margin-top: 4px; font-size: 14.5px; }
     button.cartao-atalho small { color: var(--mudo); font-size: 12px; line-height: 1.4; }
     .estudio-tarefa { overflow: auto; }
@@ -185,7 +211,15 @@
       .area-estudio.com-mesa { grid-template-columns: 1fr; grid-template-rows: auto auto; overflow: auto; }
       .atalhos-estudio { grid-template-columns: 1fr; }
     }
-    .balao { max-width: 78%; line-height: 1.5; white-space: pre-wrap; font-size: 14.5px; }
+    .balao.foto-chat { align-self: center; max-width: min(520px, 100%); width: 100%; margin: 4px auto 0; padding: 0; background: transparent; }
+    .balao.foto-chat img { display: block; width: 100%; max-height: 54vh; object-fit: contain; border-radius: 16px; background: #0f172a; }
+    .acoes-foto-chat { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+    .acoes-foto-chat button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 42px; margin: 0; padding: 0 8px; border: 1px solid var(--linha); border-radius: 12px; background: white; color: var(--tinta); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04); }
+    .acoes-foto-chat button:hover { border-color: #c7cbff; }
+    .acoes-foto-chat button.principal { background: var(--azul); color: white; border-color: transparent; }
+    .acoes-foto-chat button:disabled { opacity: 0.65; cursor: wait; }
+    input.titulo-aprovado { width: 100%; border: 0; border-top: 1px solid var(--linha); padding: 12px 14px 4px; font: inherit; font-size: 15px; font-weight: 700; background: transparent; }
+    input.titulo-aprovado[hidden], #legenda-aprovada[hidden] { display: none !important; }
     .balao.assistente { color: var(--tinta); padding: 2px 0; }
     .balao.pessoa {
       align-self: flex-end;
@@ -220,8 +254,8 @@
     label.anexar:hover { background: var(--fundo); color: var(--tinta); }
     #anexo-nota { flex: 1 0 100%; margin: 0; }
     form.composer textarea {
-      flex: 1;
-      min-width: 0;
+      flex: 1 1 240px;
+      min-width: 180px;
       min-height: 72px;
       max-height: 160px;
       border: 0;
@@ -232,6 +266,8 @@
     }
     form.composer textarea:focus { outline: none; box-shadow: none; }
     form.composer button { width: auto; margin: 0; height: 36px; padding: 0 14px; flex: none; }
+    #ia-frase { flex: 1 0 100%; height: 40px; border-radius: 12px; border: 1px solid #c7cbff; background: #f4f5ff; color: var(--azul); font-weight: 600; font-size: 13.5px; }
+    form.composer button#ia-frase { width: 100%; }
     .cartao-previa, .cartao-agenda {
       background: var(--papel);
       border: 1px solid var(--linha);
@@ -1047,6 +1083,7 @@
         <button class="alerta-falha" type="button" id="alerta-falha" hidden></button>
         <div class="area-estudio" id="area-estudio">
           <div class="vazio-estudio" id="vazio-estudio">
+            <div id="inicio-estudio">
             <h2>O que vamos postar hoje?</h2>
             <p>Escreva aqui embaixo o que você quer, ou comece por um atalho.</p>
             <div class="atalhos-estudio">
@@ -1070,6 +1107,43 @@
                 <strong>Foto</strong>
                 <small>Cole o link do seu site: a IA sugere a foto e a legenda.</small>
               </button>
+            </div>
+            </div>
+            <div class="assistente-criar" id="assistente-criar" hidden>
+              <div id="passo-tamanho">
+                <button class="voltar-criar" type="button" id="voltar-tamanhos">Voltar</button>
+                <h2 id="titulo-tamanho">Criar arte</h2>
+                <p class="intro">Escolha o tamanho.</p>
+                <div class="tamanhos-criar">
+                  <button class="tamanho-criar" type="button" data-tamanho="feed"><span class="moldura"><span class="recorte feed"></span></span><strong>Feed</strong><small>1080 × 1350</small></button>
+                  <button class="tamanho-criar" type="button" data-tamanho="story"><span class="moldura"><span class="recorte story"></span></span><strong>Story</strong><small>1080 × 1920</small></button>
+                  <button class="tamanho-criar" type="button" data-tamanho="facebook"><span class="moldura"><span class="recorte facebook"></span></span><strong>Facebook</strong><small>1080 × 1080</small></button>
+                </div>
+              </div>
+              <div id="passo-origem" hidden>
+                <button class="voltar-criar" type="button" id="voltar-origem">Voltar</button>
+                <h2 id="titulo-origem">Criar arte</h2>
+                <p class="intro" id="resumo-tamanho">Feed · 1080 × 1350</p>
+                <div class="origens-criar">
+                  <button class="origem-criar" type="button" id="origem-memoria"><i class="fa-solid fa-brain"></i><strong>Escolher na memória</strong><small>Usa uma foto que você já guardou da marca.</small></button>
+                  <button class="origem-criar" type="button" id="origem-importar"><i class="fa-solid fa-upload"></i><strong>Importar</strong><small>Envia uma foto do seu computador.</small></button>
+                  <button class="origem-criar" type="button" id="origem-inteligente"><i class="fa-solid fa-wand-magic-sparkles"></i><strong>Criar foto inteligente</strong><small>A IA cria a foto. Você descreve no chat, aqui embaixo.</small></button>
+                </div>
+                <p class="nota" id="nota-fluxo" hidden></p>
+                <input id="anexo-fluxo" type="file" accept="image/jpeg,image/png,image/webp" hidden />
+              </div>
+              <div id="passo-memoria" hidden>
+                <button class="voltar-criar" type="button" id="voltar-memoria">Voltar</button>
+                <h2>Escolher na memória</h2>
+                <p class="intro" id="nota-fluxo-memoria">Escolha uma foto.</p>
+                <div class="grade-fluxo" id="grade-fluxo"></div>
+              </div>
+              <div id="passo-pronto" hidden>
+                <button class="voltar-criar" type="button" id="voltar-pronto">Voltar</button>
+                <h2 id="titulo-pronto">Criar arte</h2>
+                <p class="intro" id="texto-pronto"></p>
+                <img id="mini-fluxo" alt="" hidden />
+              </div>
             </div>
           </div>
           <div class="estudio-tarefa" id="estudio-tarefa" hidden></div>
@@ -1177,14 +1251,9 @@
           <label class="anexar" for="anexo-post" title="Foto ou vídeo"><i class="fa-regular fa-image"></i></label>
           <input id="anexo-post" type="file" accept="image/jpeg,image/png,image/webp,video/mp4" hidden />
           <button class="da-memoria" type="button" id="abrir-da-memoria" title="Mandar fotos da Memória da marca junto com a mensagem"><i class="fa-solid fa-brain"></i><span>Da memória</span></button>
-          <div class="formato-criar" id="formato-criar" hidden>
-            <button class="chip ativo" type="button" data-formato-arte="feed">Feed</button>
-            <button class="chip" type="button" data-formato-arte="story">Story</button>
-            <button class="chip" type="button" data-formato-arte="facebook">Facebook</button>
-          </div>
           <textarea id="pedido" required minlength="2" placeholder="Descreva a publicação. Ex.: novidade da semana para os clientes"></textarea>
           <button class="principal" type="submit" id="enviar-chat">Gerar</button>
-          <div class="modo-composer" id="modo-composer" hidden><i class="fa-solid fa-wand-magic-sparkles"></i> <span id="modo-rotulo">Criar foto</span> <button type="button" id="sair-modo" title="Voltar a criar post">×</button></div>
+          <button type="button" id="ia-frase" hidden><i class="fa-solid fa-wand-magic-sparkles"></i> A IA cria a frase</button>
           <div class="chips-memoria" id="chips-memoria" hidden></div>
           <p class="nota" id="anexo-nota" hidden></p>
           <div class="picker-memoria" id="picker-memoria" hidden>
@@ -1214,7 +1283,8 @@
               <i class="fa-regular fa-comment"></i>
               <i class="fa-regular fa-paper-plane"></i>
             </div>
-            <textarea class="legenda" id="legenda-aprovada" rows="3" aria-label="Legenda do post aprovado" placeholder="A legenda do post aprovado aparece aqui. Você ainda pode mudar o texto."></textarea>
+            <input class="titulo-aprovado" id="titulo-aprovado" maxlength="120" placeholder="Título" hidden />
+            <textarea class="legenda" id="legenda-aprovada" rows="3" aria-label="Legenda do post aprovado" placeholder="Legenda" hidden></textarea>
           </div>
           <button class="atalho" type="button" id="adicionar-projeto">Usar algo que já criei</button>
         </div>
@@ -2723,9 +2793,15 @@
     let vistaPrevia = "feed";
     let vistaAprovada = "feed";
     let gerando = false;
+    let fotoNoChat = false;
+    let arteEmCima = false;
     let modoImagem = false;
     let modoArte = false;
     let formatoArte = "feed";
+    let passoCriar = "";
+    let fluxoCriar = "";
+    let fotoFluxo = null;
+    let formatoAntesFluxo = "feed";
     let opcoesArte = [];
     let filtroPrateleira = "todas";
     let prateleiraAberta = false;
@@ -2886,8 +2962,15 @@
     }
 
     async function criarImagem(textoPedido) {
-      const escolhidas = fotosEscolhidas.slice();
-      const anexo = origemFoto === "anexo" && imagemProjeto ? imagemProjeto : "";
+      const escolhidas = fotoFluxo && fotoFluxo.tipo === "memoria" ? [fotoFluxo] : fotosEscolhidas.slice();
+      const anexo = fotoFluxo && fotoFluxo.tipo === "anexo" ? fotoFluxo.url : (origemFoto === "anexo" && imagemProjeto ? imagemProjeto : "");
+      const fluxoGuardado = fluxoCriar;
+      const fotoGuardada = fotoFluxo;
+      passoCriar = "";
+      fluxoCriar = "";
+      fotoFluxo = null;
+      modoImagem = false;
+      modoArte = false;
       falar("pessoa", textoComFotos(textoPedido, escolhidas) + (anexo ? "\n(com a foto anexada)" : ""));
       pedidoCampo.value = "";
       limparFotosEscolhidas();
@@ -2896,6 +2979,7 @@
       const fala = falar("assistente", "Criando a imagem... (leva até 1 minuto)");
       const botao = document.getElementById("enviar-chat");
       botao.disabled = true;
+      atualizarEstudio();
       try {
         const resposta = await fetch("/rascunho/imagem", {
           method: "POST",
@@ -2914,10 +2998,16 @@
         modoImagem = false;
         modoArte = false;
         aplicarRascunho(dados.rascunho);
-        fala.textContent = "Pronto, a imagem está no rascunho. Quer um texto por cima? É só pedir (ex.: coloca o título Promoção de terça em estilo alerta). Para a legenda, peça: escreve a legenda. Quando gostar, clique em Aprovar.";
+        fala.textContent = "Pronto. Se quiser mudar a foto, peça aqui embaixo.";
       } catch (falha) {
         const demorou = falha.name === "TimeoutError" || falha.name === "AbortError";
         fala.textContent = demorou ? "A imagem demorou demais. Tente de novo." : (falha.message || "Não consegui criar a imagem agora.");
+        if (fluxoGuardado) {
+          passoCriar = "pronto";
+          fluxoCriar = fluxoGuardado;
+          fotoFluxo = fotoGuardada;
+          modoImagem = true;
+        }
       } finally {
         botao.disabled = false;
         gerando = false;
@@ -2926,24 +3016,105 @@
       }
     }
 
+    function ehFotoCrua(plano) {
+      if (!plano || plano.modelo !== "livre") return false;
+      return !["titulo_arte", "subtitulo_arte", "selo", "chamada", "antes"].some((campo) => String(plano[campo] || "").trim());
+    }
+
+    function desenharFotoNoChat() {
+      const antiga = document.getElementById("foto-chat");
+      if (!fotoNoChat || !imagemProjeto) {
+        if (antiga) antiga.remove();
+        return;
+      }
+      if (antiga && antiga.dataset.url === imagemProjeto) return;
+      const bloco = antiga || document.createElement("div");
+      bloco.id = "foto-chat";
+      bloco.className = "balao foto-chat";
+      bloco.dataset.url = imagemProjeto;
+      bloco.innerHTML = "";
+      const imagem = document.createElement("img");
+      imagem.src = imagemProjeto;
+      imagem.alt = "Foto criada";
+      const acoes = document.createElement("div");
+      acoes.className = "acoes-foto-chat";
+      const salvar = document.createElement("button");
+      salvar.type = "button";
+      salvar.innerHTML = '<i class="fa-solid fa-bookmark"></i> Salvar';
+      salvar.addEventListener("click", () => salvarFotoNaMemoria(salvar));
+      const arte = document.createElement("button");
+      arte.type = "button";
+      arte.innerHTML = '<i class="fa-solid fa-pen-nib"></i> Criar arte';
+      arte.addEventListener("click", () => pedirArteEmCima());
+      const aprovar = document.createElement("button");
+      aprovar.type = "button";
+      aprovar.className = "principal";
+      aprovar.innerHTML = '<i class="fa-solid fa-check"></i> Aprovar';
+      aprovar.addEventListener("click", () => aprovarRascunho());
+      acoes.append(salvar, arte, aprovar);
+      bloco.append(imagem, acoes);
+      fio.appendChild(bloco);
+      fio.scrollTop = fio.scrollHeight;
+    }
+
+    async function salvarFotoNaMemoria(botao) {
+      if (!imagemProjeto || !marcaAtual.id) {
+        falar("assistente", "Salve a marca primeiro em Minha marca.");
+        return;
+      }
+      botao.disabled = true;
+      try {
+        const arquivo = await fetch(imagemProjeto);
+        if (!arquivo.ok) throw new Error("Não consegui ler a foto.");
+        const blob = await arquivo.blob();
+        const form = new FormData();
+        form.append("arquivos", blob, "foto-criada.jpg");
+        const resposta = await fetch(`/memoria/${marcaAtual.id}/fotos`, { method: "POST", body: form });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        botao.innerHTML = '<i class="fa-solid fa-check"></i> Salva';
+        falar("assistente", "Salvei essa foto na memória da marca.");
+      } catch (falha) {
+        botao.disabled = false;
+        falar("assistente", falha.message || "Não consegui salvar na memória.");
+      }
+    }
+
+    function pedirArteEmCima() {
+      const url = imagemProjeto || (artePrevia && (artePrevia.feed_url || artePrevia.base_url)) || "";
+      if (!url) return;
+      fotoFluxo = { tipo: "anexo", url, rotulo: "foto criada" };
+      arteEmCima = true;
+      fluxoCriar = "arte";
+      formatoArte = formatoAgenda;
+      atualizarTopoConversa();
+      if (!document.getElementById("dica-frase")) {
+        const dica = falar("assistente", "Escreva a frase aqui embaixo. Se não quiser inventar, clique em A IA cria a frase.");
+        dica.id = "dica-frase";
+      }
+      pedidoCampo.focus();
+    }
+
     function temConteudoNaMesa() {
       return Boolean(rascunhoAtual || gerando || opcoesArte.length || imagemProjeto || videoProjeto || document.getElementById("legenda-previa").value.trim());
     }
 
     function atualizarEstudio() {
       const temBaloes = Boolean(fio.querySelector(".balao"));
-      const mesa = !tarefaAberta && !prateleiraAberta && temConteudoNaMesa();
+      const mesa = !tarefaAberta && !prateleiraAberta && temConteudoNaMesa() && !fotoNoChat;
       document.getElementById("mesa-rascunho").hidden = !mesa;
       document.getElementById("prateleira").hidden = !prateleiraAberta || tarefaAberta;
-      document.getElementById("vazio-estudio").hidden = tarefaAberta || mesa || temBaloes || prateleiraAberta;
+      const wizard = Boolean(passoCriar) && !tarefaAberta && !prateleiraAberta && !mesa && !fotoNoChat;
+      document.getElementById("vazio-estudio").hidden = tarefaAberta || mesa || fotoNoChat || prateleiraAberta || (temBaloes && !wizard);
+      document.getElementById("inicio-estudio").hidden = Boolean(passoCriar);
+      document.getElementById("assistente-criar").hidden = !passoCriar;
+      desenharAssistente();
       document.getElementById("estudio-tarefa").hidden = !tarefaAberta;
-      fio.hidden = tarefaAberta || prateleiraAberta || (!mesa && !temBaloes);
-      document.getElementById("area-estudio").classList.toggle("com-mesa", mesa);
+      fio.hidden = tarefaAberta || prateleiraAberta || wizard || (!mesa && !temBaloes && !fotoNoChat);
+      document.getElementById("area-estudio").classList.toggle("com-mesa", mesa && !opcoesArte.length);
       document.getElementById("composer").hidden = tarefaAberta || prateleiraAberta;
-      document.getElementById("novo-post").hidden = !(mesa || temBaloes);
-      document.getElementById("modo-composer").hidden = (!modoImagem && !modoArte) || Boolean(rascunhoAtual);
-      document.getElementById("formato-criar").hidden = !modoArte || Boolean(rascunhoAtual);
-      document.getElementById("modo-rotulo").textContent = modoArte ? "Criar arte" : "Criar foto";
+      document.getElementById("novo-post").hidden = !(mesa || temBaloes || fotoNoChat) || wizard;
+      desenharFotoNoChat();
       document.getElementById("aprovar-texto").textContent = rascunhoAtual && rascunhoAtual.agendamento_id ? "Salvar no post da fila" : "Aprovar";
       document.getElementById("aprovar").hidden = Boolean(opcoesArte.length) && !rascunhoAtual;
       document.getElementById("previa").hidden = Boolean(opcoesArte.length) && !rascunhoAtual;
@@ -2952,12 +3123,20 @@
     function usarAtalho(qual) {
       if (qual === "imagem" || qual === "arte") {
         if (rascunhoAtual) iniciarNovoPost(true);
-        modoImagem = qual === "imagem";
-        modoArte = qual === "arte";
+        formatoAntesFluxo = formatoAgenda;
+        fluxoCriar = qual === "arte" ? "arte" : "foto";
+        passoCriar = "tamanho";
+        fotoFluxo = null;
+        modoImagem = false;
+        modoArte = false;
         atualizarTopoConversa();
-        pedidoCampo.focus();
         return;
       }
+      passoCriar = "";
+      fluxoCriar = "";
+      fotoFluxo = null;
+      modoImagem = false;
+      modoArte = false;
       abrir(qual);
     }
 
@@ -3000,6 +3179,10 @@
       }
       novo.id = "foto-aprovada";
       lugar.replaceWith(novo);
+      const tituloCampo = document.getElementById("titulo-aprovado");
+      tituloCampo.hidden = !aprovado;
+      legenda.hidden = !aprovado;
+      if (aprovado && document.activeElement !== tituloCampo) tituloCampo.value = aprovado.titulo || "";
       if (document.activeElement !== legenda) legenda.value = aprovado ? aprovado.legenda || "" : "";
       legenda.style.height = "auto";
       legenda.style.height = legenda.scrollHeight + "px";
@@ -3038,7 +3221,7 @@
         };
         vistaAprovada = vistaPrevia;
         desenharAprovado();
-        falar("assistente", "Aprovado! O post foi para a Prévia à direita. Agora é só clicar em Publicar agora ou escolher o dia e Agendar.");
+        falar("assistente", "Aprovado. Escreva o título e a legenda na Prévia. Depois é só Publicar agora ou Agendar.");
         document.getElementById("previa-aprovada").scrollIntoView({ behavior: "smooth", block: "nearest" });
       } catch (falha) {
         nota.textContent = falha.message || "Não consegui aprovar agora.";
@@ -3068,23 +3251,46 @@
     function atualizarTopoConversa() {
       const titulo = document.getElementById("titulo-conversa");
       const enviarChat = document.getElementById("enviar-chat");
-      if (rascunhoAtual) {
+      if (arteEmCima) {
+        modoArte = true;
+        modoImagem = false;
+        titulo.textContent = "Criar arte";
+        enviarChat.textContent = "Criar arte";
+        pedidoCampo.placeholder = "Escreva a frase, se quiser. Ex.: Bateu a fome?";
+      } else if (fotoNoChat && rascunhoAtual) {
+        titulo.textContent = "Criar foto";
+        enviarChat.textContent = "Enviar";
+        pedidoCampo.placeholder = "Peça uma mudança na foto, se quiser. Ex.: fundo mais escuro.";
+      } else if (rascunhoAtual) {
         titulo.textContent = rascunhoAtual.agendamento_id ? "Ajustando um post da fila" : "Ajustando o rascunho";
         enviarChat.textContent = "Ajustar";
         pedidoCampo.placeholder = "Peça um ajuste neste post. Ex.: faz em amarelo; troca o título para Hoje tem; usa um selo de alerta";
-      } else if (modoArte) {
+      } else if (passoCriar === "pronto" && fluxoCriar === "arte") {
+        modoArte = true;
+        modoImagem = false;
         titulo.textContent = "Criar arte";
         enviarChat.textContent = "Criar arte";
-        pedidoCampo.placeholder = "Descreva a arte. Ex.: promoção de terça, frase curta, em cima da foto do produto.";
-      } else if (modoImagem) {
+        pedidoCampo.placeholder = fotoFluxo
+          ? "Escreva a frase, se quiser. Ex.: Bateu a fome?"
+          : "Descreva a arte aqui. Ex.: promoção de terça, frase curta, em cima da foto.";
+      } else if (passoCriar === "pronto" && fluxoCriar === "foto") {
+        modoImagem = true;
+        modoArte = false;
         titulo.textContent = "Criar foto";
         enviarChat.textContent = "Criar foto";
-        pedidoCampo.placeholder = "Descreva a foto. Ex.: uma caipirinha no balcão ao pôr do sol. Para partir de uma foto sua, toque em Da memória ou no ícone de foto.";
+        pedidoCampo.placeholder = "Descreva a foto aqui. Ex.: uma caipirinha no balcão ao pôr do sol.";
+      } else if (passoCriar) {
+        modoImagem = false;
+        modoArte = false;
+        titulo.textContent = fluxoCriar === "arte" ? "Criar arte" : "Criar foto";
+        enviarChat.textContent = "Enviar";
+        pedidoCampo.placeholder = "O texto fica aqui. Primeiro escolha o tamanho e a foto aqui em cima.";
       } else {
         titulo.textContent = "Estúdio";
         enviarChat.textContent = "Gerar";
         pedidoCampo.placeholder = "Descreva a publicação. Ex.: promoção de terça para os clientes";
       }
+      document.getElementById("ia-frase").hidden = !(arteEmCima || (passoCriar === "pronto" && fluxoCriar === "arte" && fotoFluxo));
       atualizarEstudio();
     }
 
@@ -3118,6 +3324,8 @@
         }
         if (formatoAgenda !== rascunhoAtual.formato) vistaPrevia = "feed";
         marcarFormato(rascunhoAtual.formato);
+        fotoNoChat = Boolean(imagemProjeto) && ehFotoCrua(artePrevia) && !opcoesArte.length;
+        if (!fotoNoChat) arteEmCima = false;
         if (videoProjeto) colocarMidiaPrevia(videoProjeto, "video");
         else colocarMidiaPrevia(imagemProjeto && artePrevia && imagemProjeto === artePrevia.feed_url ? urlArteDaVista() : imagemProjeto, "foto");
         desenharFaixaMemoria();
@@ -3135,6 +3343,8 @@
       imagemProjeto = "";
       videoProjeto = "";
       origemFoto = "";
+      fotoNoChat = false;
+      arteEmCima = false;
       escreverLegenda("");
       colocarMidiaPrevia("", "foto");
       marcarAnexo("");
@@ -3155,6 +3365,9 @@
     function iniciarNovoPost(manterConversa, descartar) {
       const temArte = rascunhoAtual && rascunhoAtual.plano_arte && (rascunhoAtual.plano_arte.feed_url || rascunhoAtual.feed_url);
       fecharRascunhoNoServidor(rascunhoAtual, !descartar && temArte);
+      passoCriar = "";
+      fluxoCriar = "";
+      fotoFluxo = null;
       limparPrevia();
       limparFotosEscolhidas();
       if (!manterConversa) {
@@ -3282,10 +3495,88 @@
       }
     }
 
+    function desenharAssistente() {
+      const painel = document.getElementById("assistente-criar");
+      if (!painel) return;
+      document.getElementById("passo-tamanho").hidden = passoCriar !== "tamanho";
+      document.getElementById("passo-origem").hidden = passoCriar !== "origem";
+      document.getElementById("passo-memoria").hidden = passoCriar !== "memoria";
+      document.getElementById("passo-pronto").hidden = passoCriar !== "pronto";
+      const nome = fluxoCriar === "foto" ? "Criar foto" : "Criar arte";
+      document.getElementById("titulo-tamanho").textContent = nome;
+      document.getElementById("titulo-origem").textContent = nome;
+      document.getElementById("titulo-pronto").textContent = nome;
+      const medidas = { feed: "1080 × 1350", story: "1080 × 1920", facebook: "1080 × 1080" };
+      document.getElementById("resumo-tamanho").textContent = nomeFormato(formatoArte) + " · " + (medidas[formatoArte] || "");
+      const mini = document.getElementById("mini-fluxo");
+      if (fotoFluxo && fotoFluxo.url) {
+        mini.hidden = false;
+        mini.src = fotoFluxo.url;
+      } else {
+        mini.hidden = true;
+        mini.removeAttribute("src");
+      }
+      const texto = document.getElementById("texto-pronto");
+      if (!texto) return;
+      if (fotoFluxo && fluxoCriar === "arte") texto.textContent = "Foto escolhida. No chat aqui embaixo, diga a frase e o que a arte deve dizer, e envie.";
+      else if (fotoFluxo) texto.textContent = "Foto escolhida. No chat aqui embaixo, diga o ajuste que quer, ou escreva: pode ficar como está.";
+      else if (fluxoCriar === "arte") texto.textContent = "A IA cria a foto e três artes. Descreva no chat aqui embaixo e envie.";
+      else texto.textContent = "A IA cria a foto. Descreva no chat aqui embaixo e envie.";
+    }
+
+    function irParaPronto() {
+      passoCriar = "pronto";
+      atualizarTopoConversa();
+      pedidoCampo.focus();
+    }
+
+    async function abrirMemoriaFluxo() {
+      passoCriar = "memoria";
+      atualizarTopoConversa();
+      const nota = document.getElementById("nota-fluxo-memoria");
+      const grade = document.getElementById("grade-fluxo");
+      grade.innerHTML = "";
+      if (!marcaAtual.id) {
+        nota.textContent = "Salve a marca primeiro em Minha marca.";
+        return;
+      }
+      nota.textContent = "Carregando as fotos da memória...";
+      try {
+        const resposta = await fetch(`/memoria/${marcaAtual.id}/fotos`);
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        const fotos = (dados.itens || []).filter((foto) => foto.usar_em_posts);
+        nota.textContent = fotos.length ? "Escolha uma foto." : "Esta marca ainda não tem fotos na memória. Mande em Minha marca > Fotos da marca.";
+        fotos.forEach((foto) => {
+          const botao = document.createElement("button");
+          botao.type = "button";
+          const imagem = document.createElement("img");
+          imagem.src = foto.miniatura_url;
+          imagem.alt = "";
+          botao.append(imagem);
+          botao.addEventListener("click", () => {
+            const descricao = (foto.descricao || "").trim();
+            fotoFluxo = {
+              tipo: "memoria",
+              id: foto.id,
+              url: foto.miniatura_url,
+              rotulo: descricao ? descricao.split(/[.;]/)[0].slice(0, 40) : nomeTipoFoto(foto.tipo),
+            };
+            irParaPronto();
+          });
+          grade.append(botao);
+        });
+      } catch (falha) {
+        nota.textContent = falha.message || "Não consegui abrir as fotos da memória.";
+      }
+    }
+
     function enviarChat() {
       const textoPedido = pedidoCampo.value.trim();
+      if (passoCriar && passoCriar !== "pronto") return;
       if (textoPedido.length < 2) return;
-      if (rascunhoAtual) ajustarRascunho(textoPedido);
+      if (arteEmCima) criarArte(textoPedido);
+      else if (rascunhoAtual) ajustarRascunho(textoPedido);
       else if (modoArte) criarArte(textoPedido);
       else if (modoImagem) criarImagem(textoPedido);
       else criarPost(textoPedido);
@@ -3340,10 +3631,23 @@
       }
     }
 
-    async function criarArte(textoPedido) {
-      const escolhidas = fotosEscolhidas.slice();
-      const anexo = origemFoto === "anexo" && imagemProjeto ? imagemProjeto : "";
-      falar("pessoa", textoComFotos(textoPedido, escolhidas) + (anexo ? "\n(com a foto anexada)" : ""));
+    function pedidoFraseDaIa() {
+      const ideia = ((artePrevia && artePrevia.ideia) || (rascunhoAtual && rascunhoAtual.cena) || "").trim();
+      const base = ideia ? `Ideia da foto: ${ideia}.` : "Use o que a foto e a memória da marca mostram.";
+      return "A pessoa não escreveu a frase. Invente você a frase de impacto, forte, de 2 a 6 palavras, para ler de longe. As 3 artes precisam de frases diferentes entre si. " + base + " Não copie esta instrução para o título.";
+    }
+
+    async function criarArte(textoPedido, falaPessoa) {
+      const escolhidas = fotoFluxo && fotoFluxo.tipo === "memoria" ? [fotoFluxo] : fotosEscolhidas.slice();
+      const anexo = fotoFluxo && fotoFluxo.tipo === "anexo" ? fotoFluxo.url : (origemFoto === "anexo" && imagemProjeto ? imagemProjeto : "");
+      const fluxoGuardado = fluxoCriar;
+      const fotoGuardada = fotoFluxo;
+      passoCriar = "";
+      fluxoCriar = "";
+      fotoFluxo = null;
+      modoImagem = false;
+      modoArte = false;
+      falar("pessoa", falaPessoa || (textoComFotos(textoPedido, escolhidas) + (anexo ? "\n(com a foto anexada)" : "")));
       pedidoCampo.value = "";
       limparFotosEscolhidas();
       gerando = true;
@@ -3351,7 +3655,10 @@
       desenharOpcoes();
       const fala = falar("assistente", "Estou criando 3 artes no tamanho " + nomeFormato(formatoArte) + ". A foto é uma só, para não gastar três vezes.");
       const botao = document.getElementById("enviar-chat");
+      const botaoFrase = document.getElementById("ia-frase");
       botao.disabled = true;
+      botaoFrase.disabled = true;
+      atualizarEstudio();
       try {
         const resposta = await fetch("/rascunho/artes", {
           method: "POST",
@@ -3369,15 +3676,24 @@
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         escreverLegenda(dados.legenda || "");
         opcoesArte = dados.opcoes || [];
+        fotoNoChat = false;
+        arteEmCima = false;
         desenharOpcoes();
         fala.textContent = "Escolha uma das 3. As três usam a mesma foto e mudam a frase, o estilo e as cores.";
       } catch (falha) {
         const demorou = falha.name === "TimeoutError" || falha.name === "AbortError";
         fala.textContent = demorou ? "As artes demoraram demais. Tente de novo." : (falha.message || "Não consegui criar as artes agora.");
+        if (fluxoGuardado) {
+          passoCriar = "pronto";
+          fluxoCriar = fluxoGuardado;
+          fotoFluxo = fotoGuardada;
+          modoArte = true;
+        }
       } finally {
         botao.disabled = false;
+        botaoFrase.disabled = false;
         gerando = false;
-        atualizarEstudio();
+        atualizarTopoConversa();
       }
     }
 
@@ -3736,6 +4052,11 @@
       evento.preventDefault();
       enviarChat();
     });
+    document.getElementById("ia-frase").addEventListener("click", () => {
+      const botao = document.getElementById("ia-frase");
+      if (botao.hidden || gerando) return;
+      criarArte(pedidoFraseDaIa(), "Cria você a frase de impacto.");
+    });
     document.getElementById("novo-post").addEventListener("click", () => {
       iniciarNovoPost(false);
       pedidoCampo.focus();
@@ -3785,16 +4106,81 @@
     document.querySelectorAll("[data-atalho]").forEach((botao) => {
       botao.addEventListener("click", () => usarAtalho(botao.dataset.atalho));
     });
-    document.getElementById("sair-modo").addEventListener("click", () => {
+    document.getElementById("voltar-tamanhos").addEventListener("click", () => {
+      passoCriar = "";
+      fluxoCriar = "";
+      fotoFluxo = null;
+      modoImagem = false;
+      modoArte = false;
+      marcarFormato(formatoAntesFluxo);
+      atualizarTopoConversa();
+    });
+    document.getElementById("voltar-origem").addEventListener("click", () => {
+      passoCriar = "tamanho";
+      atualizarTopoConversa();
+    });
+    document.getElementById("voltar-memoria").addEventListener("click", () => {
+      passoCriar = "origem";
+      atualizarTopoConversa();
+    });
+    document.getElementById("voltar-pronto").addEventListener("click", () => {
+      fotoFluxo = null;
+      passoCriar = "origem";
       modoImagem = false;
       modoArte = false;
       atualizarTopoConversa();
     });
-    document.querySelectorAll("[data-formato-arte]").forEach((botao) => {
+    document.querySelectorAll("[data-tamanho]").forEach((botao) => {
       botao.addEventListener("click", () => {
-        formatoArte = botao.dataset.formatoArte;
-        document.querySelectorAll("[data-formato-arte]").forEach((item) => item.classList.toggle("ativo", item === botao));
+        formatoArte = botao.dataset.tamanho;
+        marcarFormato(formatoArte);
+        passoCriar = "origem";
+        atualizarTopoConversa();
       });
+    });
+    document.getElementById("origem-memoria").addEventListener("click", () => abrirMemoriaFluxo());
+    document.getElementById("origem-importar").addEventListener("click", () => document.getElementById("anexo-fluxo").click());
+    document.getElementById("origem-inteligente").addEventListener("click", () => {
+      fotoFluxo = null;
+      irParaPronto();
+    });
+    document.getElementById("anexo-fluxo").addEventListener("change", async () => {
+      const campo = document.getElementById("anexo-fluxo");
+      const arquivo = campo.files[0];
+      const nota = document.getElementById("nota-fluxo");
+      nota.hidden = true;
+      if (!arquivo) return;
+      const foto = ["image/jpeg", "image/png", "image/webp"].includes(arquivo.type);
+      if (!foto) {
+        campo.value = "";
+        nota.hidden = false;
+        nota.textContent = "Envie uma foto JPG, PNG ou WebP.";
+        return;
+      }
+      if (arquivo.size > 8 * 1024 * 1024) {
+        campo.value = "";
+        nota.hidden = false;
+        nota.textContent = "A foto precisa ter até 8 MB.";
+        return;
+      }
+      nota.hidden = false;
+      nota.textContent = "Enviando a foto...";
+      try {
+        const form = new FormData();
+        form.append("arquivo", arquivo, arquivo.name);
+        form.append("marca_id", String(marcaAtual.id || 0));
+        const resposta = await fetch("/anexo", { method: "POST", body: form });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        fotoFluxo = { tipo: "anexo", id: null, url: dados.url, rotulo: arquivo.name };
+        campo.value = "";
+        nota.hidden = true;
+        irParaPronto();
+      } catch (falha) {
+        campo.value = "";
+        nota.hidden = false;
+        nota.textContent = falha.message || "Não consegui importar a foto.";
+      }
     });
     document.getElementById("frase-arte-atualizar").addEventListener("click", () => {
       document.getElementById("arte-titulo").value = document.getElementById("frase-arte-texto").value.trim();
@@ -3815,6 +4201,9 @@
     document.getElementById("ver-outro-aprovado").addEventListener("click", () => {
       vistaAprovada = vistaAprovada === "story" ? "feed" : "story";
       desenharAprovado();
+    });
+    document.getElementById("titulo-aprovado").addEventListener("input", () => {
+      if (aprovado) aprovado.titulo = document.getElementById("titulo-aprovado").value;
     });
     document.getElementById("legenda-aprovada").addEventListener("input", () => {
       const campo = document.getElementById("legenda-aprovada");
@@ -4032,10 +4421,11 @@
     }
 
     function textoAprovado() {
+      const tituloCampo = document.getElementById("titulo-aprovado").value.trim();
       const escrito = document.getElementById("legenda-aprovada").value.trim();
-      if (escrito) {
+      if (tituloCampo || escrito) {
         const primeira = escrito.split("\n").find((linha) => linha.trim()) || escrito;
-        return { titulo: primeira.trim().slice(0, 300), legenda: escrito };
+        return { titulo: (tituloCampo || primeira || "Publicação").trim().slice(0, 300), legenda: escrito || tituloCampo };
       }
       if (aprovado.imagem_url || aprovado.video_url) return { titulo: "Publicação", legenda: "Publicação" };
       return null;
