@@ -5,13 +5,18 @@ from app.database import get_session
 from app.models import Agendamento, Ficha, Rascunho
 from app.schemas import (
     ItemAgenda,
+    ItemPrateleira,
     PedidoAjuste,
     PedidoImagemRascunho,
     PedidoRascunho,
     PedidoRestaurar,
     PedidoSalvarRascunho,
+    PedidoTresArtes,
     RespostaAjuste,
+    RespostaPrateleira,
     RespostaRascunho,
+    RespostaTresArtes,
+    OpcaoArtePronta,
 )
 from app.services import rascunho as servico
 from app.services.publicar import marca_efetiva
@@ -70,6 +75,61 @@ async def post_rascunho_imagem(pedido: PedidoImagemRascunho, session: AsyncSessi
     except Exception as erro:
         await session.rollback()
         raise _falha_ia(erro, "Não consegui criar a imagem agora. Tente de novo em instantes.") from erro
+    return RespostaRascunho(rascunho=servico.para_item(registro))
+
+
+@router.post("/rascunho/artes", response_model=RespostaTresArtes)
+async def post_tres_artes(pedido: PedidoTresArtes, session: AsyncSession = Depends(get_session)) -> RespostaTresArtes:
+    """Criar arte: uma foto e três peças diferentes, no tamanho escolhido."""
+    try:
+        feito = await servico.criar_tres_artes(
+            session,
+            await _marca(session, pedido.marca_id),
+            pedido.descricao,
+            pedido.formato,
+            pedido.fotos_ids,
+            pedido.anexo_url,
+        )
+    except Exception as erro:
+        await session.rollback()
+        raise _falha_ia(erro, "Não consegui criar as artes agora. Tente de novo em instantes.") from erro
+    return RespostaTresArtes(
+        legenda=feito["legenda"],
+        formato=feito["formato"],
+        opcoes=[
+            OpcaoArtePronta(
+                plano_arte=servico.diretor.resumo_plano(plano) or plano,
+                foto_url=plano.get("feed_url") or "",
+                modelo=plano.get("modelo") or "",
+            )
+            for plano in feito["opcoes"]
+        ],
+    )
+
+
+@router.get("/prateleira", response_model=RespostaPrateleira)
+async def get_prateleira(marca_id: int = 0, session: AsyncSession = Depends(get_session)) -> RespostaPrateleira:
+    itens = await servico.listar_prateleira(session, marca_id)
+    return RespostaPrateleira(itens=[ItemPrateleira(**item) for item in itens])
+
+
+@router.post("/rascunho/{rascunho_id}/guardar")
+async def post_guardar(rascunho_id: int, session: AsyncSession = Depends(get_session)) -> dict[str, bool]:
+    """Tira do estúdio e deixa na prateleira, se a arte já existe."""
+    registro = await session.get(Rascunho, rascunho_id)
+    if registro is not None and registro.status == "aberto":
+        plano = servico.plano_de(registro)
+        registro.status = "guardado" if plano and (plano.get("feed_url") or plano.get("story_url")) else "fechado"
+        await session.commit()
+    return {"ok": True}
+
+
+@router.post("/rascunho/{rascunho_id}/abrir", response_model=RespostaRascunho)
+async def post_abrir(rascunho_id: int, session: AsyncSession = Depends(get_session)) -> RespostaRascunho:
+    registro = await session.get(Rascunho, rascunho_id)
+    if registro is None or registro.status not in {"aberto", "guardado"}:
+        raise HTTPException(status_code=404, detail="Esse rascunho não está mais na prateleira.")
+    registro = await servico.reabrir(session, registro)
     return RespostaRascunho(rascunho=servico.para_item(registro))
 
 

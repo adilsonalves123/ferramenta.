@@ -154,11 +154,12 @@
     .vazio-estudio { margin: auto; width: 100%; max-width: 680px; padding: 28px 0; text-align: center; }
     .vazio-estudio h2 { margin: 0 0 6px; font-size: 28px; letter-spacing: -0.03em; font-weight: 700; }
     .vazio-estudio > p { margin: 0 0 22px; color: var(--mudo); line-height: 1.5; }
-    .atalhos-estudio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; text-align: left; }
+    .atalhos-estudio { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; text-align: left; }
     button.cartao-atalho { display: flex; flex-direction: column; gap: 6px; width: 100%; margin: 0; padding: 10px 10px 14px; border: 1px solid var(--linha); border-radius: 14px; background: var(--papel); color: var(--tinta); font: inherit; cursor: pointer; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04); transition: border-color 0.15s, transform 0.15s; }
     button.cartao-atalho:hover { border-color: #c7cbff; transform: translateY(-2px); }
     .capa-atalho { display: grid; place-items: center; width: 100%; aspect-ratio: 4 / 3; border-radius: 10px; object-fit: cover; }
-    .capa-imagem { background: linear-gradient(140deg, #4f46e5, #db2777 60%, #f59e0b); color: white; font-size: 34px; }
+    .capa-imagem { background: #4f46e5; color: white; font-size: 34px; }
+    .capa-arte { background: #111827; color: white; font-size: 34px; }
     button.cartao-atalho strong { margin-top: 4px; font-size: 14.5px; }
     button.cartao-atalho small { color: var(--mudo); font-size: 12px; line-height: 1.4; }
     .estudio-tarefa { overflow: auto; }
@@ -717,6 +718,28 @@
     .post.modo-story .faixa-memoria span { color: var(--tinta); }
     .post img.arte { height: auto; aspect-ratio: 4 / 5; object-fit: contain; background: #0f172a; }
     .post.modo-story img.arte { height: auto; aspect-ratio: 9 / 16; }
+    .post.modo-facebook img.arte { height: auto; aspect-ratio: 1 / 1; }
+    .formato-criar { display: flex; gap: 8px; margin: 0 0 8px; }
+    .formato-criar[hidden] { display: none; }
+    .opcoes-arte { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0 0 12px; }
+    .opcoes-arte[hidden] { display: none; }
+    .opcoes-arte button { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 6px; border: 1px solid var(--linha); border-radius: 12px; background: white; color: var(--tinta); font: inherit; cursor: pointer; text-align: left; }
+    .opcoes-arte button:hover { border-color: var(--azul); }
+    .opcoes-arte img { width: 100%; height: 180px; object-fit: cover; border-radius: 8px; background: #eceff3; }
+    .opcoes-arte small { color: var(--mudo); font-size: 12px; }
+    .frase-arte { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; margin: 10px 0; }
+    .frase-arte[hidden] { display: none; }
+    .frase-arte label { display: grid; gap: 4px; font-size: 12px; font-weight: 600; }
+    .frase-arte input { width: 100%; padding: 8px 10px; border: 1px solid var(--linha); border-radius: 8px; font: inherit; font-size: 14px; }
+    .prateleira h2 { margin: 0 0 8px; font-size: 22px; letter-spacing: -0.03em; }
+    .prateleira[hidden] { display: none; }
+    .prateleira-filtros { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+    .prateleira-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+    .prateleira-grade button { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 6px; border: 1px solid var(--linha); border-radius: 12px; background: white; color: var(--tinta); font: inherit; cursor: pointer; text-align: left; }
+    .prateleira-grade img { width: 100%; height: 160px; object-fit: cover; border-radius: 8px; background: #eceff3; }
+    .prateleira-grade small, .prateleira-vista { color: var(--mudo); font-size: 12px; }
+    .prateleira-vista { margin: 8px 0 0; }
+    .prateleira-vista img { display: block; max-width: 280px; border-radius: 12px; margin-top: 8px; }
     .editor-arte { margin: 0 14px 12px; padding: 10px; border: 1px solid var(--linha); border-radius: 10px; background: #fafbff; display: flex; flex-direction: column; gap: 8px; font-size: 12px; color: var(--tinta); }
     .editor-arte[hidden] { display: none; }
     .editor-arte .ideia-arte { margin: 0; color: var(--mudo); line-height: 1.4; }
@@ -1017,6 +1040,7 @@
         <div class="coluna-topo" id="topo-conversa">
           <span id="titulo-conversa">Estúdio</span>
           <div class="topo-acoes">
+            <button class="novo-post" type="button" id="prateleira-botao" title="Artes salvas, agendadas e publicadas"><i class="fa-solid fa-table-cells"></i> Prateleira</button>
             <button class="novo-post" type="button" id="novo-post" hidden title="Começar outro post do zero"><i class="fa-solid fa-plus"></i> Novo post</button>
           </div>
         </div>
@@ -1027,9 +1051,14 @@
             <p>Escreva aqui embaixo o que você quer, ou comece por um atalho.</p>
             <div class="atalhos-estudio">
               <button class="cartao-atalho" type="button" data-atalho="imagem">
-                <span class="capa-atalho capa-imagem"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
-                <strong>Criar imagem</strong>
-                <small>Descreva a imagem. Pode partir de uma foto da memória ou de uma foto sua.</small>
+                <span class="capa-atalho capa-imagem"><i class="fa-solid fa-image"></i></span>
+                <strong>Criar foto</strong>
+                <small>Gera a foto crua. Ela fica no rascunho, pronta para virar arte.</small>
+              </button>
+              <button class="cartao-atalho" type="button" data-atalho="arte">
+                <span class="capa-atalho capa-arte"><i class="fa-solid fa-pen-nib"></i></span>
+                <strong>Criar arte</strong>
+                <small>Escolhe o tamanho e recebe 3 artes diferentes em cima de uma foto.</small>
               </button>
               <button class="cartao-atalho" type="button" data-atalho="texto">
                 <img class="capa-atalho" src="/quadros/anuncio.jpg" alt="" />
@@ -1044,12 +1073,24 @@
             </div>
           </div>
           <div class="estudio-tarefa" id="estudio-tarefa" hidden></div>
+          <div class="prateleira" id="prateleira" hidden>
+            <h2>Prateleira</h2>
+            <div class="prateleira-filtros" id="prateleira-filtros">
+              <button class="chip ativo" type="button" data-filtro-prateleira="todas">Todas</button>
+              <button class="chip" type="button" data-filtro-prateleira="rascunho">Rascunhos</button>
+              <button class="chip" type="button" data-filtro-prateleira="agendado">Agendadas</button>
+              <button class="chip" type="button" data-filtro-prateleira="publicado">Publicadas</button>
+            </div>
+            <div class="prateleira-grade" id="prateleira-grade"></div>
+            <p class="prateleira-vista" id="prateleira-vista" hidden></p>
+          </div>
           <div class="mesa-rascunho" id="mesa-rascunho" hidden>
             <div class="previa-topo">
               <p class="secao">Rascunho · <span class="canal-nome" id="canal-previa">Feed</span></p>
               <button class="link-mini" type="button" id="ver-outro" hidden>Ver Story</button>
             </div>
             <div class="cartao-previa">
+              <div class="opcoes-arte" id="opcoes-arte" hidden></div>
               <div class="post" id="previa">
                 <div class="vazio-foto" id="foto-previa"><i class="fa-regular fa-image"></i><span>A imagem aparece aqui</span></div>
                 <div class="faixa-memoria" id="faixa-memoria" hidden>
@@ -1067,6 +1108,10 @@
                   <p class="nota" id="nota-versoes" hidden></p>
                 </div>
                 <textarea class="legenda" id="legenda-previa" rows="3" aria-label="Legenda do post" placeholder="A legenda aparece aqui. Você pode escrever ou mudar o texto aqui mesmo."></textarea>
+                <div class="frase-arte" id="frase-arte" hidden>
+                  <label>Frase da arte<input id="frase-arte-texto" maxlength="60" /></label>
+                  <button class="secundario" type="button" id="frase-arte-atualizar">Atualizar na arte</button>
+                </div>
                 <button class="criar-foto" type="button" id="criar-foto"><i class="fa-solid fa-wand-magic-sparkles"></i><span id="criar-foto-texto">Criar foto com IA</span></button>
                 <p class="nota" id="nota-foto" hidden></p>
                 <details class="detalhes-arte" id="detalhes-arte">
@@ -1132,9 +1177,14 @@
           <label class="anexar" for="anexo-post" title="Foto ou vídeo"><i class="fa-regular fa-image"></i></label>
           <input id="anexo-post" type="file" accept="image/jpeg,image/png,image/webp,video/mp4" hidden />
           <button class="da-memoria" type="button" id="abrir-da-memoria" title="Mandar fotos da Memória da marca junto com a mensagem"><i class="fa-solid fa-brain"></i><span>Da memória</span></button>
+          <div class="formato-criar" id="formato-criar" hidden>
+            <button class="chip ativo" type="button" data-formato-arte="feed">Feed</button>
+            <button class="chip" type="button" data-formato-arte="story">Story</button>
+            <button class="chip" type="button" data-formato-arte="facebook">Facebook</button>
+          </div>
           <textarea id="pedido" required minlength="2" placeholder="Descreva a publicação. Ex.: novidade da semana para os clientes"></textarea>
           <button class="principal" type="submit" id="enviar-chat">Gerar</button>
-          <div class="modo-composer" id="modo-composer" hidden><i class="fa-solid fa-wand-magic-sparkles"></i> Criar imagem <button type="button" id="sair-modo" title="Voltar a criar post">×</button></div>
+          <div class="modo-composer" id="modo-composer" hidden><i class="fa-solid fa-wand-magic-sparkles"></i> <span id="modo-rotulo">Criar foto</span> <button type="button" id="sair-modo" title="Voltar a criar post">×</button></div>
           <div class="chips-memoria" id="chips-memoria" hidden></div>
           <p class="nota" id="anexo-nota" hidden></p>
           <div class="picker-memoria" id="picker-memoria" hidden>
@@ -1213,6 +1263,7 @@
             <div class="atalhos em-linha" id="formatos-agenda">
               <button class="chip ativo" type="button" data-formato-agenda="feed">Feed</button>
               <button class="chip" type="button" data-formato-agenda="story">Story</button>
+              <button class="chip" type="button" data-formato-agenda="facebook">Facebook</button>
               <button class="chip" type="button" data-formato-agenda="ambos">Feed e Story</button>
             </div>
           </div>
@@ -2175,6 +2226,7 @@
     function nomeFormato(formato) {
       if (formato === "story") return "Story";
       if (formato === "ambos") return "Feed e Story";
+      if (formato === "facebook") return "Facebook";
       return "Feed";
     }
 
@@ -2607,7 +2659,8 @@
       document.getElementById("arte-modelo").value = artePrevia.modelo || "destaque";
       CAMPOS_ARTE.forEach(([id, campo]) => { document.getElementById(id).value = artePrevia[campo] || ""; });
       document.getElementById("arte-antes-campo").hidden = artePrevia.modelo !== "antes_depois";
-      document.getElementById("refazer-arte").hidden = !imagemProjeto;
+      document.getElementById("frase-arte").hidden = editor.hidden;
+      if (!editor.hidden) document.getElementById("frase-arte-texto").value = artePrevia.titulo_arte || "";
       document.getElementById("nota-arte").textContent = imagemProjeto
         ? "Refazer arte troca só o texto, o estilo e as cores, com a mesma foto: não gasta IA."
         : "A foto ainda não foi feita: clique em Criar foto com IA, escolha uma da memória ou agende (a IA faz até 3 horas antes).";
@@ -2671,13 +2724,21 @@
     let vistaAprovada = "feed";
     let gerando = false;
     let modoImagem = false;
+    let modoArte = false;
+    let formatoArte = "feed";
+    let opcoesArte = [];
+    let filtroPrateleira = "todas";
+    let prateleiraAberta = false;
+    let itensPrateleira = [];
     let aprovado = null;
 
     function aplicarVista() {
       const vista = formatoAgenda === "ambos" ? vistaPrevia : formatoAgenda;
-      const story = vista === "story";
+      const facebook = formatoAgenda === "facebook";
+      const story = !facebook && vista === "story";
       document.getElementById("previa").classList.toggle("modo-story", story);
-      document.getElementById("canal-previa").textContent = story ? "Story" : "Feed";
+      document.getElementById("previa").classList.toggle("modo-facebook", facebook);
+      document.getElementById("canal-previa").textContent = facebook ? "Facebook" : story ? "Story" : "Feed";
       const outro = document.getElementById("ver-outro");
       outro.hidden = formatoAgenda !== "ambos";
       outro.textContent = story ? "Ver Feed" : "Ver Story";
@@ -2851,6 +2912,7 @@
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         modoImagem = false;
+        modoArte = false;
         aplicarRascunho(dados.rascunho);
         fala.textContent = "Pronto, a imagem está no rascunho. Quer um texto por cima? É só pedir (ex.: coloca o título Promoção de terça em estilo alerta). Para a legenda, peça: escreve a legenda. Quando gostar, clique em Aprovar.";
       } catch (falha) {
@@ -2865,27 +2927,33 @@
     }
 
     function temConteudoNaMesa() {
-      return Boolean(rascunhoAtual || gerando || imagemProjeto || videoProjeto || document.getElementById("legenda-previa").value.trim());
+      return Boolean(rascunhoAtual || gerando || opcoesArte.length || imagemProjeto || videoProjeto || document.getElementById("legenda-previa").value.trim());
     }
 
     function atualizarEstudio() {
       const temBaloes = Boolean(fio.querySelector(".balao"));
-      const mesa = !tarefaAberta && temConteudoNaMesa();
+      const mesa = !tarefaAberta && !prateleiraAberta && temConteudoNaMesa();
       document.getElementById("mesa-rascunho").hidden = !mesa;
-      document.getElementById("vazio-estudio").hidden = tarefaAberta || mesa || temBaloes;
+      document.getElementById("prateleira").hidden = !prateleiraAberta || tarefaAberta;
+      document.getElementById("vazio-estudio").hidden = tarefaAberta || mesa || temBaloes || prateleiraAberta;
       document.getElementById("estudio-tarefa").hidden = !tarefaAberta;
-      fio.hidden = tarefaAberta || (!mesa && !temBaloes);
+      fio.hidden = tarefaAberta || prateleiraAberta || (!mesa && !temBaloes);
       document.getElementById("area-estudio").classList.toggle("com-mesa", mesa);
-      document.getElementById("composer").hidden = tarefaAberta;
+      document.getElementById("composer").hidden = tarefaAberta || prateleiraAberta;
       document.getElementById("novo-post").hidden = !(mesa || temBaloes);
-      document.getElementById("modo-composer").hidden = !modoImagem || Boolean(rascunhoAtual);
+      document.getElementById("modo-composer").hidden = (!modoImagem && !modoArte) || Boolean(rascunhoAtual);
+      document.getElementById("formato-criar").hidden = !modoArte || Boolean(rascunhoAtual);
+      document.getElementById("modo-rotulo").textContent = modoArte ? "Criar arte" : "Criar foto";
       document.getElementById("aprovar-texto").textContent = rascunhoAtual && rascunhoAtual.agendamento_id ? "Salvar no post da fila" : "Aprovar";
+      document.getElementById("aprovar").hidden = Boolean(opcoesArte.length) && !rascunhoAtual;
+      document.getElementById("previa").hidden = Boolean(opcoesArte.length) && !rascunhoAtual;
     }
 
     function usarAtalho(qual) {
-      if (qual === "imagem") {
+      if (qual === "imagem" || qual === "arte") {
         if (rascunhoAtual) iniciarNovoPost(true);
-        modoImagem = true;
+        modoImagem = qual === "imagem";
+        modoArte = qual === "arte";
         atualizarTopoConversa();
         pedidoCampo.focus();
         return;
@@ -2905,9 +2973,11 @@
       const lugar = document.getElementById("foto-aprovada");
       const legenda = document.getElementById("legenda-aprovada");
       const vista = formatoAgenda === "ambos" ? vistaAprovada : formatoAgenda;
-      const story = vista === "story";
+      const facebook = formatoAgenda === "facebook";
+      const story = !facebook && vista === "story";
       document.getElementById("previa-aprovada").classList.toggle("modo-story", story);
-      document.getElementById("canal-aprovado").textContent = story ? "Story" : "Feed";
+      document.getElementById("previa-aprovada").classList.toggle("modo-facebook", facebook);
+      document.getElementById("canal-aprovado").textContent = facebook ? "Facebook" : story ? "Story" : "Feed";
       const outro = document.getElementById("ver-outro-aprovado");
       outro.hidden = formatoAgenda !== "ambos" || !aprovado;
       outro.textContent = story ? "Ver Feed" : "Ver Story";
@@ -3002,10 +3072,14 @@
         titulo.textContent = rascunhoAtual.agendamento_id ? "Ajustando um post da fila" : "Ajustando o rascunho";
         enviarChat.textContent = "Ajustar";
         pedidoCampo.placeholder = "Peça um ajuste neste post. Ex.: faz em amarelo; troca o título para Hoje tem; usa um selo de alerta";
+      } else if (modoArte) {
+        titulo.textContent = "Criar arte";
+        enviarChat.textContent = "Criar arte";
+        pedidoCampo.placeholder = "Descreva a arte. Ex.: promoção de terça, frase curta, em cima da foto do produto.";
       } else if (modoImagem) {
-        titulo.textContent = "Criar imagem";
-        enviarChat.textContent = "Criar imagem";
-        pedidoCampo.placeholder = "Descreva a imagem. Ex.: uma caipirinha no balcão ao pôr do sol. Para partir de uma foto sua, toque em Da memória ou no ícone de foto.";
+        titulo.textContent = "Criar foto";
+        enviarChat.textContent = "Criar foto";
+        pedidoCampo.placeholder = "Descreva a foto. Ex.: uma caipirinha no balcão ao pôr do sol. Para partir de uma foto sua, toque em Da memória ou no ícone de foto.";
       } else {
         titulo.textContent = "Estúdio";
         enviarChat.textContent = "Gerar";
@@ -3015,7 +3089,7 @@
     }
 
     function marcarFormato(valor) {
-      formatoAgenda = ["feed", "story", "ambos"].includes(valor) ? valor : "feed";
+      formatoAgenda = ["feed", "story", "ambos", "facebook"].includes(valor) ? valor : "feed";
       document.querySelectorAll("[data-formato-agenda]").forEach((item) => {
         item.classList.toggle("ativo", item.dataset.formatoAgenda === formatoAgenda);
       });
@@ -3067,21 +3141,27 @@
       desenharFaixaMemoria();
       desenharEditorArte();
       desenharVersoes();
+      opcoesArte = [];
+      desenharOpcoes();
       atualizarTopoConversa();
     }
 
-    function fecharRascunhoNoServidor(registro) {
+    function fecharRascunhoNoServidor(registro, guardar) {
       if (!registro) return;
-      fetch(`/rascunho/${registro.id}/fechar`, { method: "POST" }).catch(() => {});
+      const caminho = guardar ? "guardar" : "fechar";
+      fetch(`/rascunho/${registro.id}/${caminho}`, { method: "POST" }).catch(() => {});
     }
 
-    function iniciarNovoPost(manterConversa) {
-      fecharRascunhoNoServidor(rascunhoAtual);
+    function iniciarNovoPost(manterConversa, descartar) {
+      const temArte = rascunhoAtual && rascunhoAtual.plano_arte && (rascunhoAtual.plano_arte.feed_url || rascunhoAtual.feed_url);
+      fecharRascunhoNoServidor(rascunhoAtual, !descartar && temArte);
       limparPrevia();
       limparFotosEscolhidas();
       if (!manterConversa) {
         fio.querySelectorAll(".balao").forEach((bloco) => bloco.remove());
         modoImagem = false;
+        modoArte = false;
+        opcoesArte = [];
         tarefa.hidden = true;
         tarefaAberta = false;
         atualizarTopoConversa();
@@ -3206,8 +3286,163 @@
       const textoPedido = pedidoCampo.value.trim();
       if (textoPedido.length < 2) return;
       if (rascunhoAtual) ajustarRascunho(textoPedido);
+      else if (modoArte) criarArte(textoPedido);
       else if (modoImagem) criarImagem(textoPedido);
       else criarPost(textoPedido);
+    }
+
+    function desenharOpcoes() {
+      const faixa = document.getElementById("opcoes-arte");
+      faixa.innerHTML = "";
+      faixa.hidden = !opcoesArte.length;
+      document.getElementById("previa").hidden = Boolean(opcoesArte.length) && !rascunhoAtual;
+      document.getElementById("aprovar").hidden = Boolean(opcoesArte.length) && !rascunhoAtual;
+      opcoesArte.forEach((opcao, indice) => {
+        const botao = document.createElement("button");
+        botao.type = "button";
+        const imagem = document.createElement("img");
+        imagem.src = opcao.foto_url;
+        imagem.alt = "";
+        const nome = NOMES_MODELOS[opcao.modelo] || opcao.modelo || "Arte";
+        botao.append(imagem, elemento("small", "", `${indice + 1} · ${nome}`));
+        botao.addEventListener("click", () => escolherArte(opcao));
+        faixa.append(botao);
+      });
+    }
+
+    async function escolherArte(opcao) {
+      const botao = document.getElementById("enviar-chat");
+      botao.disabled = true;
+      try {
+        const resposta = await fetch("/rascunho", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            marca_id: marcaAtual.id || 0,
+            legenda: document.getElementById("legenda-previa").value.trim(),
+            plano_arte: opcao.plano_arte,
+            formato: formatoArte,
+            descricao: "Arte escolhida",
+          }),
+        });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        opcoesArte = [];
+        modoArte = false;
+        marcarFormato(formatoArte);
+        aplicarRascunho(dados.rascunho);
+        desenharOpcoes();
+        falar("assistente", "Essa ficou. A frase da arte está logo abaixo da legenda: mude o texto e clique em Atualizar na arte. Quando gostar, clique em Aprovar.");
+      } catch (falha) {
+        falar("assistente", falha.message || "Não consegui guardar essa arte.");
+      } finally {
+        botao.disabled = false;
+      }
+    }
+
+    async function criarArte(textoPedido) {
+      const escolhidas = fotosEscolhidas.slice();
+      const anexo = origemFoto === "anexo" && imagemProjeto ? imagemProjeto : "";
+      falar("pessoa", textoComFotos(textoPedido, escolhidas) + (anexo ? "\n(com a foto anexada)" : ""));
+      pedidoCampo.value = "";
+      limparFotosEscolhidas();
+      gerando = true;
+      opcoesArte = [];
+      desenharOpcoes();
+      const fala = falar("assistente", "Estou criando 3 artes no tamanho " + nomeFormato(formatoArte) + ". A foto é uma só, para não gastar três vezes.");
+      const botao = document.getElementById("enviar-chat");
+      botao.disabled = true;
+      try {
+        const resposta = await fetch("/rascunho/artes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(300000),
+          body: JSON.stringify({
+            marca_id: marcaAtual.id || 0,
+            descricao: textoPedido.slice(0, 1500),
+            formato: formatoArte,
+            fotos_ids: escolhidas.map((foto) => foto.id),
+            anexo_url: anexo,
+          }),
+        });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        escreverLegenda(dados.legenda || "");
+        opcoesArte = dados.opcoes || [];
+        desenharOpcoes();
+        fala.textContent = "Escolha uma das 3. As três usam a mesma foto e mudam a frase, o estilo e as cores.";
+      } catch (falha) {
+        const demorou = falha.name === "TimeoutError" || falha.name === "AbortError";
+        fala.textContent = demorou ? "As artes demoraram demais. Tente de novo." : (falha.message || "Não consegui criar as artes agora.");
+      } finally {
+        botao.disabled = false;
+        gerando = false;
+        atualizarEstudio();
+      }
+    }
+
+    const NOMES_PRATELEIRA = { rascunho: "Rascunho", agendado: "Agendada", publicado: "Publicada" };
+
+    function desenharPrateleira() {
+      const grade = document.getElementById("prateleira-grade");
+      const vista = document.getElementById("prateleira-vista");
+      grade.innerHTML = "";
+      vista.hidden = true;
+      vista.textContent = "";
+      const visiveis = itensPrateleira.filter((item) => filtroPrateleira === "todas" || item.tipo === filtroPrateleira);
+      if (!visiveis.length) {
+        grade.append(elemento("p", "nota", "Nada nesta aba ainda."));
+        return;
+      }
+      visiveis.forEach((item) => {
+        const botao = document.createElement("button");
+        botao.type = "button";
+        const imagem = document.createElement("img");
+        imagem.src = item.miniatura;
+        imagem.alt = "";
+        botao.append(imagem, elemento("strong", "", item.titulo || "Post"), elemento("small", "", `${NOMES_PRATELEIRA[item.tipo] || ""} · ${nomeFormato(item.formato)} · ${item.quando || ""}`));
+        botao.addEventListener("click", () => abrirDaPrateleira(item, vista));
+        grade.append(botao);
+      });
+    }
+
+    async function carregarPrateleira() {
+      const grade = document.getElementById("prateleira-grade");
+      grade.innerHTML = "";
+      grade.append(elemento("p", "nota", "Carregando..."));
+      try {
+        const resposta = await fetch(`/prateleira?marca_id=${marcaAtual.id || 0}`);
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        itensPrateleira = dados.itens || [];
+        desenharPrateleira();
+      } catch (falha) {
+        grade.innerHTML = "";
+        grade.append(elemento("p", "nota", falha.message || "Não consegui abrir a prateleira."));
+      }
+    }
+
+    async function abrirDaPrateleira(item, vista) {
+      if (item.tipo === "publicado") {
+        vista.hidden = false;
+        vista.textContent = item.legenda || "Este post já saiu.";
+        const imagem = document.createElement("img");
+        imagem.src = item.miniatura;
+        imagem.alt = item.titulo || "";
+        vista.append(imagem);
+        return;
+      }
+      try {
+        const caminho = item.tipo === "agendado" ? `/agenda/${item.id}/rascunho` : `/rascunho/${item.id}/abrir`;
+        const resposta = await fetch(caminho, { method: "POST" });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(mensagemErro(dados));
+        prateleiraAberta = false;
+        aplicarRascunho(dados.rascunho);
+      } catch (falha) {
+        vista.hidden = false;
+        vista.textContent = falha.message || "Não consegui abrir este post.";
+      }
     }
 
     function desenharVersoes() {
@@ -3545,14 +3780,37 @@
     document.getElementById("aprovar").addEventListener("click", () => aprovarRascunho());
     document.getElementById("descartar").addEventListener("click", () => {
       if (!window.confirm("Descartar este rascunho? Ele sai do estúdio.")) return;
-      iniciarNovoPost(false);
+      iniciarNovoPost(false, true);
     });
     document.querySelectorAll("[data-atalho]").forEach((botao) => {
       botao.addEventListener("click", () => usarAtalho(botao.dataset.atalho));
     });
     document.getElementById("sair-modo").addEventListener("click", () => {
       modoImagem = false;
+      modoArte = false;
       atualizarTopoConversa();
+    });
+    document.querySelectorAll("[data-formato-arte]").forEach((botao) => {
+      botao.addEventListener("click", () => {
+        formatoArte = botao.dataset.formatoArte;
+        document.querySelectorAll("[data-formato-arte]").forEach((item) => item.classList.toggle("ativo", item === botao));
+      });
+    });
+    document.getElementById("frase-arte-atualizar").addEventListener("click", () => {
+      document.getElementById("arte-titulo").value = document.getElementById("frase-arte-texto").value.trim();
+      document.getElementById("refazer-arte").click();
+    });
+    document.getElementById("prateleira-botao").addEventListener("click", () => {
+      prateleiraAberta = !prateleiraAberta;
+      atualizarEstudio();
+      if (prateleiraAberta) carregarPrateleira();
+    });
+    document.querySelectorAll("[data-filtro-prateleira]").forEach((botao) => {
+      botao.addEventListener("click", () => {
+        filtroPrateleira = botao.dataset.filtroPrateleira;
+        document.querySelectorAll("[data-filtro-prateleira]").forEach((item) => item.classList.toggle("ativo", item === botao));
+        desenharPrateleira();
+      });
     });
     document.getElementById("ver-outro-aprovado").addEventListener("click", () => {
       vistaAprovada = vistaAprovada === "story" ? "feed" : "story";
@@ -4301,7 +4559,7 @@
         const resposta = await fetch("/arte/refazer", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ marca_id: marcaAtual.id, plano_arte: plano }),
+          body: JSON.stringify({ marca_id: marcaAtual.id, plano_arte: plano, formato: formatoAgenda }),
         });
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));

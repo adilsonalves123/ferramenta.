@@ -21,6 +21,7 @@ ARQUIVOS_FONTE = {
 VERSAO = "3"
 FEED = (1080, 1350)
 STORY = (1080, 1920)
+FACEBOOK = (1080, 1080)
 SEGURO_STORY = (250, 300)
 MODELOS = (
     "faixa",
@@ -542,6 +543,9 @@ def _area(formato: str) -> tuple[int, int, int, int]:
     if formato == "story":
         largura, altura = STORY
         return largura, altura, SEGURO_STORY[0], altura - SEGURO_STORY[1]
+    if formato == "facebook":
+        largura, altura = FACEBOOK
+        return largura, altura, 36, altura - 36
     largura, altura = FEED
     return largura, altura, 0, altura
 
@@ -1492,9 +1496,9 @@ def compor(
     tela_app: bool = False,
     assunto: Caixa | None = None,
 ) -> Image.Image:
-    """Monta a peça final (RGB) no formato 'feed' (1080x1350) ou 'story' (1080x1920).
+    """Monta a peça final (RGB): feed 1080x1350, story 1080x1920 ou facebook 1080x1080.
     O texto vai para a parte da peça em que o assunto da foto não está."""
-    formato = "story" if formato == "story" else "feed"
+    formato = formato if formato in ("story", "facebook") else "feed"
     modelo = modelo if modelo in MODELOS else "destaque"
     if modelo == "selo" and not textos.selo.strip():
         modelo = "destaque"

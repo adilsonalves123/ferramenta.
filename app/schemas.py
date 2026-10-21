@@ -69,6 +69,7 @@ class PlanoArte(BaseModel):
 class PedidoArte(BaseModel):
     marca_id: int = 0
     plano_arte: dict
+    formato: str = Field(default="feed", max_length=20)
 
 
 class PedidoArteFoto(BaseModel):
@@ -76,6 +77,40 @@ class PedidoArteFoto(BaseModel):
     foto_id: int
     plano_arte: dict | None = None
     gancho: str = Field(default="", max_length=80)
+
+
+class PedidoTresArtes(BaseModel):
+    marca_id: int = 0
+    descricao: str = Field(min_length=2, max_length=1500)
+    formato: str = Field(default="feed", max_length=20)
+    fotos_ids: list[int] = Field(default_factory=list, max_length=4)
+    anexo_url: str = ""
+
+
+class OpcaoArtePronta(BaseModel):
+    plano_arte: dict
+    foto_url: str
+    modelo: str = ""
+
+
+class RespostaTresArtes(BaseModel):
+    legenda: str
+    formato: str
+    opcoes: list[OpcaoArtePronta]
+
+
+class ItemPrateleira(BaseModel):
+    id: int
+    tipo: str
+    titulo: str
+    quando: str = ""
+    miniatura: str = ""
+    formato: str = "feed"
+    legenda: str = ""
+
+
+class RespostaPrateleira(BaseModel):
+    itens: list[ItemPrateleira]
 
 
 class PedidoRascunho(BaseModel):

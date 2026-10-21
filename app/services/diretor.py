@@ -568,6 +568,22 @@ async def _montar(session: AsyncSession, marca: Ficha | None, plano: dict, base:
     return feed, story
 
 
+async def desenhar_um(
+    session: AsyncSession, marca: Ficha | None, plano: dict, base: bytes, formato: str
+) -> str:
+    """Monta uma peça só, no tamanho pedido, com a foto que já existe. Sem custo de IA."""
+    ident, _chave = await identidade(session, marca)
+    textos = textos_do_plano(plano)
+    marca_id = marca.id if marca and marca.id else 0
+    alvo = formato if formato in ("story", "facebook") else "feed"
+
+    def desenhar():
+        return molde.compor(arte.abrir(base), plano["modelo"], textos, ident, alvo, bool(plano.get("tela_app")))
+
+    imagem = await asyncio.to_thread(desenhar)
+    return await guardar_figura(imagem, marca_id, "arte")
+
+
 async def produzir(
     session: AsyncSession,
     marca: Ficha | None,
@@ -601,7 +617,7 @@ async def produzir(
     return plano
 
 
-async def refazer(session: AsyncSession, marca: Ficha | None, plano: dict) -> dict:
+async def refazer(session: AsyncSession, marca: Ficha | None, plano: dict, formato: str = "feed") -> dict:
     """Só o molde de novo (texto ou modelo mudou), com a mesma foto base: sem custo de IA."""
     base_url = plano.get("base_url") or ""
     if not (base_url and await existe(base_url)):
@@ -610,4 +626,9 @@ async def refazer(session: AsyncSession, marca: Ficha | None, plano: dict) -> di
         if foto is None:
             raise RuntimeError("Esta arte ainda não tem foto. Use Criar foto com IA ou escolha uma foto da memória.")
         plano = {**plano, "base_url": url_memoria(foto.id or 0), "editada": False}
-    return await produzir(session, marca, plano, reusar_base=True)
+    plano = await produzir(session, marca, plano, reusar_base=True)
+    if formato == "facebook":
+        dados = await bytes_da_url(plano["base_url"])
+        plano["feed_url"] = await desenhar_um(session, marca, plano, dados, "facebook")
+        plano["story_url"] = ""
+    return plano

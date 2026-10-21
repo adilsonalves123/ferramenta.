@@ -44,7 +44,7 @@ async def post_refazer(pedido: PedidoArte, session: AsyncSession = Depends(get_s
     if plano is None:
         raise HTTPException(status_code=422, detail="Gere o post antes de refazer a arte.")
     try:
-        return _resposta(await diretor.refazer(session, marca, plano))
+        return _resposta(await diretor.refazer(session, marca, plano, pedido.formato))
     except Exception as erro:
         raise _falha(erro, "Não consegui refazer a arte agora.") from erro
 

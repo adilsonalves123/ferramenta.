@@ -347,7 +347,12 @@ def publicar_facebook_story(pagina_id: str, token: str, imagem_url: str) -> str:
 
 def alvos_de(rede: str, formato: str) -> list[str]:
     redes = ["Instagram", "Facebook"] if rede == "Ambos" else [rede]
-    formatos = ["feed", "story"] if formato == "ambos" else [formato]
+    if formato == "ambos":
+        formatos = ["feed", "story"]
+    elif formato == "facebook":
+        formatos = ["feed"]
+    else:
+        formatos = [formato if formato == "story" else "feed"]
     return [f"{nome}:{tipo}" for nome in redes for tipo in formatos]
 
 

@@ -8,7 +8,6 @@ import re
 import unicodedata
 
 from PIL import Image, ImageChops, ImageFilter
-from sqlalchemy import update
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -17,16 +16,16 @@ from app.models import Agendamento, Ficha, MemoriaFoto, Rascunho, agora
 from app.schemas import IntencaoAjuste, ItemRascunho, VersaoRascunho
 from app.services import arte, diretor
 from app.services.imagens import bytes_da_url, existe, guardar_figura, id_da_url, url_memoria
-from app.services.memoria import NOMES_TIPOS, e_captura, listar_fotos, montar_contexto, tipo_efetivo
+from app.services.memoria import NOMES_TIPOS, artes_recentes, e_captura, listar_fotos, montar_contexto, tipo_efetivo
 from app.services.openai_campanha import cliente_openai, com_moderacao, fala_de_alcool
 
 log = logging.getLogger("uvicorn.error")
 
 MAX_VERSOES = 15
-FORMATOS = {"feed", "story", "ambos"}
+FORMATOS = {"feed", "story", "ambos", "facebook"}
 # Fração da foto que pode mudar ao pôr um print na tela do celular; acima disso a IA refez a cena.
 LIMITE_MUDANCA_TELA = 0.45
-NOMES_FORMATOS = {"feed": "Feed", "story": "Story", "ambos": "Feed e Story"}
+NOMES_FORMATOS = {"feed": "Feed", "story": "Story", "ambos": "Feed e Story", "facebook": "Facebook"}
 ROTULOS_ARTE = {
     "titulo_arte": "o título",
     "subtitulo_arte": "o subtítulo",
@@ -156,11 +155,15 @@ async def atual(session: AsyncSession, marca_id: int) -> Rascunho | None:
 
 
 async def fechar_abertos(session: AsyncSession, marca_id: int) -> None:
-    await session.exec(
-        update(Rascunho)
-        .where(Rascunho.marca_id == marca_id, Rascunho.status == "aberto")
-        .values(status="fechado", atualizado_em=agora())
+    """O rascunho aberto sai do estúdio. Se já tem arte, fica na prateleira como guardado."""
+    resultado = await session.exec(
+        select(Rascunho).where(Rascunho.marca_id == marca_id, Rascunho.status == "aberto")
     )
+    for registro in resultado.all():
+        plano = plano_de(registro)
+        tem_arte = bool(plano and (plano.get("feed_url") or plano.get("story_url")))
+        registro.status = "guardado" if tem_arte else "fechado"
+        registro.atualizado_em = agora()
 
 
 async def criar(
@@ -180,7 +183,7 @@ async def criar(
     plano = diretor.do_cliente(plano_bruto, contexto) if plano_bruto else None
     if plano and plano.get("base_url") and not plano.get("feed_url"):
         try:
-            plano = await diretor.refazer(session, marca, plano)
+            plano = await diretor.refazer(session, marca, plano, formato)
         except Exception as erro:
             log.warning("rascunho: não montei a arte da foto base (%s)", str(erro)[:160])
     await fechar_abertos(session, marca_id)
@@ -741,7 +744,7 @@ async def ajustar(
             frases.insert(0, (resumo or "Mudei a foto como você pediu") + " e mantive o resto")
 
     if precisa_montar and (plano.get("base_url") or plano.get("foto_base_id")):
-        plano = await diretor.refazer(session, marca, plano)
+        plano = await diretor.refazer(session, marca, plano, formato)
     elif precisa_montar and "arte" in tipos:
         avisos.append("A foto ainda não foi feita: peça uma mudança na foto ou clique em Criar foto com IA")
 
@@ -758,3 +761,245 @@ async def ajustar(
     if "imagem" not in tipos:
         texto += " Não gastei IA de imagem."
     return {**resposta, "resposta": texto}
+
+
+MODELOS_LIVRES = (
+    "poster",
+    "alerta",
+    "destaque",
+    "neon",
+    "faixa",
+    "minimal",
+    "etiqueta",
+    "carimbo",
+    "story_chamada",
+    "selo",
+)
+PALETAS_LIVRES = (
+    "marca",
+    "urgencia",
+    "quente",
+    "fresca",
+    "fria",
+    "elegante",
+    "doce",
+    "natural",
+    "vibrante",
+    "neutra",
+    "vermelha",
+)
+
+
+def _diferentes(opcoes: list[dict]) -> list[dict]:
+    """Garante três estilos e três paletas, mesmo se a IA repetir."""
+    usados_modelo: set[str] = set()
+    usados_paleta: set[str] = set()
+    for plano in opcoes:
+        if plano.get("modelo") not in MODELOS_LIVRES or plano["modelo"] in usados_modelo:
+            for candidato in MODELOS_LIVRES:
+                if candidato in usados_modelo:
+                    continue
+                if candidato == "selo" and not plano.get("selo"):
+                    continue
+                plano["modelo"] = candidato
+                break
+        usados_modelo.add(plano["modelo"])
+        if plano.get("paleta") not in PALETAS_LIVRES or plano["paleta"] in usados_paleta:
+            for candidato in PALETAS_LIVRES:
+                if candidato not in usados_paleta:
+                    plano["paleta"] = candidato
+                    break
+        usados_paleta.add(plano["paleta"])
+    return opcoes
+
+
+async def criar_tres_artes(
+    session: AsyncSession,
+    marca: Ficha | None,
+    descricao: str,
+    formato: str,
+    fotos_ids: list[int],
+    anexo_url: str = "",
+) -> dict:
+    """Uma foto, três artes. A IA de imagem roda no máximo uma vez; o texto e o molde são de graça."""
+    from pydantic import BaseModel, Field
+
+    class _Opcao(BaseModel):
+        modelo: str
+        paleta: str
+        posicao_texto: str = "auto"
+        titulo_arte: str
+        subtitulo_arte: str = ""
+        selo: str = ""
+        chamada: str = ""
+        cor: str = "destaque"
+
+    class _Pacote(BaseModel):
+        ideia: str
+        legenda: str
+        foto_base_id: int | None = None
+        fotos_estilo_ids: list[int] = Field(default_factory=list)
+        edicao_foto: str = "nenhuma"
+        opcoes: list[_Opcao]
+
+    marca_id = marca.id if marca and marca.id else 0
+    contexto = await montar_contexto(session, marca)
+    formato = formato if formato in FORMATOS else "feed"
+    alvo = "story" if formato == "story" else ("facebook" if formato == "facebook" else "feed")
+    escolhidas = []
+    for ident in fotos_ids[:4]:
+        foto = await session.get(MemoriaFoto, ident)
+        if foto is not None and foto.marca_id == marca_id:
+            escolhidas.append(foto)
+    recente = await artes_recentes(session, marca_id)
+    sistema = (
+        "Você cria 3 artes diferentes para o MESMO post de um pequeno negócio, em português do Brasil. "
+        "As 3 compartilham a mesma foto e a mesma legenda. Cada uma muda o modelo, a paleta e a frase. "
+        "Os 3 modelos têm de ser diferentes entre si. As 3 paletas têm de ser diferentes entre si. "
+        "titulo_arte: 2 a 6 palavras, forte, para ler de longe. Sem emoji e sem hashtag. "
+        "Não invente preço, telefone, desconto, endereço, dia nem horário. Use só o pedido e a memória.\n"
+        + diretor.REGRAS_ARTE
+    )
+    if fala_de_alcool(f"{descricao} {contexto.fatos}"):
+        sistema += diretor.REGRAS_ARTE_ALCOOL
+    partes = [f"Pedido: {descricao.strip()[:1500]}", f"Tamanho da arte: {NOMES_FORMATOS.get(formato, 'Feed')}."]
+    if contexto.texto.strip():
+        partes.append(contexto.texto.strip()[:12000])
+    if recente:
+        partes.append("Últimas artes desta marca (não repita modelo nem paleta):\n" + "\n".join(f"- {linha}" for linha in recente))
+    if escolhidas:
+        partes.append(
+            "A pessoa já escolheu a foto. foto_base_id = "
+            + str(escolhidas[0].id)
+            + " e edicao_foto = nenhuma. A arte nasce em cima dessa foto, sem recriar a cena."
+        )
+    elif anexo_url.strip():
+        partes.append("A pessoa anexou uma foto própria. foto_base_id = null e edicao_foto = nenhuma.")
+    resposta = await cliente_openai().with_options(timeout=90).chat.completions.parse(
+        model=get_settings().openai_model,
+        messages=[
+            {"role": "system", "content": sistema},
+            {"role": "user", "content": "\n\n".join(partes)},
+        ],
+        response_format=_Pacote,
+    )
+    mensagem = resposta.choices[0].message
+    if mensagem.refusal:
+        raise ValueError(mensagem.refusal)
+    if mensagem.parsed is None or not mensagem.parsed.opcoes:
+        raise ValueError("A IA não devolveu as artes. Tente descrever de novo.")
+    pacote = mensagem.parsed
+    base_comum = {
+        "ideia": pacote.ideia,
+        "foto_base_id": pacote.foto_base_id,
+        "fotos_estilo_ids": pacote.fotos_estilo_ids,
+        "edicao_foto": pacote.edicao_foto,
+    }
+    if escolhidas:
+        base_comum["foto_base_id"] = escolhidas[0].id
+        base_comum["edicao_foto"] = diretor.NENHUMA
+    planos = []
+    for opcao in pacote.opcoes[:3]:
+        bruto = {**base_comum, **opcao.model_dump()}
+        plano, _legenda = diretor.validar_plano(bruto, contexto, descricao, pacote.legenda)
+        planos.append(plano)
+    while len(planos) < 3:
+        copia = dict(planos[0])
+        planos.append(copia)
+    for plano in planos:
+        diretor._coerencia(plano)
+    planos = _diferentes(planos[:3])
+
+    anexo = b""
+    if anexo_url.strip() and id_da_url(anexo_url) is not None and not escolhidas:
+        anexo = await bytes_da_url(anexo_url)
+    if anexo:
+        dados = anexo
+        url_base = anexo_url.strip()
+        editada = False
+    elif escolhidas:
+        dados = escolhidas[0].arquivo
+        url_base = url_memoria(escolhidas[0].id or 0)
+        editada = False
+        for plano in planos:
+            plano["foto_base_id"] = escolhidas[0].id
+            plano["edicao_foto"] = diretor.NENHUMA
+    else:
+        dados, url_base, _passo, editada = await diretor._preparar_base(session, marca_id, planos[0], descricao, False)
+    for plano in planos:
+        plano["base_url"] = url_base
+        plano["editada"] = editada
+        url = await diretor.desenhar_um(session, marca, plano, dados, alvo)
+        plano["feed_url"] = url
+        plano["story_url"] = url if alvo == "story" else ""
+    legenda = com_moderacao(pacote.legenda.strip()[:5000]) if fala_de_alcool(f"{descricao} {pacote.legenda}") else pacote.legenda.strip()[:5000]
+    return {"legenda": legenda, "formato": formato, "opcoes": planos}
+
+
+async def reabrir(session: AsyncSession, registro: Rascunho) -> Rascunho:
+    await fechar_abertos(session, registro.marca_id)
+    registro.status = "aberto"
+    registro.atualizado_em = agora()
+    await session.commit()
+    await session.refresh(registro)
+    return registro
+
+
+def _miniatura(plano: dict | None, imagem_url: str = "") -> str:
+    if plano and (plano.get("feed_url") or plano.get("story_url")):
+        return str(plano.get("feed_url") or plano.get("story_url"))
+    return imagem_url or ""
+
+
+async def listar_prateleira(session: AsyncSession, marca_id: int) -> list[dict]:
+    itens: list[dict] = []
+    rascunhos = await session.exec(
+        select(Rascunho)
+        .where(Rascunho.marca_id == marca_id, col(Rascunho.status).in_(["aberto", "guardado"]))
+        .order_by(col(Rascunho.atualizado_em).desc())
+        .limit(30)
+    )
+    for registro in rascunhos.all():
+        plano = plano_de(registro) or {}
+        url = _miniatura(plano)
+        if not url:
+            continue
+        itens.append(
+            {
+                "id": registro.id or 0,
+                "tipo": "rascunho",
+                "titulo": (plano.get("titulo_arte") or registro.titulo or "Rascunho")[:80],
+                "quando": "Aberto no estúdio" if registro.status == "aberto" else "Rascunho",
+                "miniatura": url,
+                "formato": registro.formato or "feed",
+                "legenda": (registro.legenda or "")[:180],
+            }
+        )
+    agenda = await session.exec(
+        select(Agendamento)
+        .where(
+            Agendamento.marca_id == marca_id,
+            col(Agendamento.status).in_(["na_fila", "falta_imagem", "erro", "manual", "publicando", "publicado"]),
+        )
+        .order_by(col(Agendamento.id).desc())
+        .limit(40)
+    )
+    for item in agenda.all():
+        plano = diretor.ler_plano(item.plano_arte)
+        url = _miniatura(plano, item.imagem_url or "")
+        if not url:
+            continue
+        publicado = item.status == "publicado"
+        itens.append(
+            {
+                "id": item.id or 0,
+                "tipo": "publicado" if publicado else "agendado",
+                "titulo": (item.titulo or (plano or {}).get("titulo_arte") or "Post")[:80],
+                "quando": f"{item.dia} · {item.hora}" if item.dia else item.status,
+                "miniatura": url,
+                "formato": item.formato or "feed",
+                "legenda": (item.legenda or "")[:180],
+            }
+        )
+    return itens
+
