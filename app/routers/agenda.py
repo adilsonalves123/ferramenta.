@@ -110,6 +110,7 @@ def _item(registro: Agendamento) -> ItemAgenda:
         foto_id=registro.foto_id,
         gancho=registro.gancho or "",
         memoria_miniatura=url_memoria(registro.foto_id, mini=True) if registro.foto_id else "",
+        legenda=(registro.legenda or "")[:4000],
         arte=diretor.resumo_plano(plano),
     )
 

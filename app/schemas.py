@@ -544,6 +544,7 @@ class ItemAgenda(BaseModel):
     foto_id: int | None = None
     gancho: str = ""
     memoria_miniatura: str = ""
+    legenda: str = ""
     arte: dict | None = None
 
 

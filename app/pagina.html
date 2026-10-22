@@ -757,12 +757,36 @@
     .post.modo-facebook img.arte { height: auto; aspect-ratio: 1 / 1; }
     .formato-criar { display: flex; gap: 8px; margin: 0 0 8px; }
     .formato-criar[hidden] { display: none; }
-    .opcoes-arte { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0 0 12px; }
+    .opcoes-arte { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; }
     .opcoes-arte[hidden] { display: none; }
-    .opcoes-arte button { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 6px; border: 1px solid var(--linha); border-radius: 12px; background: white; color: var(--tinta); font: inherit; cursor: pointer; text-align: left; }
-    .opcoes-arte button:hover { border-color: var(--azul); }
-    .opcoes-arte img { width: 100%; height: 180px; object-fit: cover; border-radius: 8px; background: #eceff3; }
-    .opcoes-arte small { color: var(--mudo); font-size: 12px; }
+    .opcoes-arte .nota { grid-column: 1 / -1; margin: 0; }
+    .opcao-arte { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+    .opcoes-arte .opcao-arte img { width: 100%; height: min(46vh, 520px); object-fit: contain; border-radius: 12px; background: #0f172a; cursor: zoom-in; }
+    .opcao-arte small { color: var(--mudo); font-size: 12px; }
+    .opcao-arte button { height: 40px; margin: 0; border-radius: 12px; }
+    .luz { position: fixed; inset: 0; z-index: 80; background: rgba(15, 23, 42, 0.78); display: grid; place-items: center; padding: 24px; }
+    .luz[hidden] { display: none !important; }
+    .luz-caixa { max-width: min(960px, 100%); max-height: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .luz-caixa > img { max-width: min(960px, 92vw); max-height: 78vh; object-fit: contain; border-radius: 16px; background: #0f172a; }
+    .luz-acoes { display: flex; gap: 8px; }
+    .luz-acoes button { height: 42px; margin: 0; padding: 0 16px; border-radius: 12px; }
+    .replica { width: min(420px, 92vw); background: white; color: var(--tinta); border-radius: 16px; overflow: hidden; }
+    .replica img { width: 100%; max-height: 68vh; object-fit: contain; background: #0f172a; display: block; }
+    .replica.story { width: min(380px, 88vw); background: #0f172a; color: white; position: relative; }
+    .replica.story .post-topo { position: absolute; top: 8px; left: 0; right: 0; z-index: 1; }
+    .replica.story .post-conta strong, .replica.story .post-conta span { color: white; }
+    .replica.story img { max-height: 78vh; aspect-ratio: 9 / 16; object-fit: cover; }
+    .replica .legenda-replica { margin: 0; padding: 0 14px 16px; font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
+    .replica.story .legenda-replica { position: relative; margin-top: -72px; padding: 28px 16px 16px; background: linear-gradient(transparent, rgba(0, 0, 0, 0.72)); color: white; }
+    .replica .post-acoes { padding: 8px 14px; display: flex; gap: 14px; color: var(--tinta); }
+    .mini-flutuante { position: fixed; z-index: 70; width: 190px; border-radius: 12px; object-fit: cover; background: #0f172a; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35); pointer-events: none; }
+    .mini-flutuante[hidden] { display: none !important; }
+    .fila-dia { margin: 18px 0 8px; font-size: 15px; }
+    .fila-item { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 12px; align-items: center; width: 100%; margin: 0 0 8px; padding: 12px 14px; border: 1px solid var(--linha); border-radius: 14px; background: white; text-align: left; cursor: pointer; font: inherit; color: var(--tinta); }
+    .fila-item:hover { border-color: #c7cbff; }
+    .fila-item strong { display: block; font-size: 14px; }
+    .fila-item small { color: var(--mudo); font-size: 12px; }
+    #foto-aprovada { cursor: zoom-in; }
     .frase-arte { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; margin: 10px 0; }
     .frase-arte[hidden] { display: none; }
     .frase-arte label { display: grid; gap: 4px; font-size: 12px; font-weight: 600; }
@@ -1077,6 +1101,7 @@
           <span id="titulo-conversa">Estúdio</span>
           <div class="topo-acoes">
             <button class="novo-post" type="button" id="prateleira-botao" title="Artes salvas, agendadas e publicadas"><i class="fa-solid fa-table-cells"></i> Prateleira</button>
+            <button class="novo-post" type="button" id="fila-botao" title="Posts agendados, por dia e horário"><i class="fa-solid fa-clock"></i> Fila</button>
             <button class="novo-post" type="button" id="novo-post" hidden title="Começar outro post do zero"><i class="fa-solid fa-plus"></i> Novo post</button>
           </div>
         </div>
@@ -1157,6 +1182,11 @@
             </div>
             <div class="prateleira-grade" id="prateleira-grade"></div>
             <p class="prateleira-vista" id="prateleira-vista" hidden></p>
+          </div>
+          <div class="prateleira" id="fila" hidden>
+            <h2>Fila</h2>
+            <p class="nota">Passe o mouse para ver a miniatura. Clique no post para ver como fica no Instagram, no Story ou no Facebook.</p>
+            <div id="fila-dias"></div>
           </div>
           <div class="mesa-rascunho" id="mesa-rascunho" hidden>
             <div class="previa-topo">
@@ -1516,6 +1546,10 @@
       <section id="resultado" hidden></section>
     </section>
   </main>
+  <img class="mini-flutuante" id="mini-flutuante" alt="" hidden />
+  <div class="luz" id="luz" hidden>
+    <div class="luz-caixa" id="luz-caixa"></div>
+  </div>
   <script>
     const FERRAMENTAS = {
       texto: {
@@ -2675,6 +2709,8 @@
       } else {
         midia.alt = "Mídia do post";
         if (artePrevia && (url === artePrevia.feed_url || url === artePrevia.story_url)) midia.className = "arte";
+        midia.addEventListener("click", () => abrirLuz(url));
+        midia.style.cursor = "zoom-in";
       }
       lugar.replaceWith(midia);
       mostrarBotaoFoto();
@@ -2805,6 +2841,8 @@
     let opcoesArte = [];
     let filtroPrateleira = "todas";
     let prateleiraAberta = false;
+    let filaAberta = false;
+    let naPrevia = false;
     let itensPrateleira = [];
     let aprovado = null;
 
@@ -2962,6 +3000,7 @@
     }
 
     async function criarImagem(textoPedido) {
+      naPrevia = false;
       const escolhidas = fotoFluxo && fotoFluxo.tipo === "memoria" ? [fotoFluxo] : fotosEscolhidas.slice();
       const anexo = fotoFluxo && fotoFluxo.tipo === "anexo" ? fotoFluxo.url : (origemFoto === "anexo" && imagemProjeto ? imagemProjeto : "");
       const fluxoGuardado = fluxoCriar;
@@ -3101,23 +3140,26 @@
 
     function atualizarEstudio() {
       const temBaloes = Boolean(fio.querySelector(".balao"));
-      const mesa = !tarefaAberta && !prateleiraAberta && temConteudoNaMesa() && !fotoNoChat;
+      const painel = prateleiraAberta || filaAberta;
+      const mesa = !naPrevia && !tarefaAberta && !painel && temConteudoNaMesa() && !fotoNoChat;
       document.getElementById("mesa-rascunho").hidden = !mesa;
       document.getElementById("prateleira").hidden = !prateleiraAberta || tarefaAberta;
-      const wizard = Boolean(passoCriar) && !tarefaAberta && !prateleiraAberta && !mesa && !fotoNoChat;
-      document.getElementById("vazio-estudio").hidden = tarefaAberta || mesa || fotoNoChat || prateleiraAberta || (temBaloes && !wizard);
+      document.getElementById("fila").hidden = !filaAberta || tarefaAberta;
+      const wizard = Boolean(passoCriar) && !tarefaAberta && !painel && !mesa && !fotoNoChat;
+      document.getElementById("vazio-estudio").hidden = tarefaAberta || mesa || fotoNoChat || painel || (temBaloes && !wizard);
       document.getElementById("inicio-estudio").hidden = Boolean(passoCriar);
       document.getElementById("assistente-criar").hidden = !passoCriar;
       desenharAssistente();
       document.getElementById("estudio-tarefa").hidden = !tarefaAberta;
-      fio.hidden = tarefaAberta || prateleiraAberta || wizard || (!mesa && !temBaloes && !fotoNoChat);
-      document.getElementById("area-estudio").classList.toggle("com-mesa", mesa && !opcoesArte.length);
-      document.getElementById("composer").hidden = tarefaAberta || prateleiraAberta;
-      document.getElementById("novo-post").hidden = !(mesa || temBaloes || fotoNoChat) || wizard;
+      fio.hidden = tarefaAberta || painel || wizard || (!mesa && !temBaloes && !fotoNoChat);
+      document.getElementById("area-estudio").classList.remove("com-mesa");
+      document.getElementById("composer").hidden = tarefaAberta || painel;
+      document.getElementById("novo-post").hidden = !(mesa || temBaloes || fotoNoChat) || wizard || painel;
       desenharFotoNoChat();
       document.getElementById("aprovar-texto").textContent = rascunhoAtual && rascunhoAtual.agendamento_id ? "Salvar no post da fila" : "Aprovar";
-      document.getElementById("aprovar").hidden = Boolean(opcoesArte.length) && !rascunhoAtual;
-      document.getElementById("previa").hidden = Boolean(opcoesArte.length) && !rascunhoAtual;
+      document.querySelector(".acoes-mesa").hidden = Boolean(opcoesArte.length);
+      document.getElementById("aprovar").hidden = Boolean(opcoesArte.length);
+      document.getElementById("previa").hidden = Boolean(opcoesArte.length);
     }
 
     function usarAtalho(qual) {
@@ -3178,6 +3220,7 @@
         if (aprovado.plano_arte && aprovado.imagem_url === aprovado.plano_arte.feed_url) novo.className = "arte";
       }
       novo.id = "foto-aprovada";
+      if (novo.tagName === "IMG") novo.addEventListener("click", () => abrirLuz(url));
       lugar.replaceWith(novo);
       const tituloCampo = document.getElementById("titulo-aprovado");
       tituloCampo.hidden = !aprovado;
@@ -3220,8 +3263,9 @@
           plano_arte: planoParaEnviar(),
         };
         vistaAprovada = vistaPrevia;
+        naPrevia = true;
         desenharAprovado();
-        falar("assistente", "Aprovado. Escreva o título e a legenda na Prévia. Depois é só Publicar agora ou Agendar.");
+        falar("assistente", "Aprovado. O post saiu do estúdio e está na Prévia. Escreva o título e a legenda lá. Depois é só Publicar agora ou Agendar.");
         document.getElementById("previa-aprovada").scrollIntoView({ behavior: "smooth", block: "nearest" });
       } catch (falha) {
         nota.textContent = falha.message || "Não consegui aprovar agora.";
@@ -3251,7 +3295,11 @@
     function atualizarTopoConversa() {
       const titulo = document.getElementById("titulo-conversa");
       const enviarChat = document.getElementById("enviar-chat");
-      if (arteEmCima) {
+      if (filaAberta) {
+        titulo.textContent = "Fila";
+      } else if (prateleiraAberta) {
+        titulo.textContent = "Prateleira";
+      } else if (arteEmCima) {
         modoArte = true;
         modoImagem = false;
         titulo.textContent = "Criar arte";
@@ -3303,6 +3351,7 @@
     }
 
     function aplicarRascunho(dados) {
+      naPrevia = false;
       rascunhoAtual = dados || null;
       versaoEscolhida = 0;
       if (rascunhoAtual) {
@@ -3345,6 +3394,7 @@
       origemFoto = "";
       fotoNoChat = false;
       arteEmCima = false;
+      naPrevia = false;
       escreverLegenda("");
       colocarMidiaPrevia("", "foto");
       marcarAnexo("");
@@ -3450,6 +3500,7 @@
     }
 
     async function ajustarRascunho(textoPedido) {
+      naPrevia = false;
       const escolhidas = fotosEscolhidas.slice();
       falar("pessoa", textoComFotos(textoPedido, escolhidas));
       pedidoCampo.value = "";
@@ -3582,22 +3633,63 @@
       else criarPost(textoPedido);
     }
 
+    function fecharLuz() {
+      document.getElementById("luz").hidden = true;
+      document.getElementById("luz-caixa").innerHTML = "";
+    }
+
+    function abrirLuz(url, aoEscolher) {
+      const caixa = document.getElementById("luz-caixa");
+      caixa.innerHTML = "";
+      const imagem = document.createElement("img");
+      imagem.src = url;
+      imagem.alt = "Arte em tamanho grande";
+      const acoes = document.createElement("div");
+      acoes.className = "luz-acoes";
+      if (aoEscolher) {
+        const escolher = document.createElement("button");
+        escolher.type = "button";
+        escolher.className = "principal";
+        escolher.textContent = "Escolher esta";
+        escolher.addEventListener("click", () => {
+          fecharLuz();
+          aoEscolher();
+        });
+        acoes.append(escolher);
+      }
+      const fechar = document.createElement("button");
+      fechar.type = "button";
+      fechar.className = "secundario";
+      fechar.textContent = "Fechar";
+      fechar.addEventListener("click", fecharLuz);
+      acoes.append(fechar);
+      caixa.append(imagem, acoes);
+      document.getElementById("luz").hidden = false;
+    }
+
     function desenharOpcoes() {
       const faixa = document.getElementById("opcoes-arte");
       faixa.innerHTML = "";
       faixa.hidden = !opcoesArte.length;
-      document.getElementById("previa").hidden = Boolean(opcoesArte.length) && !rascunhoAtual;
-      document.getElementById("aprovar").hidden = Boolean(opcoesArte.length) && !rascunhoAtual;
+      document.getElementById("previa").hidden = Boolean(opcoesArte.length);
+      document.getElementById("aprovar").hidden = Boolean(opcoesArte.length);
+      if (!opcoesArte.length) return;
+      faixa.append(elemento("p", "nota", "Clique na imagem para ver grande. Quando decidir, escolha embaixo."));
       opcoesArte.forEach((opcao, indice) => {
-        const botao = document.createElement("button");
-        botao.type = "button";
+        const cartao = document.createElement("div");
+        cartao.className = "opcao-arte";
         const imagem = document.createElement("img");
         imagem.src = opcao.foto_url;
-        imagem.alt = "";
+        imagem.alt = "Arte " + (indice + 1);
+        imagem.addEventListener("click", () => abrirLuz(opcao.foto_url, () => escolherArte(opcao)));
         const nome = NOMES_MODELOS[opcao.modelo] || opcao.modelo || "Arte";
-        botao.append(imagem, elemento("small", "", `${indice + 1} · ${nome}`));
-        botao.addEventListener("click", () => escolherArte(opcao));
-        faixa.append(botao);
+        const escolher = document.createElement("button");
+        escolher.type = "button";
+        escolher.className = "principal";
+        escolher.textContent = "Escolher";
+        escolher.addEventListener("click", () => escolherArte(opcao));
+        cartao.append(imagem, elemento("small", "", `${indice + 1} · ${nome}`), escolher);
+        faixa.append(cartao);
       });
     }
 
@@ -3638,6 +3730,7 @@
     }
 
     async function criarArte(textoPedido, falaPessoa) {
+      naPrevia = false;
       const escolhidas = fotoFluxo && fotoFluxo.tipo === "memoria" ? [fotoFluxo] : fotosEscolhidas.slice();
       const anexo = fotoFluxo && fotoFluxo.tipo === "anexo" ? fotoFluxo.url : (origemFoto === "anexo" && imagemProjeto ? imagemProjeto : "");
       const fluxoGuardado = fluxoCriar;
@@ -3695,6 +3788,113 @@
         gerando = false;
         atualizarTopoConversa();
       }
+    }
+
+    function urlDaFila(item, vista) {
+      const arte = item.arte || {};
+      if (vista === "story" && arte.story_url) return arte.story_url;
+      return arte.feed_url || item.imagem_url || item.memoria_miniatura || "";
+    }
+
+    function mostrarMini(url, evento) {
+      const mini = document.getElementById("mini-flutuante");
+      if (!url) return;
+      mini.src = url;
+      mini.hidden = false;
+      mini.style.left = Math.min(evento.clientX + 18, window.innerWidth - 210) + "px";
+      mini.style.top = Math.min(evento.clientY + 18, window.innerHeight - 250) + "px";
+    }
+
+    function esconderMini() {
+      document.getElementById("mini-flutuante").hidden = true;
+    }
+
+    function abrirReplica(item, vista) {
+      const formato = vista || (item.formato === "story" ? "story" : (item.formato === "facebook" ? "facebook" : "feed"));
+      const caixa = document.getElementById("luz-caixa");
+      caixa.innerHTML = "";
+      const cartao = document.createElement("article");
+      cartao.className = "replica" + (formato === "story" ? " story" : "");
+      const topo = document.createElement("div");
+      topo.className = "post-topo";
+      const avatar = document.createElement("div");
+      avatar.className = "avatar";
+      avatar.textContent = (marcaAtual.nome || "R").trim().charAt(0).toUpperCase();
+      const conta = document.createElement("div");
+      conta.className = "post-conta";
+      const nome = document.createElement("strong");
+      nome.textContent = marcaAtual.nome || "Minha marca";
+      const onde = document.createElement("span");
+      onde.textContent = formato === "story" ? "Story" : (formato === "facebook" ? "Facebook" : "Instagram");
+      conta.append(nome, onde);
+      topo.append(avatar, conta);
+      const imagem = document.createElement("img");
+      imagem.src = urlDaFila(item, formato);
+      imagem.alt = item.titulo || "Post";
+      const legenda = document.createElement("p");
+      legenda.className = "legenda-replica";
+      legenda.textContent = item.legenda || item.titulo || "";
+      const acoesPost = document.createElement("div");
+      acoesPost.className = "post-acoes";
+      acoesPost.innerHTML = formato === "facebook"
+        ? '<i class="fa-regular fa-thumbs-up"></i><i class="fa-regular fa-comment"></i><i class="fa-solid fa-share"></i>'
+        : '<i class="fa-regular fa-heart"></i><i class="fa-regular fa-comment"></i><i class="fa-regular fa-paper-plane"></i>';
+      if (formato === "story") cartao.append(topo, imagem, legenda);
+      else if (formato === "facebook") cartao.append(topo, legenda, imagem, acoesPost);
+      else cartao.append(topo, imagem, acoesPost, legenda);
+      const acoes = document.createElement("div");
+      acoes.className = "luz-acoes";
+      if (item.formato === "ambos" && (item.arte || {}).story_url) {
+        const outro = document.createElement("button");
+        outro.type = "button";
+        outro.className = "secundario";
+        outro.textContent = formato === "story" ? "Ver Feed" : "Ver Story";
+        outro.addEventListener("click", () => abrirReplica(item, formato === "story" ? "feed" : "story"));
+        acoes.append(outro);
+      }
+      const fechar = document.createElement("button");
+      fechar.type = "button";
+      fechar.className = "secundario";
+      fechar.textContent = "Fechar";
+      fechar.addEventListener("click", fecharLuz);
+      acoes.append(fechar);
+      caixa.append(cartao, acoes);
+      document.getElementById("luz").hidden = false;
+    }
+
+    function desenharFila() {
+      const raiz = document.getElementById("fila-dias");
+      raiz.innerHTML = "";
+      const itens = itensDaMarca()
+        .filter((item) => item.status !== "publicado")
+        .sort((a, b) => (a.dia + a.hora).localeCompare(b.dia + b.hora));
+      if (!itens.length) {
+        raiz.append(elemento("p", "nota", "Nenhum post na fila."));
+        return;
+      }
+      let dia = "";
+      itens.forEach((item) => {
+        if (item.dia !== dia) {
+          dia = item.dia;
+          raiz.append(elemento("h3", "fila-dia", diaCurto(item.dia)));
+        }
+        const botao = document.createElement("button");
+        botao.type = "button";
+        botao.className = "fila-item";
+        const hora = elemento("strong", "", item.hora);
+        const texto = document.createElement("span");
+        texto.append(elemento("strong", "", item.titulo || "Post"), elemento("small", "", `${nomeRede(item.rede)} · ${nomeFormato(item.formato)} · ${textoStatus(item)}`));
+        botao.append(hora, texto);
+        const url = urlDaFila(item, item.formato === "story" ? "story" : "feed");
+        botao.addEventListener("mouseenter", (evento) => mostrarMini(url, evento));
+        botao.addEventListener("mousemove", (evento) => mostrarMini(url, evento));
+        botao.addEventListener("mouseleave", esconderMini);
+        botao.addEventListener("click", () => {
+          esconderMini();
+          abrirReplica(item);
+        });
+        raiz.append(botao);
+      });
     }
 
     const NOMES_PRATELEIRA = { rascunho: "Rascunho", agendado: "Agendada", publicado: "Publicada" };
@@ -4188,8 +4388,21 @@
     });
     document.getElementById("prateleira-botao").addEventListener("click", () => {
       prateleiraAberta = !prateleiraAberta;
-      atualizarEstudio();
+      if (prateleiraAberta) filaAberta = false;
+      atualizarTopoConversa();
       if (prateleiraAberta) carregarPrateleira();
+    });
+    document.getElementById("fila-botao").addEventListener("click", () => {
+      filaAberta = !filaAberta;
+      if (filaAberta) prateleiraAberta = false;
+      atualizarTopoConversa();
+      if (filaAberta) carregarAgenda().then(desenharFila).catch(() => desenharFila());
+    });
+    document.getElementById("luz").addEventListener("click", (evento) => {
+      if (evento.target.id === "luz") fecharLuz();
+    });
+    document.addEventListener("keydown", (evento) => {
+      if (evento.key === "Escape" && !document.getElementById("luz").hidden) fecharLuz();
     });
     document.querySelectorAll("[data-filtro-prateleira]").forEach((botao) => {
       botao.addEventListener("click", () => {
@@ -4465,6 +4678,17 @@
         if (dados.status === "publicado") {
           avisarAgenda("Saiu agora. " + destino + "." + (dados.detalhe ? " " + dados.detalhe : ""));
           carregarResumo();
+          aprovado = null;
+          naPrevia = false;
+          desenharAprovado();
+          iniciarNovoPost(true);
+          filaAberta = false;
+          prateleiraAberta = true;
+          filtroPrateleira = "publicado";
+          document.querySelectorAll("[data-filtro-prateleira]").forEach((item) => item.classList.toggle("ativo", item.dataset.filtroPrateleira === "publicado"));
+          atualizarTopoConversa();
+          carregarPrateleira();
+          carregarAgenda().catch(() => {});
         } else {
           avisarAgenda(dados.detalhe || "Não consegui publicar agora.", true);
         }
@@ -4502,7 +4726,15 @@
           avisarAgenda(mensagem + " Não consegui atualizar a lista agora; recarregue a página.");
           return;
         }
-        avisarAgenda(mensagem);
+        aprovado = null;
+        naPrevia = false;
+        desenharAprovado();
+        iniciarNovoPost(true);
+        prateleiraAberta = false;
+        filaAberta = true;
+        desenharFila();
+        atualizarTopoConversa();
+        avisarAgenda(mensagem + " Está na Fila.");
       } catch (falha) {
         avisarAgenda(falha?.message || "Não consegui guardar o horário.", true);
       } finally {
