@@ -1029,7 +1029,7 @@ async def criar_tres_artes(
     anexo_url: str = "",
     ja_usadas: list[str] | None = None,
 ) -> dict:
-    """Três peças da foto real. A frase só entra na faixa vazia. Sem foto, a ferramenta pergunta."""
+    """Três peças. Com foto real, usa essa foto. Sem foto, a IA cria uma foto limpa e a frase entra na faixa vazia."""
     from pydantic import BaseModel, Field
 
     class _Pacote(BaseModel):
@@ -1059,15 +1059,24 @@ async def criar_tres_artes(
             url_base = anexo_url.strip()
         except Exception:
             foto_lida = b""
-    else:
-        guardada = await _foto_guardada(session, marca_id, contexto)
-        if guardada is not None:
-            escolhidas = [guardada]
-            foto_lida = guardada.arquivo
-            hero_id = guardada.id
-            url_base = url_memoria(hero_id or 0)
+    gerada = False
     if not foto_lida:
-        return {"legenda": "", "formato": formato, "opcoes": [], "precisa_foto": PERGUNTA_FOTO}
+        from app.services.memoria import ler_fatos
+        from app.services.midia import gerar_com_ia
+
+        fatos = ler_fatos(marca)
+        negocio = ". ".join(fatos[chave] for chave in ("oferta", "itens", "diferenciais") if fatos.get(chave))
+        prompt = prompt_criar_imagem(
+            descricao,
+            0,
+            fala_de_alcool(f"{descricao} {contexto.fatos}"),
+            negocio,
+            "",
+            random.choice(_LUZES),
+        )
+        foto_lida = await gerar_com_ia(prompt)
+        url_base = await _guardar_base(foto_lida, marca_id)
+        gerada = True
 
     from app.services.leitura_tela import LeituraTela, ler_tela_bytes
 
@@ -1077,6 +1086,8 @@ async def criar_tres_artes(
         leitura = None
     if leitura is None:
         leitura = LeituraTela(False, "", (0.0, 0.0, 1.0, 1.0), (0.0, 0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 0.0))
+    if gerada and not leitura.quieta:
+        leitura = LeituraTela(leitura.e_tela, "base", leitura.numero, leitura.botao, leitura.lista)
     recente = await artes_recentes(session, marca_id)
     ja = [titulo.strip()[:80] for titulo in (ja_usadas or []) if titulo and titulo.strip()][:12]
     sistema = (

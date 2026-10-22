@@ -4187,7 +4187,7 @@
       if (!texto) return;
       if (fotoFluxo && fluxoCriar === "arte") texto.textContent = "Foto escolhida. Escreva a frase aqui embaixo e envie. Se não quiser inventar, a IA cria a frase.";
       else if (fotoFluxo) texto.textContent = "Foto escolhida. Escreva aqui embaixo o ajuste que quer, ou: pode ficar como está.";
-      else if (fluxoCriar === "arte") texto.textContent = "Escolha uma foto da memória ou envie o print. Sem foto real, a arte não é criada.";
+      else if (fluxoCriar === "arte") texto.textContent = "Descreva a arte aqui embaixo. Se você não escolher uma foto, a IA cria uma.";
       else texto.textContent = "A IA cria a foto. Descreva aqui embaixo e envie.";
     }
 
@@ -4459,7 +4459,9 @@
         fotoNoChat = false;
         arteEmCima = false;
         desenharOpcoes();
-        fala.textContent = "A foto é a sua. A frase só entra se sobrar faixa vazia. Se nenhuma servir, volte ao chat.";
+        fala.textContent = (fotoGuardada || anexo)
+          ? "A foto é a sua. A frase só entra se sobrar faixa vazia. Se nenhuma servir, volte ao chat."
+          : "A foto foi criada. A frase só entra se sobrar faixa vazia. Se nenhuma servir, volte ao chat.";
       } catch (falha) {
         const demorou = falha.name === "TimeoutError" || falha.name === "AbortError";
         fala.textContent = demorou ? "As artes demoraram demais. Tente de novo." : (falha.message || "Não consegui criar as artes agora.");
