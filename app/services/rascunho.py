@@ -486,6 +486,7 @@ async def editar_imagem(
     tela: bool,
     referencias: list[MemoriaFoto],
     cena: str = "",
+    anexo: bytes | None = None,
 ) -> tuple[dict, str, bool]:
     """Muda só o que foi pedido na foto base atual. Devolve (plano, o que foi feito, se usou a IA de imagem)."""
     from app.services.midia import _modelo, editar_varias, tamanho_para
@@ -495,23 +496,26 @@ async def editar_imagem(
     alcool = bool(plano.get("alcool")) or fala_de_alcool(instrucao)
     base = await _base_atual(session, plano, marca_id)
     capturas = [foto for foto in referencias if e_captura(foto)]
-    if tela and capturas:
-        print_foto = capturas[0]
+    print_bytes = capturas[0].arquivo if capturas else anexo
+    if tela and print_bytes:
+        print_foto = capturas[0] if capturas else None
         if base is None:
+            if print_foto is None:
+                return plano, "criada", False
             return _quadro_do_print(plano, print_foto), "quadro", False
         largura, altura = (await asyncio.to_thread(arte.abrir, base)).size
         try:
             dados = await editar_varias(
-                prompt_tela(instrucao, alcool), [base, print_foto.arquivo], tamanho_para(largura, altura, _modelo())
+                prompt_tela(instrucao, alcool), [base, print_bytes], tamanho_para(largura, altura, _modelo())
             )
         except Exception as erro:
-            if _quota(erro):
+            if _quota(erro) or print_foto is None:
                 raise
             log.warning("ajuste: edição do print falhou (%s); usei a moldura", str(erro)[:160])
             return _quadro_do_print(plano, print_foto), "quadro_falhou", True
         mudou = await asyncio.to_thread(quanto_mudou, base, dados)
         log.info("ajuste: print no celular mudou %.0f%% da foto", mudou * 100)
-        if mudou > LIMITE_MUDANCA_TELA:
+        if mudou > LIMITE_MUDANCA_TELA and print_foto is not None:
             return _quadro_do_print(plano, print_foto), "quadro_mudou", True
         plano.update(base_url=await _guardar_base(dados, marca_id), feed_url="", story_url="", editada=True)
         return plano, "tela", True
@@ -521,6 +525,8 @@ async def editar_imagem(
         return feito, "criada", True
     largura, altura = (await asyncio.to_thread(arte.abrir, base)).size
     extras = [foto.arquivo for foto in referencias[:3]]
+    if anexo:
+        extras.append(anexo)
     dados = await editar_varias(
         prompt_ajuste(instrucao, len(extras), alcool), [base, *extras], tamanho_para(largura, altura, _modelo())
     )
@@ -528,11 +534,10 @@ async def editar_imagem(
     return plano, "editada", True
 
 
-_ENQUADRAMENTOS = (
-    "Close framing, subject large, side light from a window.",
-    "Wider view, subject off to one side, late-day light.",
-    "Slightly above the subject, more of the place visible, soft light.",
-    "Eye level, shallow background, the subject in the middle of being used.",
+_LUZES = (
+    "Soft side light, natural and gentle.",
+    "Warm late-day light, soft shadows.",
+    "Even soft light, shallow background.",
 )
 _OUTRA_FOTO = re.compile(
     r"\b(de novo|outra vez|outra foto|outro angulo|cria outra|criar outra|faz outra|gera outra|"
@@ -562,8 +567,9 @@ def prompt_criar_imagem(
     alcool: bool,
     negocio: str = "",
     evitar: str = "",
-    enquadramento: str = "",
+    luz: str = "",
 ) -> str:
+    """Foto limpa, sem letra. O enquadramento reserva as duas faixas em que a arte escreve depois."""
     if referencias:
         partes = [
             f"Use image 1{' and the other images' if referencias > 1 else ''} as the real material for this request: {descricao.strip()[:1200]}.",
@@ -579,12 +585,9 @@ def prompt_criar_imagem(
             f"Do not repeat this earlier scene: {evitar.strip()[:400]}. "
             "Change the moment, the angle and what is in the foreground."
         )
-    partes.append(enquadramento.strip() or random.choice(_ENQUADRAMENTOS))
-    partes += [
-        "Professional, attractive lighting and composition, sharp focus on the main subject. "
-        "Leave some calm, uncluttered space at the top or at the bottom of the frame.",
-        "No text, letters, numbers, logos or watermark unless the request explicitly asks for them.",
-    ]
+    partes.append(luz.strip() or random.choice(_LUZES))
+    partes.append(diretor.frase_da_zona("dupla", preservar=bool(referencias)))
+    partes.append("No text, letters, numbers, logos or watermark unless the request explicitly asks for them.")
     if alcool:
         partes.append("No people drinking, no glass raised to a mouth, no minors.")
     return " ".join(partes)
@@ -621,7 +624,7 @@ async def criar_imagem(
         .limit(3)
     )
     evitar = " | ".join(cena.strip() for cena in recentes.all() if cena and cena.strip() and cena.strip() != descricao.strip())
-    prompt = prompt_criar_imagem(descricao, len(referencias), alcool, negocio, evitar, random.choice(_ENQUADRAMENTOS))
+    prompt = prompt_criar_imagem(descricao, len(referencias), alcool, negocio, evitar, random.choice(_LUZES))
     if referencias:
         largura, altura = (await asyncio.to_thread(arte.abrir, referencias[0])).size
         dados = await editar_varias(prompt, referencias[:4], tamanho_para(largura, altura, _modelo()))
@@ -727,6 +730,7 @@ async def ajustar(
     marca: Ficha | None,
     mensagem: str,
     anexos: list[int],
+    anexo_url: str = "",
 ) -> dict:
     """Aplica a mensagem do chat no rascunho. 'arte', 'legenda' e 'formato' não gastam IA de imagem."""
     marca_id = marca.id if marca and marca.id else 0
@@ -737,7 +741,7 @@ async def ajustar(
     if _foto_crua(plano) and pede_outra_foto(mensagem):
         descricao = (registro.cena or plano.get("ideia") or mensagem).strip()
         descricao = f"{descricao}. Faça outra foto, diferente da anterior."[:1500]
-        novo = await criar_imagem(session, marca, descricao, anexos, "", registro.formato or "feed")
+        novo = await criar_imagem(session, marca, descricao, anexos, anexo_url, registro.formato or "feed")
         return {
             "tipos": ["imagem"],
             "novo": False,
@@ -749,6 +753,11 @@ async def ajustar(
     intencao = await ler_intencao(mensagem, registro, plano, fotos, anexos, contexto.fatos)
     lido = _conferir_intencao(intencao, mensagem, fotos, anexos)
     tipos = lido["tipos"]
+    anexo = b""
+    if anexo_url.strip() and id_da_url(anexo_url) is not None:
+        anexo = await bytes_da_url(anexo_url)
+        if "imagem" not in tipos and "novo" not in tipos:
+            tipos.append("imagem")
     resposta = {"tipos": tipos, "novo": False, "pergunta": False, "custo_imagem": False}
     if "novo" in tipos:
         return {**resposta, "novo": True, "resposta": "Certo, vou começar um post novo."}
@@ -786,9 +795,9 @@ async def ajustar(
         referencias = [foto for foto in [await session.get(MemoriaFoto, ident) for ident in lido["ids"]] if foto is not None]
         if lido["tela"]:
             referencias.sort(key=lambda foto: not e_captura(foto))
-        instrucao = _instrucao_numerada(intencao.instrucao_imagem, [foto.id for foto in referencias])
+        instrucao = _instrucao_numerada(intencao.instrucao_imagem or mensagem, [foto.id for foto in referencias])
         plano, como, custo = await editar_imagem(
-            session, marca, plano, instrucao, lido["tela"], referencias, registro.cena or ""
+            session, marca, plano, instrucao, lido["tela"], referencias, registro.cena or "", anexo or None
         )
         resposta["custo_imagem"] = custo
         precisa_montar = True
@@ -937,6 +946,80 @@ def _jpeg_leitura(dados: bytes) -> str:
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
+async def _bytes_hero(session: AsyncSession, marca_id: int, contexto, foto_id: int | None) -> tuple[bytes, str, bool]:
+    """A foto que a pessoa ou o diretor escolheu. Sem escolha, a peça nasce sem foto inventada."""
+    if not foto_id or foto_id not in contexto.usaveis:
+        return b"", "", False
+    foto = await session.get(MemoriaFoto, foto_id)
+    if foto is None or foto.marca_id != marca_id or not foto.arquivo:
+        return b"", "", False
+    return foto.arquivo, url_memoria(foto.id or 0), e_captura(foto)
+
+
+def _png_branco() -> bytes:
+    import io
+
+    buf = io.BytesIO()
+    Image.new("RGB", (32, 32), (255, 255, 255)).save(buf, "PNG")
+    return buf.getvalue()
+
+
+def _pecas_fracas(titulos: list[str]) -> bool:
+    vistos: list[str] = []
+    for titulo in titulos:
+        simples = "".join(c for c in unicodedata.normalize("NFKD", titulo.lower()) if not unicodedata.combining(c))
+        simples = " ".join(simples.split())
+        if not simples or _FRASE_VAZIA.search(simples):
+            return True
+        if simples in vistos:
+            return True
+        vistos.append(simples)
+    return False
+
+
+def _titulo_da_foto(titulo: str) -> str:
+    """No máximo 4 palavras, e nenhum slogan de anúncio genérico."""
+    texto = " ".join((titulo or "").split()[:4])
+    simples = "".join(c for c in unicodedata.normalize("NFKD", texto.lower()) if not unicodedata.combining(c))
+    proibidos = (
+        "aumente seus lucros",
+        "suporte 24h",
+        "suporte 24",
+        "dose na conta",
+        "praticidade",
+        "facilidade",
+        "gerencie",
+        "saiba mais",
+        "peca ja",
+        "comece ja",
+        "experimente",
+        "fale conosco",
+    )
+    if any(frase in simples for frase in proibidos):
+        return ""
+    return texto
+
+
+PERGUNTA_FOTO = "Sem uma foto real eu não invento a cena. Escolha uma foto da memória ou envie o print da tela."
+
+
+async def _foto_guardada(session: AsyncSession, marca_id: int, contexto) -> MemoriaFoto | None:
+    """Uma foto que pode aparecer no post. Captura de tela vem primeiro."""
+    candidatas: list[MemoriaFoto] = []
+    for ident in contexto.usaveis:
+        foto = await session.get(MemoriaFoto, ident)
+        if foto is None or foto.marca_id != marca_id or not foto.arquivo:
+            continue
+        if contexto.papeis.get(ident) == "estilo":
+            continue
+        candidatas.append(foto)
+    capturas = [foto for foto in candidatas if e_captura(foto)]
+    grupo = capturas or candidatas
+    if not grupo:
+        return None
+    return max(grupo, key=lambda foto: foto.id or 0)
+
+
 async def criar_tres_artes(
     session: AsyncSession,
     marca: Ficha | None,
@@ -946,63 +1029,66 @@ async def criar_tres_artes(
     anexo_url: str = "",
     ja_usadas: list[str] | None = None,
 ) -> dict:
-    """Uma foto, três artes. A IA de imagem roda no máximo uma vez; o texto e o molde são de graça."""
+    """Três peças da foto real. A frase só entra na faixa vazia. Sem foto, a ferramenta pergunta."""
     from pydantic import BaseModel, Field
-
-    class _Opcao(BaseModel):
-        angulo: str = ""
-        modelo: str
-        paleta: str
-        posicao_texto: str = "auto"
-        titulo_arte: str
-        subtitulo_arte: str = ""
-        selo: str = ""
-        chamada: str = ""
-        cor: str = "destaque"
 
     class _Pacote(BaseModel):
         ideia: str
-        e_tela: bool = False
         legenda: str
-        foto_base_id: int | None = None
-        fotos_estilo_ids: list[int] = Field(default_factory=list)
-        edicao_foto: str = "nenhuma"
-        opcoes: list[_Opcao]
+        titulos: list[str] = Field(min_length=3, max_length=3)
 
     marca_id = marca.id if marca and marca.id else 0
     contexto = await montar_contexto(session, marca)
     formato = formato if formato in FORMATOS else "feed"
     alvo = "story" if formato == "story" else ("facebook" if formato == "facebook" else "feed")
-    escolhidas = []
+    escolhidas: list[MemoriaFoto] = []
     for ident in fotos_ids[:4]:
         foto = await session.get(MemoriaFoto, ident)
-        if foto is not None and foto.marca_id == marca_id:
+        if foto is not None and foto.marca_id == marca_id and foto.arquivo:
             escolhidas.append(foto)
+    foto_lida = b""
+    url_base = ""
+    hero_id = None
+    if escolhidas:
+        foto_lida = escolhidas[0].arquivo
+        hero_id = escolhidas[0].id
+        url_base = url_memoria(hero_id or 0)
+    elif anexo_url.strip() and id_da_url(anexo_url) is not None:
+        try:
+            foto_lida = await bytes_da_url(anexo_url)
+            url_base = anexo_url.strip()
+        except Exception:
+            foto_lida = b""
+    else:
+        guardada = await _foto_guardada(session, marca_id, contexto)
+        if guardada is not None:
+            escolhidas = [guardada]
+            foto_lida = guardada.arquivo
+            hero_id = guardada.id
+            url_base = url_memoria(hero_id or 0)
+    if not foto_lida:
+        return {"legenda": "", "formato": formato, "opcoes": [], "precisa_foto": PERGUNTA_FOTO}
+
+    from app.services.leitura_tela import LeituraTela, ler_tela_bytes
+
+    try:
+        leitura = await asyncio.to_thread(ler_tela_bytes, foto_lida)
+    except Exception:
+        leitura = None
+    if leitura is None:
+        leitura = LeituraTela(False, "", (0.0, 0.0, 1.0, 1.0), (0.0, 0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 0.0))
     recente = await artes_recentes(session, marca_id)
     ja = [titulo.strip()[:80] for titulo in (ja_usadas or []) if titulo and titulo.strip()][:12]
     sistema = (
-        "Você cria 3 artes de um pequeno negócio, em português do Brasil. "
-        "As 3 usam a mesma foto e a mesma paleta, e cada uma defende um argumento diferente. "
-        "Não são 3 jeitos de dizer a mesma frase.\n"
-        "Opção 1, angulo recurso: o título nomeia uma coisa concreta que aparece na foto ou na memória "
-        "(um botão, uma tela, um prato, um serviço). Se a foto for uma tela, use um rótulo que está visível nela.\n"
-        "Opção 2, angulo dia: uma situação real de quem usa, o momento do trabalho, sem adjetivo de anúncio.\n"
-        "Opção 3, angulo resultado: o que muda na rotina, em fato curto.\n"
-        "titulo_arte: 2 a 6 palavras, forte, para ler de longe. Sem emoji e sem hashtag. "
-        "Proibido no título e no subtítulo: praticidade, facilidade, simplifique, gerenciamento, gerencie, "
-        "controle total, sem estresse, nas suas mãos, descomplique, tecnologia, experimente, saiba mais, peça já, comece já.\n"
-        "chamada: só a chamada curta da marca. Se a marca não tiver, deixe vazia. "
-        "Nunca Saiba mais, Peça já, Comece já ou Experimente agora.\n"
-        "Se a pessoa escreveu a frase dela, essa frase entra só na arte do angulo recurso. As outras duas continuam com argumentos diferentes.\n"
-        "Não invente preço, telefone, desconto, endereço, dia, horário nem recurso que não esteja na foto ou na memória. "
-        "Se não houver fato para o subtítulo, deixe o subtítulo vazio.\n"
-        "e_tela: true se a foto for captura, print, dashboard ou tela de sistema.\n"
+        "Você escreve três títulos para a mesma foto, em português do Brasil. "
+        "Cada título tem no máximo 4 palavras e nomeia algo que está visível: um número, um botão, um prato, um item da tela. "
+        "Os três títulos são diferentes entre si. Sem subtítulo e sem chamada em cima da foto. "
+        "Proibido: aumente seus lucros, suporte 24h, dose na conta, praticidade, facilidade, gerencie, "
+        "saiba mais, peça já, comece já, experimente, fale conosco.\n"
+        "Não invente preço, telefone, desconto nem recurso que não esteja na foto ou na memória.\n"
         "A legenda segue o contrato da memória: item concreto na primeira linha, um fato da marca, "
         "a chamada do canal e as hashtags fixas mais no máximo 2 do assunto.\n"
         + contexto.regras()
-        + "\n"
-        + diretor.texto_kit(marca)
-        + diretor.REGRAS_ARTE
     )
     if fala_de_alcool(f"{descricao} {contexto.fatos}"):
         sistema += diretor.REGRAS_ARTE_ALCOOL
@@ -1013,60 +1099,31 @@ async def criar_tres_artes(
         partes.append("Artes já feitas desta marca. Não repita o título nem a ideia:\n" + "\n".join(f"- {linha}" for linha in recente))
     if ja:
         partes.append("Frases já mostradas agora. Não repita e não troque por sinônimo:\n" + "\n".join(f"- {titulo}" for titulo in ja))
-    foto_lida = b""
-    if escolhidas:
-        foto_lida = escolhidas[0].arquivo or b""
-        partes.append(
-            "A pessoa já escolheu a foto. foto_base_id = "
-            + str(escolhidas[0].id)
-            + " e edicao_foto = nenhuma. A arte nasce em cima dessa foto, sem recriar a cena. "
-            "A foto está anexada: leia o que aparece nela antes de escrever."
-        )
-        if e_captura(escolhidas[0]):
-            partes.append("Essa foto é uma tela do produto. e_tela = true. O título do recurso usa um rótulo visível.")
-    elif anexo_url.strip() and id_da_url(anexo_url) is not None:
-        foto_lida = await bytes_da_url(anexo_url)
-        partes.append(
-            "A pessoa anexou uma foto própria. foto_base_id = null e edicao_foto = nenhuma. "
-            "A foto está anexada: leia o que aparece nela antes de escrever."
-        )
-    leitura = None
-    if foto_lida:
-        from app.services.leitura_tela import ler_tela_bytes
-
-        try:
-            leitura = await asyncio.to_thread(ler_tela_bytes, foto_lida)
-        except Exception:
-            leitura = None
-        if leitura is not None and (leitura.e_tela or any(e_captura(foto) for foto in escolhidas)):
-            partes.append(leitura.texto())
+    if leitura.quieta:
+        partes.append(leitura.texto())
+    else:
+        partes.append("Não há faixa livre na foto. Devolva os três títulos vazios.")
 
     async def pedir(extra: str = ""):
         usuario = "\n\n".join(partes)
         if extra:
             usuario += "\n\n" + extra
-        mensagens = [{"role": "system", "content": sistema}]
-        if foto_lida:
-            mensagens.append(
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": usuario},
-                        {"type": "image_url", "image_url": {"url": _jpeg_leitura(foto_lida)}},
-                    ],
-                }
-            )
-        else:
-            mensagens.append({"role": "user", "content": usuario})
         try:
             resposta = await cliente_openai().with_options(timeout=90).chat.completions.parse(
                 model=get_settings().openai_model,
-                messages=mensagens,
+                messages=[
+                    {"role": "system", "content": sistema},
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": usuario},
+                            {"type": "image_url", "image_url": {"url": _jpeg_leitura(foto_lida)}},
+                        ],
+                    },
+                ],
                 response_format=_Pacote,
             )
         except Exception:
-            if not foto_lida:
-                raise
             resposta = await cliente_openai().with_options(timeout=90).chat.completions.parse(
                 model=get_settings().openai_model,
                 messages=[
@@ -1078,69 +1135,52 @@ async def criar_tres_artes(
         mensagem = resposta.choices[0].message
         if mensagem.refusal:
             raise ValueError(mensagem.refusal)
-        if mensagem.parsed is None or not mensagem.parsed.opcoes:
+        if mensagem.parsed is None or len(mensagem.parsed.titulos) < 3:
             raise ValueError("A IA não devolveu as artes. Tente descrever de novo.")
         return mensagem.parsed
 
     pacote = await pedir()
-    titulos = [f"{opcao.titulo_arte} {opcao.subtitulo_arte}".strip() for opcao in pacote.opcoes[:3]]
-    angulos = {opcao.angulo for opcao in pacote.opcoes[:3]}
-    if frases_repetidas(titulos, ja) or angulos != set(ANGULOS):
+    titulos = [_titulo_da_foto(titulo) for titulo in list(pacote.titulos[:3]) + [""] * 3][:3]
+    if leitura.quieta and _pecas_fracas(titulos):
         pacote = await pedir(
-            "A tentativa anterior foi recusada. Frases: "
+            "A tentativa anterior foi recusada. Títulos: "
             + "; ".join(titulos)
-            + ". Escreva outras, uma por angulo (recurso, dia, resultado), sem sinônimo e sem frase de anúncio vazia."
+            + ". Escreva outros três, cada um com no máximo 4 palavras, nomeando algo visível na foto."
         )
-    ordem = {nome: indice for indice, nome in enumerate(ANGULOS)}
-    opcoes = sorted(pacote.opcoes[:3], key=lambda opcao: ordem.get(opcao.angulo, 9))
-    base_comum = {
-        "ideia": pacote.ideia,
-        "foto_base_id": pacote.foto_base_id,
-        "fotos_estilo_ids": pacote.fotos_estilo_ids,
-        "edicao_foto": pacote.edicao_foto,
-    }
-    if escolhidas:
-        base_comum["foto_base_id"] = escolhidas[0].id
-        base_comum["edicao_foto"] = diretor.NENHUMA
-    e_tela = bool(pacote.e_tela) or any(e_captura(foto) for foto in escolhidas) or (leitura is not None and leitura.e_tela)
-    usar_leitura = leitura if leitura is not None and (leitura.e_tela or any(e_captura(foto) for foto in escolhidas)) else None
+        titulos = [_titulo_da_foto(titulo) for titulo in list(pacote.titulos[:3]) + [""] * 3][:3]
+    angulos = ("recurso", "dia", "resultado")
+    brutos = [
+        {
+            "ideia": pacote.ideia,
+            "modelo": "tela_limpa",
+            "titulo_arte": titulos[indice] if indice < len(titulos) else "",
+            "subtitulo_arte": "",
+            "chamada": "",
+            "edicao_foto": diretor.NENHUMA,
+            "angulo": angulos[indice],
+            "foto_base_id": hero_id,
+        }
+        for indice in range(3)
+    ]
     planos = []
-    for indice, opcao in enumerate(opcoes):
-        bruto = {**base_comum, **opcao.model_dump()}
+    for bruto in brutos:
         plano, _legenda = diretor.validar_plano(bruto, contexto, descricao, pacote.legenda)
-        plano["angulo"] = ANGULOS[indice]
+        plano["angulo"] = bruto["angulo"]
         planos.append(plano)
-    while len(planos) < 3:
-        copia = dict(planos[0])
-        copia["angulo"] = ANGULOS[len(planos)]
-        planos.append(copia)
+    planos = _aplicar_tres(planos, marca, len(ja) // 3, True, leitura)
     for plano in planos:
-        diretor._coerencia(plano)
-    planos = _aplicar_tres(planos[:3], marca, len(ja) // 3, e_tela, usar_leitura)
-
-    if escolhidas:
-        dados = escolhidas[0].arquivo
-        url_base = url_memoria(escolhidas[0].id or 0)
-        editada = False
-        for plano in planos:
-            plano["foto_base_id"] = escolhidas[0].id
-            plano["edicao_foto"] = diretor.NENHUMA
-    elif foto_lida:
-        dados = foto_lida
-        url_base = anexo_url.strip()
-        editada = False
-    else:
-        dados, url_base, _passo, editada = await diretor._preparar_base(session, marca_id, planos[0], descricao, False)
-    for plano in planos:
+        plano["foto_base_id"] = hero_id
         plano["base_url"] = url_base
-        plano["editada"] = editada
-        url = await diretor.desenhar_um(session, marca, plano, dados, alvo)
+        plano["editada"] = False
+        plano["sem_foto"] = False
+        url = await diretor.desenhar_um(session, marca, plano, foto_lida, alvo)
         plano["feed_url"] = url
         plano["story_url"] = url if alvo == "story" else ""
     legenda = fechar_legenda(pacote.legenda.strip()[:5000], contexto.mapa)
     if fala_de_alcool(f"{descricao} {legenda}"):
         legenda = com_moderacao(legenda)
-    return {"legenda": legenda, "formato": formato, "opcoes": planos}
+    return {"legenda": legenda, "formato": formato, "opcoes": planos, "precisa_foto": ""}
+
 
 
 async def reabrir(session: AsyncSession, registro: Rascunho) -> Rascunho:

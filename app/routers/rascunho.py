@@ -97,6 +97,7 @@ async def post_tres_artes(pedido: PedidoTresArtes, session: AsyncSession = Depen
     return RespostaTresArtes(
         legenda=feito["legenda"],
         formato=feito["formato"],
+        precisa_foto=feito.get("precisa_foto") or "",
         opcoes=[
             OpcaoArtePronta(
                 plano_arte=servico.diretor.resumo_plano(plano) or plano,
@@ -161,7 +162,7 @@ async def post_ajustar(
     registro = await _rascunho(session, rascunho_id)
     marca = await _marca(session, registro.marca_id)
     try:
-        feito = await servico.ajustar(session, registro, marca, pedido.mensagem, pedido.fotos_ids)
+        feito = await servico.ajustar(session, registro, marca, pedido.mensagem, pedido.fotos_ids, pedido.anexo_url)
     except Exception as erro:
         await session.rollback()
         raise _falha_ia(erro, "Não consegui ajustar o post agora. Tente de novo em instantes.") from erro

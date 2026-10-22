@@ -29,11 +29,11 @@ log = logging.getLogger("uvicorn.error")
 NENHUMA = "nenhuma"
 CAMPOS_TEXTO = ("titulo_arte", "subtitulo_arte", "selo", "chamada", "antes")
 LIMITES = {
-    "titulo_arte": (7, 60),
-    "subtitulo_arte": (10, 90),
-    "selo": (3, 18),
-    "chamada": (5, 32),
-    "antes": (10, 90),
+    "titulo_arte": (16, 120),
+    "subtitulo_arte": (18, 140),
+    "selo": (4, 22),
+    "chamada": (6, 40),
+    "antes": (12, 90),
 }
 CAMPOS_GUARDADOS = (
     "ideia",
@@ -55,6 +55,10 @@ CAMPOS_GUARDADOS = (
     "editada",
     "camadas",
     "passos",
+    "itens",
+    "etapas",
+    "sem_foto",
+    "recorte_caixa",
 )
 
 REGRAS_ARTE = """
@@ -120,19 +124,65 @@ DIAS = {
     "sabado": "sábado",
     "domingo": "domingo",
 }
-COMPOSICAO = {
-    "faixa": "Keep the top third of the frame calm and uncluttered (it will hold a text banner); the main subject sits in the lower two thirds.",
-    "story_chamada": "Keep the top third and the bottom fifth calm and uncluttered (they will hold text); the main subject sits in the middle.",
-    "selo": "Keep the top-right corner and the bottom quarter calm and uncluttered (they will hold a badge and text); the main subject slightly left of center.",
-    "destaque": "Keep the bottom third calm and darker (it will hold text); the main subject sits in the upper two thirds.",
-    "alerta": "Keep the top third calm and uncluttered (it will hold a warning panel); the main subject sits in the lower two thirds.",
-    "etiqueta": "Keep the bottom third calm (it will hold a price tag and text); the main subject sits in the upper two thirds.",
-    "carimbo": "Keep the top third calm (it will hold a stamp); the main subject sits in the lower two thirds.",
-    "neon": "Moody low light; keep the bottom third dark and calm (it will hold a neon sign); the main subject sits in the upper part.",
-    "poster": "Keep the top 40% calm and simple (it will hold a big color block with huge type); the main subject sits low in the frame.",
-    "minimal": "Clean, airy composition; keep the bottom quarter calm (it will hold a slim text bar).",
+# Onde a letra do molde entra. A foto reserva essa faixa; o Pillow escreve depois.
+_ZONA_MOLDE = {
+    "faixa": "topo",
+    "story_chamada": "dupla",
+    "selo": "selo",
+    "destaque": "base",
+    "alerta": "topo",
+    "etiqueta": "base",
+    "carimbo": "topo",
+    "neon": "base",
+    "poster": "topo",
+    "minimal": "base",
+}
+_CALMA = {
+    "topo": (
+        "Commercial framing: the top third stays calm, simple and empty of the subject "
+        "(plain wall, soft blur or an uncluttered surface). "
+        "The main subject is large and sharp in the lower two thirds and does not touch the top edge. "
+        "Do not center the subject. Do not fill the frame with extra objects."
+    ),
+    "base": (
+        "Commercial framing: the bottom third stays calm, simple and slightly darker "
+        "(plain surface, soft blur or an uncluttered background). "
+        "The main subject is large and sharp in the upper two thirds and does not touch the bottom edge. "
+        "Do not center the subject. Do not fill the frame with extra objects."
+    ),
+    "dupla": (
+        "Commercial framing for text that will be added later at the top and at the bottom. "
+        "The top quarter and the bottom quarter stay calm, simple and empty of the subject "
+        "(plain wall, soft blur or an uncluttered surface). "
+        "The main subject is large and sharp in the middle band and does not touch the top or bottom edges. "
+        "Do not fill the frame with detail."
+    ),
+    "selo": (
+        "Commercial framing: the top-right corner and the bottom quarter stay calm and empty of the subject. "
+        "The main subject sits left of center, large and sharp. "
+        "Do not center the subject. Do not fill the corners with extra objects."
+    ),
+}
+_PRESERVAR = {
+    "topo": (
+        "Keep the real subject identical and where it already is. "
+        "Do not add objects, people or detail in the top third: that area will hold text."
+    ),
+    "base": (
+        "Keep the real subject identical and where it already is. "
+        "Do not add objects, people or detail in the bottom third: that area will hold text."
+    ),
+    "dupla": (
+        "Keep the real subject identical and where it already is. "
+        "Do not add objects, people or detail in the top quarter or the bottom quarter: those areas will hold text."
+    ),
+    "selo": (
+        "Keep the real subject identical and where it already is. "
+        "Do not add objects or detail in the top-right corner or the bottom quarter: those areas will hold text."
+    ),
 }
 PALETAS_PLANO = ("marca", *molde.PALETAS)
+PECAS_DESENHADAS = ("painel", "passos", "vitrine")
 MOLDES_PADRAO = ("destaque", "minimal", "story_chamada")
 MOLDES_KIT = (
     "destaque",
@@ -184,6 +234,37 @@ def _texto_arte(valor, palavras: int, caracteres: int) -> str:
     if len(texto) > caracteres:
         texto = texto[:caracteres].rsplit(" ", 1)[0]
     return texto.strip(" .,;:-")
+
+
+def _linhas(valor, quantidade: int, palavras: int, caracteres: int) -> list[str]:
+    if isinstance(valor, str):
+        valor = [parte.strip() for parte in re.split(r"[|\n]", valor)]
+    if not isinstance(valor, list):
+        return []
+    saida: list[str] = []
+    vistos: set[str] = set()
+    for item in valor:
+        texto = _texto_arte(item, palavras, caracteres)
+        chave = texto.lower()
+        if texto and chave not in vistos:
+            saida.append(texto)
+            vistos.add(chave)
+        if len(saida) >= quantidade:
+            break
+    return saida
+
+
+def _sem_preco_linhas(linhas: list[str], fonte: str) -> list[str]:
+    permitidos = _precos(fonte)
+    saida: list[str] = []
+    for linha in linhas:
+        for achado in PRECO.findall(linha):
+            if re.sub(r"\D", "", achado).lstrip("0") not in permitidos:
+                linha = linha.replace(achado, "")
+        linha = " ".join(linha.split()).strip(" .,;:-")
+        if linha:
+            saida.append(linha)
+    return saida
 
 
 def _inteiro(valor) -> int | None:
@@ -364,7 +445,7 @@ def validar_plano(
     plano["tela_app"] = bool(base) and contexto.tipos.get(base) == "captura"
     if plano["tela_app"]:
         plano["edicao_foto"] = NENHUMA
-        if plano["modelo"] not in ("tela_app", "antes_depois"):
+        if plano["modelo"] not in ("tela_app", "antes_depois", "tela_limpa", *PECAS_DESENHADAS):
             plano["modelo"] = "tela_app"
     if base and contexto.papeis.get(base) == "postar":
         plano["edicao_foto"] = NENHUMA
@@ -378,6 +459,10 @@ def validar_plano(
         plano["chamada"] = _texto_arte(curta, *LIMITES["chamada"]) if curta else ""
     _coerencia(plano)
     plano["camadas"] = _camadas_validas(dados.get("camadas"))
+    fonte = f"{contexto.fatos} {pedido}"
+    plano["itens"] = _sem_preco_linhas(_linhas(dados.get("itens"), 5, 8, 48), fonte)
+    plano["etapas"] = _sem_preco_linhas(_linhas(dados.get("etapas"), 3, 4, 28), fonte)
+    plano["sem_foto"] = bool(dados.get("sem_foto"))
     return plano, legenda
 
 
@@ -424,7 +509,7 @@ def texto_kit(marca: Ficha | None) -> str:
 def aplicar_kit(plano: dict, marca: Ficha | None) -> dict:
     """Prende a arte nas cores e nos moldes da marca. Captura de tela continua no molde dela."""
     plano = dict(plano)
-    if plano.get("modelo") not in ("tela_app", "antes_depois", "livre"):
+    if plano.get("modelo") not in ("tela_app", "antes_depois", "livre", "tela_limpa", *PECAS_DESENHADAS):
         moldes = moldes_da_marca(marca)
         if plano.get("modelo") not in moldes:
             plano["modelo"] = moldes[0]
@@ -436,7 +521,7 @@ def aplicar_kit(plano: dict, marca: Ficha | None) -> dict:
 def variar(plano: dict, recentes: list[tuple[str, str]], marca: Ficha | None = None) -> dict:
     """Mantém a paleta da marca e, se o mesmo molde saiu três vezes, troca por outro do kit."""
     plano = aplicar_kit(plano, marca)
-    if plano.get("modelo") in ("tela_app", "antes_depois", "livre"):
+    if plano.get("modelo") in ("tela_app", "antes_depois", "livre", "tela_limpa", *PECAS_DESENHADAS):
         _coerencia(plano)
         return plano
     moldes = moldes_da_marca(marca)
@@ -516,18 +601,46 @@ async def _fotos_estilo(session: AsyncSession, plano: dict, marca_id: int) -> li
     return fotos
 
 
-def prompt_edicao(plano: dict, com_estilo: bool) -> str:
+def zona_composicao(modelo: str, posicao: str = "auto") -> str:
+    """Faixa calma da foto: a posição pedida manda; senão, a faixa natural do molde."""
+    if posicao == "topo":
+        return "topo"
+    if posicao == "base":
+        return "base"
+    return _ZONA_MOLDE.get(modelo or "", "dupla")
+
+
+def zona_dos_planos(planos: list[dict]) -> str:
+    """Uma foto serve várias artes: se o texto cai em cima e embaixo, as duas faixas ficam calmas."""
+    if len(planos) <= 1:
+        plano = planos[0] if planos else {}
+        return zona_composicao(str(plano.get("modelo") or ""), str(plano.get("posicao_texto") or "auto"))
+    posicoes = {str(plano.get("posicao_texto") or "auto") for plano in planos}
+    if posicoes == {"topo"}:
+        return "topo"
+    if posicoes == {"base"}:
+        return "base"
+    return "dupla"
+
+
+def frase_da_zona(zona: str, preservar: bool = False) -> str:
+    tabela = _PRESERVAR if preservar else _CALMA
+    return tabela.get(zona, tabela["dupla"])
+
+
+def prompt_edicao(plano: dict, com_estilo: bool, zona: str = "") -> str:
     edicao = (plano.get("edicao_foto") or "").strip()
     if not edicao or edicao == NENHUMA:
         edicao = "Do not change the photograph. Keep the subject, background, lighting and framing exactly as they are."
+    zona = zona or zona_composicao(str(plano.get("modelo") or ""), str(plano.get("posicao_texto") or "auto"))
     partes = [
         "Edit this real photo of the business into a premium Instagram photo.",
         "KEEP THE REAL SUBJECT IDENTICAL: same shape, size, colors, materials, details, packaging, label and branding. "
         "Do not replace, redraw, restyle or add another product or object.",
         f"What to change: {edicao}.",
         "Photographic realism, attractive professional lighting, sharp focus on the main subject, natural depth of field.",
-        COMPOSICAO.get(plano.get("modelo", ""), "Main subject centered with breathing room around it."),
-        "No text, no letters, no numbers, no logos, no watermark, no frame. Square image.",
+        frase_da_zona(zona, preservar=True),
+        "No text, no letters, no numbers, no logos, no watermark, no frame.",
     ]
     if com_estilo:
         partes.append(
@@ -538,13 +651,14 @@ def prompt_edicao(plano: dict, com_estilo: bool) -> str:
     return " ".join(partes)
 
 
-def prompt_criacao(plano: dict, cena: str, com_estilo: bool) -> str:
+def prompt_criacao(plano: dict, cena: str, com_estilo: bool, zona: str = "") -> str:
     assunto = (cena or plano.get("ideia") or plano.get("titulo_arte") or "the business").strip()[:600]
+    zona = zona or zona_composicao(str(plano.get("modelo") or ""), str(plano.get("posicao_texto") or "auto"))
     partes = [
         f"Realistic photograph for an Instagram post: {assunto}.",
         "Attractive professional lighting, sharp focus on the main subject, natural depth of field.",
-        COMPOSICAO.get(plano.get("modelo", ""), "Main subject centered with breathing room around it."),
-        "No text, no letters, no numbers, no logos, no watermark, no screens with words. Square image.",
+        frase_da_zona(zona),
+        "No text, no letters, no numbers, no logos, no watermark, no screens with words.",
     ]
     if plano.get("edicao_foto") and plano["edicao_foto"] != NENHUMA:
         partes.insert(1, f"Details: {plano['edicao_foto']}.")
@@ -579,18 +693,20 @@ async def vai_usar_ia(session: AsyncSession, marca_id: int, plano: dict, forcar_
 
 
 async def _preparar_base(
-    session: AsyncSession, marca_id: int, plano: dict, cena: str, forcar_ia: bool
+    session: AsyncSession, marca_id: int, plano: dict, cena: str, forcar_ia: bool, zona: str = ""
 ) -> tuple[bytes, str, str, bool]:
     """A foto base da arte: (bytes, url, o que foi feito, se a IA mexeu)."""
     from app.services.midia import editar_com_ia, gerar_com_ia
 
     foto = await _foto_da_marca(session, plano.get("foto_base_id"), marca_id)
     estilos = await _fotos_estilo(session, plano, marca_id)
+    if foto is None and plano.get("modelo") == "tela_limpa":
+        raise ValueError("Sem foto real, a arte não inventa a cena.")
     if foto is not None:
         if _sem_edicao(foto, plano, forcar_ia):
             return foto.arquivo, url_memoria(foto.id or 0), "foto da memória usada como está (sem custo de imagem)", False
         try:
-            dados, usadas = await editar_com_ia(prompt_edicao(plano, bool(estilos)), [foto.arquivo, *estilos[:1]])
+            dados, usadas = await editar_com_ia(prompt_edicao(plano, bool(estilos), zona), [foto.arquivo, *estilos[:1]])
         except Exception as erro:
             if forcar_ia:
                 raise
@@ -600,10 +716,10 @@ async def _preparar_base(
         url = await guardar_figura(figura, marca_id, "arte-base")
         return dados, url, f"foto da memória editada com IA ({usadas} foto(s) de entrada)", True
     if estilos:
-        dados, _usadas = await editar_com_ia(prompt_criacao(plano, cena, True), estilos[:1])
+        dados, _usadas = await editar_com_ia(prompt_criacao(plano, cena, True, zona), estilos[:1])
         passo = "foto criada com IA, inspirada numa foto de estilo"
     else:
-        dados = await gerar_com_ia(prompt_criacao(plano, cena, False))
+        dados = await gerar_com_ia(prompt_criacao(plano, cena, False, zona))
         passo = "foto criada com IA do zero"
     figura = await asyncio.to_thread(arte.abrir, dados)
     url = await guardar_figura(figura, marca_id, "arte-base")
@@ -638,6 +754,9 @@ def textos_do_plano(plano: dict) -> molde.Textos:
         posicao=plano.get("posicao_texto") or "auto",
         cor_livre=plano.get("cor_livre") or "",
         camadas=list(plano.get("camadas") or []),
+        itens=list(plano.get("itens") or []),
+        etapas=list(plano.get("etapas") or []),
+        sem_foto=bool(plano.get("sem_foto")),
     )
 
 

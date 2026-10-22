@@ -311,6 +311,10 @@
       padding: 10px 14px;
       box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
     }
+    .balao.anexo-chat { max-width: min(280px, 80%); padding: 6px; }
+    .balao.anexo-chat img { display: block; width: 100%; max-height: 220px; object-fit: contain; border-radius: 10px; background: #0f172a; }
+    .balao.anexo-chat button { width: 100%; height: 32px; margin: 6px 0 0; border: 0; border-radius: 8px; background: transparent; color: var(--mudo); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+    .balao.anexo-chat button:hover { color: var(--tinta); background: var(--fundo); }
     form.composer {
       display: flex;
       flex-wrap: wrap;
@@ -1223,6 +1227,7 @@
         <div class="coluna-topo" id="topo-conversa">
           <span id="titulo-conversa">Estúdio</span>
           <div class="topo-acoes">
+            <button class="novo-post" type="button" id="ir-inicio" hidden title="Voltar para Criar foto, Criar arte, Anúncio e Foto"><i class="fa-solid fa-house"></i> Início</button>
             <button class="novo-post" type="button" id="prateleira-botao" title="Artes salvas, agendadas e publicadas"><i class="fa-solid fa-table-cells"></i> Prateleira</button>
             <button class="novo-post" type="button" id="fila-botao" title="Posts agendados, por dia e horário"><i class="fa-solid fa-clock"></i> Fila</button>
             <button class="novo-post" type="button" id="novo-post" hidden title="Começar outro post do zero"><i class="fa-solid fa-plus"></i> Novo post</button>
@@ -1233,7 +1238,7 @@
           <div class="vazio-estudio" id="vazio-estudio">
             <div id="inicio-estudio">
             <h2 id="titulo-inicio">O que vamos postar hoje?</h2>
-            <p id="texto-inicio">Escreva aqui embaixo o que você quer, ou comece por uma ideia da marca.</p>
+            <p id="texto-inicio">Escreva aqui embaixo o que você quer, ou comece por um atalho.</p>
             <div class="atalhos-estudio" id="ideias-estudio" hidden></div>
             <div class="atalhos-estudio" id="atalhos-estudio">
               <button class="cartao-atalho" type="button" data-atalho="imagem">
@@ -1359,6 +1364,9 @@
                     <div class="campos-arte">
                       <label>Estilo da arte
                         <select id="arte-modelo">
+                          <option value="painel">Benefícios</option>
+                          <option value="passos">O caminho</option>
+                          <option value="vitrine">A frase grande</option>
                           <option value="destaque">Destaque</option>
                           <option value="faixa">Faixa</option>
                           <option value="selo">Selo</option>
@@ -1391,10 +1399,10 @@
                           <option value="livre">A cor que você pediu</option>
                         </select>
                       </label>
-                      <label class="largo">Título da arte<input id="arte-titulo" maxlength="60" /></label>
-                      <label class="largo">Subtítulo<input id="arte-subtitulo" maxlength="90" placeholder="Opcional" /></label>
-                      <label>Selo<input id="arte-selo" maxlength="18" placeholder="Ex.: Hoje" /></label>
-                      <label>Chamada<input id="arte-chamada" maxlength="32" placeholder="Ex.: Peça já" /></label>
+                      <label class="largo">Título da arte<input id="arte-titulo" maxlength="120" /></label>
+                      <label class="largo">Subtítulo<input id="arte-subtitulo" maxlength="140" placeholder="Opcional" /></label>
+                      <label>Selo<input id="arte-selo" maxlength="22" placeholder="Ex.: Hoje" /></label>
+                      <label>Chamada<input id="arte-chamada" maxlength="40" placeholder="Ex.: Peça o cardápio" /></label>
                       <label class="largo" id="arte-antes-campo" hidden>Antes (o problema do cliente)<input id="arte-antes" maxlength="90" /></label>
                     </div>
                     <button class="secundario" type="button" id="abrir-na-imagem"><i class="fa-solid fa-up-right-and-down-left-from-center"></i> Abrir na imagem</button>
@@ -1410,7 +1418,7 @@
                 <textarea class="legenda" id="legenda-previa" rows="8" aria-label="Legenda do post" placeholder="Escreva ou ajuste a legenda aqui."></textarea>
               </label>
               <div class="frase-arte" id="frase-arte" hidden>
-                <label>Frase da arte<input id="frase-arte-texto" maxlength="60" /></label>
+                <label>Frase da arte<input id="frase-arte-texto" maxlength="120" /></label>
                 <button class="secundario" type="button" id="frase-arte-atualizar">Atualizar na arte</button>
               </div>
               <div class="acoes-mesa">
@@ -2518,6 +2526,44 @@
       return bloco;
     }
 
+    function mostrarAnexoNoChat(url) {
+      let bloco = document.getElementById("anexo-chat");
+      if (!bloco) {
+        bloco = document.createElement("div");
+        bloco.id = "anexo-chat";
+        bloco.className = "balao pessoa anexo-chat";
+        fio.appendChild(bloco);
+      }
+      bloco.innerHTML = "";
+      const imagem = document.createElement("img");
+      imagem.src = url;
+      imagem.alt = "Foto para enviar com o pedido";
+      const tirar = document.createElement("button");
+      tirar.type = "button";
+      tirar.textContent = "Tirar";
+      tirar.addEventListener("click", () => {
+        anexoChat = null;
+        bloco.remove();
+        atualizarEstudio();
+      });
+      bloco.append(imagem, tirar);
+      atualizarEstudio();
+      fio.scrollTop = fio.scrollHeight;
+      pedidoCampo.focus();
+    }
+
+    function selarAnexoChat() {
+      const url = anexoChat && anexoChat.url ? anexoChat.url : "";
+      const bloco = document.getElementById("anexo-chat");
+      if (bloco) {
+        const botao = bloco.querySelector("button");
+        if (botao) botao.remove();
+        bloco.removeAttribute("id");
+      }
+      anexoChat = null;
+      return url;
+    }
+
     function diaIso(data) {
       const mes = String(data.getMonth() + 1).padStart(2, "0");
       const dia = String(data.getDate()).padStart(2, "0");
@@ -2796,7 +2842,7 @@
         entrada.dataset.campo = chave;
         return entrada;
       };
-      const titulo = campo("titulo_arte", "Título da arte", 60);
+      const titulo = campo("titulo_arte", "Título da arte", 120);
       modelo.style.gridColumn = "1 / -1";
       titulo.style.gridColumn = "1 / -1";
       const subtitulo = campo("subtitulo_arte", "Subtítulo (opcional)", 90);
@@ -2944,6 +2990,9 @@
       minimal: "Minimalista",
       livre: "Só a imagem",
       tela_limpa: "Tela",
+      painel: "Benefícios",
+      passos: "O caminho",
+      vitrine: "A frase grande",
     };
     const ANGULOS_ARTE = {
       recurso: "O que está na foto",
@@ -3228,7 +3277,8 @@
     function arteDoEditor() {
       if (!artePrevia) return null;
       const paleta = document.getElementById("arte-paleta").value;
-      const plano = { ...artePrevia, modelo: document.getElementById("arte-modelo").value, paleta };
+      const modeloEscolhido = document.getElementById("arte-modelo").value;
+      const plano = { ...artePrevia, modelo: modeloEscolhido || artePrevia.modelo, paleta };
       if (paleta !== "livre") plano.cor_livre = "";
       CAMPOS_ARTE.forEach(([id, campo]) => { plano[campo] = document.getElementById(id).value.trim(); });
       return plano;
@@ -3291,6 +3341,7 @@
     let modoArte = false;
     let formatoArte = "feed";
     let passoCriar = "";
+    let telaPadrao = true;
     let fluxoCriar = "";
     let paginaCriarAberta = false;
     let trabalhoNoHome = false;
@@ -3462,7 +3513,8 @@
     async function criarImagem(textoPedido) {
       naPrevia = false;
       const escolhidas = fotoFluxo && fotoFluxo.tipo === "memoria" ? [fotoFluxo] : fotosEscolhidas.slice();
-      const anexo = fotoFluxo && fotoFluxo.tipo === "anexo" ? fotoFluxo.url : (origemFoto === "anexo" && imagemProjeto ? imagemProjeto : "");
+      const anexoEnviado = selarAnexoChat();
+      const anexo = anexoEnviado || (fotoFluxo && fotoFluxo.tipo === "anexo" ? fotoFluxo.url : (origemFoto === "anexo" && imagemProjeto ? imagemProjeto : ""));
       const fluxoGuardado = fluxoCriar;
       const fotoGuardada = fotoFluxo;
       passoCriar = "";
@@ -3614,8 +3666,8 @@
       desenharAssistente();
       document.getElementById("estudio-tarefa").hidden = !(tarefaAberta && noPagina);
       fio.hidden = noPagina
-        ? !(fotoNoChat || (temBaloes && !mesa && !wizard && !tarefaAberta) || (voltouAoChat && temBaloes))
-        : !(noHomeTrabalho && !painel && (temBaloes || fotoNoChat || voltouAoChat));
+        ? !(fotoNoChat || anexoChat || (temBaloes && !mesa && !wizard && !tarefaAberta) || (voltouAoChat && temBaloes))
+        : !(noHomeTrabalho && !painel && (temBaloes || fotoNoChat || voltouAoChat || anexoChat));
       document.getElementById("area-estudio").classList.remove("com-mesa");
       const precisaDigitar = voltouAoChat || (noPagina && !tarefaAberta && !mesa && (passoCriar === "pronto" || fotoNoChat || arteEmCima));
       document.getElementById("composer").hidden = painel || tarefaAberta || (noPagina ? !precisaDigitar : false);
@@ -3623,6 +3675,7 @@
         ? wizard || !(mesa || temBaloes || fotoNoChat)
         : !(noHomeTrabalho && (mesa || temBaloes || fotoNoChat));
       desenharFotoNoChat();
+      atualizarBotaoInicio();
       document.getElementById("aprovar-texto").textContent = rascunhoAtual && rascunhoAtual.agendamento_id ? "Salvar no post da fila" : "Aprovar";
       document.querySelector(".acoes-mesa").hidden = Boolean(opcoesArte.length);
       document.getElementById("aprovar").hidden = Boolean(opcoesArte.length);
@@ -3700,6 +3753,10 @@
         fotoFluxo = null;
         modoImagem = false;
         modoArte = false;
+        document.getElementById("origem-inteligente").hidden = false;
+        const notaFluxo = document.getElementById("nota-fluxo");
+        notaFluxo.hidden = true;
+        notaFluxo.textContent = "";
         atualizarTopoConversa();
         return;
       }
@@ -3809,6 +3866,7 @@
     let pedidoRascunho = 0;
     let versaoEscolhida = 0;
     let fotosEscolhidas = [];
+    let anexoChat = null;
     const LIMITE_ESCOLHIDAS = 3;
 
     function textoComFotos(textoPedido, escolhidas) {
@@ -3939,6 +3997,7 @@
       videoProjeto = "";
       origemFoto = "";
       fotoNoChat = false;
+      anexoChat = null;
       arteEmCima = false;
       naPrevia = false;
       escreverLegenda("");
@@ -4052,6 +4111,7 @@
     async function ajustarRascunho(textoPedido) {
       naPrevia = false;
       const escolhidas = fotosEscolhidas.slice();
+      const anexoUrl = selarAnexoChat();
       falar("pessoa", textoComFotos(textoPedido, escolhidas));
       pedidoCampo.value = "";
       limparFotosEscolhidas();
@@ -4070,7 +4130,11 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: AbortSignal.timeout(300000),
-          body: JSON.stringify({ mensagem: textoPedido.slice(0, 2000), fotos_ids: escolhidas.map((foto) => foto.id) }),
+          body: JSON.stringify({
+            mensagem: textoPedido.slice(0, 2000),
+            fotos_ids: escolhidas.map((foto) => foto.id),
+            anexo_url: anexoUrl,
+          }),
         });
         const dados = await lerResposta(resposta);
         if (resposta.status === 404) {
@@ -4121,7 +4185,7 @@
       if (!texto) return;
       if (fotoFluxo && fluxoCriar === "arte") texto.textContent = "Foto escolhida. Escreva a frase aqui embaixo e envie. Se não quiser inventar, a IA cria a frase.";
       else if (fotoFluxo) texto.textContent = "Foto escolhida. Escreva aqui embaixo o ajuste que quer, ou: pode ficar como está.";
-      else if (fluxoCriar === "arte") texto.textContent = "A IA cria a foto e três artes. Descreva aqui embaixo e envie.";
+      else if (fluxoCriar === "arte") texto.textContent = "Escolha uma foto da memória ou envie o print. Sem foto real, a arte não é criada.";
       else texto.textContent = "A IA cria a foto. Descreva aqui embaixo e envie.";
     }
 
@@ -4324,7 +4388,8 @@
       naPrevia = false;
       voltouAoChat = false;
       const escolhidas = fotoFluxo && fotoFluxo.tipo === "memoria" ? [fotoFluxo] : fotosEscolhidas.slice();
-      const anexo = fotoFluxo && fotoFluxo.tipo === "anexo" ? fotoFluxo.url : (origemFoto === "anexo" && imagemProjeto ? imagemProjeto : "");
+      const anexoEnviado = selarAnexoChat();
+      const anexo = anexoEnviado || (fotoFluxo && fotoFluxo.tipo === "anexo" ? fotoFluxo.url : (origemFoto === "anexo" && imagemProjeto ? imagemProjeto : ""));
       const fluxoGuardado = fluxoCriar;
       const fotoGuardada = fotoFluxo;
       antesDasOpcoes = {
@@ -4349,7 +4414,7 @@
       gerando = true;
       opcoesArte = [];
       desenharOpcoes();
-      const fala = falar("assistente", "Estou criando 3 artes no tamanho " + nomeFormato(formatoArte) + ". A foto é uma só, para não gastar três vezes.");
+      const fala = falar("assistente", "Estou montando 3 artes. Cada uma tem uma frase e um arranjo diferente.");
       const botao = document.getElementById("enviar-chat");
       const botaoFrase = document.getElementById("ia-frase");
       botao.disabled = true;
@@ -4371,13 +4436,29 @@
         });
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
+        if (dados.precisa_foto) {
+          opcoesArte = [];
+          desenharOpcoes();
+          passoCriar = "origem";
+          fluxoCriar = "arte";
+          modoArte = true;
+          modoImagem = false;
+          fotoFluxo = null;
+          const nota = document.getElementById("nota-fluxo");
+          nota.hidden = false;
+          nota.textContent = dados.precisa_foto;
+          document.getElementById("origem-inteligente").hidden = true;
+          fala.textContent = dados.precisa_foto;
+          return;
+        }
+        document.getElementById("origem-inteligente").hidden = false;
         escreverLegenda(dados.legenda || "");
         opcoesArte = dados.opcoes || [];
         guardarFrases(opcoesArte.map((opcao) => (opcao.plano_arte && opcao.plano_arte.titulo_arte) || ""));
         fotoNoChat = false;
         arteEmCima = false;
         desenharOpcoes();
-        fala.textContent = "Escolha uma das 3, ou clique em Não gostei para voltar ao chat e pedir outra.";
+        fala.textContent = "A foto é a sua. A frase só entra se sobrar faixa vazia. Se nenhuma servir, volte ao chat.";
       } catch (falha) {
         const demorou = falha.name === "TimeoutError" || falha.name === "AbortError";
         fala.textContent = demorou ? "As artes demoraram demais. Tente de novo." : (falha.message || "Não consegui criar as artes agora.");
@@ -4777,51 +4858,44 @@
       }
     }
 
-    function usarIdeia(ideia) {
-      if (!ideia || ideia.tipo === "pergunta" || !String(ideia.pedido || "").trim()) {
-        abrirFicha().then(() => {
-          const campo = document.getElementById("memoria-itens");
-          if (campo) campo.focus();
-        });
-        return;
-      }
-      trabalhoNoHome = true;
-      criarPost(ideia.pedido);
-    }
-
-    function desenharInicio(dados) {
-      const ideias = (dados && dados.ideias) || [];
+    function mostrarCartoesPadrao() {
       const grade = document.getElementById("ideias-estudio");
       const atalhos = document.getElementById("atalhos-estudio");
       const ferramentas = document.getElementById("ferramentas-inicio");
-      const titulo = document.getElementById("titulo-inicio");
       const texto = document.getElementById("texto-inicio");
-      if (!grade || !atalhos) return;
-      grade.innerHTML = "";
+      if (grade) grade.hidden = true;
+      if (atalhos) atalhos.hidden = false;
+      if (ferramentas) ferramentas.hidden = true;
+      if (texto) texto.textContent = "Escreva aqui embaixo o que você quer, ou comece por um atalho.";
+    }
+
+    function atualizarBotaoInicio() {
+      const botao = document.getElementById("ir-inicio");
+      if (!botao) return;
+      const ideias = document.getElementById("ideias-estudio");
+      const ideiasVisiveis = Boolean(ideias && !ideias.hidden);
+      const fora = paginaCriarAberta || prateleiraAberta || filaAberta || trabalhoNoHome;
+      botao.hidden = !ideiasVisiveis && !fora;
+    }
+
+    function irParaInicio() {
+      telaPadrao = true;
+      if (paginaCriarAberta) fecharPaginaCriar(false);
+      else if (rascunhoAtual || opcoesArte.length || fio.querySelector(".balao")) iniciarNovoPost(false);
+      prateleiraAberta = false;
+      filaAberta = false;
+      trabalhoNoHome = false;
+      voltouAoChat = false;
+      mostrarCartoesPadrao();
+      atualizarTopoConversa();
+    }
+
+    function desenharInicio(dados) {
+      const titulo = document.getElementById("titulo-inicio");
       const nome = dados && dados.nome && dados.nome !== "Minha marca" ? dados.nome : "";
-      titulo.textContent = nome ? `O que vamos postar hoje, ${nome}?` : "O que vamos postar hoje?";
-      if (!ideias.length) {
-        grade.hidden = true;
-        atalhos.hidden = false;
-        ferramentas.hidden = true;
-        texto.textContent = "Escreva aqui embaixo o que você quer, ou comece por um atalho.";
-        return;
-      }
-      grade.hidden = false;
-      atalhos.hidden = true;
-      ferramentas.hidden = false;
-      const pergunta = ideias.length === 1 && ideias[0].tipo === "pergunta";
-      texto.textContent = pergunta
-        ? "Sem um produto na memória, a ideia sai genérica. Escreva o que a marca vende."
-        : "Cada ideia usa um item da memória. Clique para montar o post, ou escreva o seu aqui embaixo.";
-      ideias.forEach((ideia) => {
-        const botao = document.createElement("button");
-        botao.type = "button";
-        botao.className = "cartao-atalho cartao-ideia";
-        botao.append(elemento("strong", "", ideia.rotulo || "Ideia"), elemento("small", "", ideia.motivo || ""));
-        botao.addEventListener("click", () => usarIdeia(ideia));
-        grade.append(botao);
-      });
+      if (titulo) titulo.textContent = nome ? `O que vamos postar hoje, ${nome}?` : "O que vamos postar hoje?";
+      mostrarCartoesPadrao();
+      atualizarBotaoInicio();
     }
 
     function desenharResumoDia(dados) {
@@ -5085,6 +5159,7 @@
       document.getElementById("arte-titulo").value = document.getElementById("frase-arte-texto").value.trim();
       document.getElementById("refazer-arte").click();
     });
+    document.getElementById("ir-inicio").addEventListener("click", () => irParaInicio());
     document.getElementById("prateleira-botao").addEventListener("click", () => {
       prateleiraAberta = !prateleiraAberta;
       if (prateleiraAberta) filaAberta = false;
@@ -5226,8 +5301,11 @@
         nota.textContent = video ? "O vídeo precisa ter até 25 MB." : "A foto precisa ter até 8 MB.";
         return;
       }
-      colocarMidiaPrevia(URL.createObjectURL(arquivo), video ? "video" : "foto");
+      const noChat = paginaCriarAberta && foto && !video;
+      if (!noChat) colocarMidiaPrevia(URL.createObjectURL(arquivo), video ? "video" : "foto");
       marcarAnexo(video ? "Enviando o vídeo" : "Enviando a foto");
+      const botaoEnvio = document.getElementById("enviar-chat");
+      if (noChat) botaoEnvio.disabled = true;
       try {
         const form = new FormData();
         form.append("arquivo", arquivo, arquivo.name);
@@ -5235,6 +5313,13 @@
         const resposta = await fetch("/anexo", { method: "POST", body: form });
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
+        if (noChat) {
+          anexoChat = { url: dados.url };
+          mostrarAnexoNoChat(dados.url);
+          marcarAnexo("");
+          campo.value = "";
+          return;
+        }
         if (dados.tipo === "video") {
           videoProjeto = dados.url;
           imagemProjeto = "";
@@ -5249,11 +5334,21 @@
         colocarMidiaPrevia(dados.url, dados.tipo === "video" ? "video" : "foto");
         desenharFaixaMemoria();
       } catch (falha) {
+        if (noChat) {
+          anexoChat = null;
+          const pendente = document.getElementById("anexo-chat");
+          if (pendente) pendente.remove();
+          marcarAnexo("");
+          nota.textContent = falha.message || "Não consegui anexar a foto.";
+          return;
+        }
         imagemProjeto = "";
         videoProjeto = "";
         colocarMidiaPrevia("", "foto");
         marcarAnexo("");
         nota.textContent = falha.message || "Não consegui anexar o arquivo.";
+      } finally {
+        if (noChat) botaoEnvio.disabled = false;
       }
     });
 

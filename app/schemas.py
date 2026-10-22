@@ -99,6 +99,7 @@ class RespostaTresArtes(BaseModel):
     legenda: str
     formato: str
     opcoes: list[OpcaoArtePronta]
+    precisa_foto: str = ""
 
 
 class ItemPrateleira(BaseModel):
@@ -136,6 +137,7 @@ class PedidoSalvarRascunho(BaseModel):
 class PedidoAjuste(BaseModel):
     mensagem: str = Field(min_length=1, max_length=2000)
     fotos_ids: list[int] = Field(default_factory=list, max_length=6)
+    anexo_url: str = Field(default="", max_length=500)
 
 
 class PedidoRestaurar(BaseModel):
