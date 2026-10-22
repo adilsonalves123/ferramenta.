@@ -944,6 +944,13 @@
       overflow: auto;
     }
     .pagina-projetos[hidden] { display: none; }
+    #pagina-criar { display: flex; flex-direction: column; background: var(--fundo); overflow: hidden; }
+    #pagina-criar[hidden] { display: none; }
+    .corpo-criar { flex: 1; min-height: 0; overflow: auto; padding: 28px 28px 36px; }
+    .corpo-criar .assistente-criar, .corpo-criar .mesa-rascunho, .corpo-criar .estudio-tarefa { width: min(880px, 100%); margin: 0 auto; }
+    .corpo-criar form.composer { position: sticky; bottom: 0; width: min(880px, 100%); margin: 18px auto 0; }
+    #pagina-criar #voltar, #pagina-criar .voltar-criar { display: none; }
+    #pagina-criar #tarefa { max-width: 680px; margin: 0 auto; box-shadow: none; }
     .topo-projetos {
       display: flex;
       align-items: center;
@@ -1185,7 +1192,7 @@
                 <div class="origens-criar">
                   <button class="origem-criar" type="button" id="origem-memoria"><i class="fa-solid fa-brain"></i><strong>Escolher na memória</strong><small>Usa uma foto que você já guardou da marca.</small></button>
                   <button class="origem-criar" type="button" id="origem-importar"><i class="fa-solid fa-upload"></i><strong>Importar</strong><small>Envia uma foto do seu computador.</small></button>
-                  <button class="origem-criar" type="button" id="origem-inteligente"><i class="fa-solid fa-wand-magic-sparkles"></i><strong>Criar foto inteligente</strong><small>A IA cria a foto. Você descreve no chat, aqui embaixo.</small></button>
+                  <button class="origem-criar" type="button" id="origem-inteligente"><i class="fa-solid fa-wand-magic-sparkles"></i><strong>Criar foto inteligente</strong><small>A IA cria a foto. Na próxima tela, você descreve o que quer.</small></button>
                 </div>
                 <p class="nota" id="nota-fluxo" hidden></p>
                 <input id="anexo-fluxo" type="file" accept="image/jpeg,image/png,image/webp" hidden />
@@ -1414,6 +1421,14 @@
           <ul class="lista-agenda" id="lista-agenda"></ul>
         </div>
       </aside>
+    </section>
+
+    <section id="pagina-criar" class="pagina-projetos" hidden>
+      <header class="topo-projetos">
+        <button class="voltar" type="button" id="voltar-pagina-criar"><i class="fa-solid fa-arrow-left"></i> Voltar</button>
+        <h1 id="titulo-pagina-criar">Criar arte</h1>
+      </header>
+      <div class="corpo-criar" id="corpo-criar"></div>
     </section>
 
     <section id="pagina-ficha" class="pagina-projetos" hidden>
@@ -1855,9 +1870,7 @@
     });
 
     document.getElementById("voltar").addEventListener("click", () => {
-      tarefa.hidden = true;
-      tarefaAberta = false;
-      atualizarEstudio();
+      fecharPaginaCriar(false);
     });
     document.addEventListener("keydown", (evento) => {
       if (evento.key === "Escape" && !tarefa.hidden) document.getElementById("voltar").click();
@@ -3122,6 +3135,8 @@
     let formatoArte = "feed";
     let passoCriar = "";
     let fluxoCriar = "";
+    let paginaCriarAberta = false;
+    let trabalhoNoHome = false;
     let fotoFluxo = null;
     let formatoAntesFluxo = "feed";
     let opcoesArte = [];
@@ -3426,21 +3441,28 @@
 
     function atualizarEstudio() {
       const temBaloes = Boolean(fio.querySelector(".balao"));
-      const painel = prateleiraAberta || filaAberta;
-      const mesa = !naPrevia && !tarefaAberta && !painel && temConteudoNaMesa() && !fotoNoChat;
+      const painel = (prateleiraAberta || filaAberta) && !paginaCriarAberta;
+      const noPagina = paginaCriarAberta;
+      const noHomeTrabalho = trabalhoNoHome && !noPagina;
+      const mesa = !naPrevia && !tarefaAberta && !painel && temConteudoNaMesa() && !fotoNoChat && (noPagina || noHomeTrabalho);
       document.getElementById("mesa-rascunho").hidden = !mesa;
-      document.getElementById("prateleira").hidden = !prateleiraAberta || tarefaAberta;
-      document.getElementById("fila").hidden = !filaAberta || tarefaAberta;
-      const wizard = Boolean(passoCriar) && !tarefaAberta && !painel && !mesa && !fotoNoChat;
-      document.getElementById("vazio-estudio").hidden = tarefaAberta || mesa || fotoNoChat || painel || (temBaloes && !wizard);
-      document.getElementById("inicio-estudio").hidden = Boolean(passoCriar);
-      document.getElementById("assistente-criar").hidden = !passoCriar;
+      document.getElementById("prateleira").hidden = !prateleiraAberta || tarefaAberta || noPagina;
+      document.getElementById("fila").hidden = !filaAberta || tarefaAberta || noPagina;
+      const wizard = noPagina && Boolean(passoCriar) && !tarefaAberta && !mesa && !fotoNoChat;
+      document.getElementById("vazio-estudio").hidden = noPagina || tarefaAberta || painel || noHomeTrabalho;
+      document.getElementById("inicio-estudio").hidden = noPagina || noHomeTrabalho;
+      document.getElementById("assistente-criar").hidden = !wizard;
       desenharAssistente();
-      document.getElementById("estudio-tarefa").hidden = !tarefaAberta;
-      fio.hidden = tarefaAberta || painel || wizard || (!mesa && !temBaloes && !fotoNoChat);
+      document.getElementById("estudio-tarefa").hidden = !(tarefaAberta && noPagina);
+      fio.hidden = noPagina
+        ? !(fotoNoChat || (temBaloes && !mesa && !wizard && !tarefaAberta))
+        : !(noHomeTrabalho && !painel && (temBaloes || fotoNoChat));
       document.getElementById("area-estudio").classList.remove("com-mesa");
-      document.getElementById("composer").hidden = tarefaAberta || painel;
-      document.getElementById("novo-post").hidden = !(mesa || temBaloes || fotoNoChat) || wizard || painel;
+      const precisaDigitar = noPagina && !tarefaAberta && !mesa && (passoCriar === "pronto" || fotoNoChat || arteEmCima);
+      document.getElementById("composer").hidden = painel || tarefaAberta || (noPagina ? !precisaDigitar : false);
+      document.getElementById("novo-post").hidden = noPagina
+        ? wizard || !(mesa || temBaloes || fotoNoChat)
+        : !(noHomeTrabalho && (mesa || temBaloes || fotoNoChat));
       desenharFotoNoChat();
       document.getElementById("aprovar-texto").textContent = rascunhoAtual && rascunhoAtual.agendamento_id ? "Salvar no post da fila" : "Aprovar";
       document.querySelector(".acoes-mesa").hidden = Boolean(opcoesArte.length);
@@ -3448,7 +3470,61 @@
       document.getElementById("previa").hidden = Boolean(opcoesArte.length);
     }
 
+    function abrirPaginaCriar(titulo) {
+      const corpo = document.getElementById("corpo-criar");
+      ["assistente-criar", "estudio-tarefa", "mesa-rascunho", "fio", "composer"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el && el.parentElement !== corpo) corpo.append(el);
+      });
+      document.getElementById("titulo-pagina-criar").textContent = titulo;
+      paginaCriarAberta = true;
+      trabalhoNoHome = false;
+      prateleiraAberta = false;
+      filaAberta = false;
+      document.getElementById("menu").hidden = true;
+      document.getElementById("pagina-criar").hidden = false;
+      window.scrollTo(0, 0);
+    }
+
+    function fecharPaginaCriar(manterTrabalho) {
+      const vazio = document.getElementById("vazio-estudio");
+      const area = document.getElementById("area-estudio");
+      const conversa = document.querySelector("section.conversa");
+      const assistente = document.getElementById("assistente-criar");
+      const tarefaCaixa = document.getElementById("estudio-tarefa");
+      const mesa = document.getElementById("mesa-rascunho");
+      const prateleira = document.getElementById("prateleira");
+      if (assistente.parentElement !== vazio) vazio.append(assistente);
+      if (tarefaCaixa.parentElement !== area) area.insertBefore(tarefaCaixa, prateleira);
+      if (mesa.parentElement !== area) area.append(mesa);
+      if (fio.parentElement !== area) area.append(fio);
+      const composer = document.getElementById("composer");
+      if (composer.parentElement !== conversa) conversa.append(composer);
+      paginaCriarAberta = false;
+      document.getElementById("pagina-criar").hidden = true;
+      document.getElementById("menu").hidden = false;
+      if (!manterTrabalho && rascunhoAtual && !naPrevia) {
+        const plano = rascunhoAtual.plano_arte || {};
+        const temArte = Boolean(plano.feed_url || plano.story_url || rascunhoAtual.feed_url || rascunhoAtual.story_url);
+        fecharRascunhoNoServidor(rascunhoAtual, temArte);
+        limparPrevia();
+        return;
+      }
+      passoCriar = "";
+      fluxoCriar = "";
+      fotoFluxo = null;
+      modoImagem = false;
+      modoArte = false;
+      if (tarefaAberta) {
+        tarefa.hidden = true;
+        tarefaAberta = false;
+      }
+      atualizarTopoConversa();
+    }
+
     function usarAtalho(qual) {
+      const nomes = { imagem: "Criar foto", arte: "Criar arte", texto: "Anúncio", foto: "Foto" };
+      abrirPaginaCriar(nomes[qual] || "Estúdio");
       if (qual === "imagem" || qual === "arte") {
         if (rascunhoAtual) iniciarNovoPost(true);
         formatoAntesFluxo = formatoAgenda;
@@ -3552,6 +3628,7 @@
         naPrevia = true;
         desenharAprovado();
         falar("assistente", "Aprovado. O post saiu do estúdio e está na Prévia. Escreva o título e a legenda lá. Depois é só Publicar agora ou Agendar.");
+        if (paginaCriarAberta) fecharPaginaCriar(true);
         document.getElementById("previa-aprovada").scrollIntoView({ behavior: "smooth", block: "nearest" });
       } catch (falha) {
         nota.textContent = falha.message || "Não consegui aprovar agora.";
@@ -3585,6 +3662,13 @@
         titulo.textContent = "Fila";
       } else if (prateleiraAberta) {
         titulo.textContent = "Prateleira";
+      } else if (!paginaCriarAberta) {
+        titulo.textContent = "Estúdio";
+        enviarChat.textContent = "Gerar";
+        pedidoCampo.placeholder = "Descreva a publicação. Ex.: promoção de terça para os clientes";
+        document.getElementById("ia-frase").hidden = true;
+        atualizarEstudio();
+        return;
       } else if (arteEmCima) {
         modoArte = true;
         modoImagem = false;
@@ -3625,6 +3709,11 @@
         pedidoCampo.placeholder = "Descreva a publicação. Ex.: promoção de terça para os clientes";
       }
       document.getElementById("ia-frase").hidden = !(arteEmCima || (passoCriar === "pronto" && fluxoCriar === "arte" && fotoFluxo));
+      if (paginaCriarAberta && !tarefaAberta) {
+        const tituloPagina = document.getElementById("titulo-pagina-criar");
+        if (fluxoCriar === "foto" || modoImagem || (fotoNoChat && !arteEmCima)) tituloPagina.textContent = "Criar foto";
+        else if (fluxoCriar === "arte" || modoArte || arteEmCima || (rascunhoAtual && rascunhoAtual.plano_arte)) tituloPagina.textContent = "Criar arte";
+      }
       atualizarEstudio();
     }
 
@@ -3781,7 +3870,11 @@
         const resposta = await fetch("/rascunho/atual?marca_id=" + marcaId);
         const dados = await lerResposta(resposta);
         if (numero !== pedidoRascunho || !resposta.ok || (marcaAtual.id || 0) !== marcaId) return;
-        if (dados.rascunho) aplicarRascunho(dados.rascunho);
+        if (dados.rascunho) {
+          const plano = dados.rascunho.plano_arte || {};
+          const temArte = Boolean(plano.feed_url || plano.story_url || dados.rascunho.feed_url || dados.rascunho.story_url);
+          fecharRascunhoNoServidor(dados.rascunho, temArte);
+        }
       } catch { /* sem rascunho guardado: a prévia começa vazia */ }
     }
 
@@ -3855,10 +3948,10 @@
       }
       const texto = document.getElementById("texto-pronto");
       if (!texto) return;
-      if (fotoFluxo && fluxoCriar === "arte") texto.textContent = "Foto escolhida. No chat aqui embaixo, diga a frase e o que a arte deve dizer, e envie.";
-      else if (fotoFluxo) texto.textContent = "Foto escolhida. No chat aqui embaixo, diga o ajuste que quer, ou escreva: pode ficar como está.";
-      else if (fluxoCriar === "arte") texto.textContent = "A IA cria a foto e três artes. Descreva no chat aqui embaixo e envie.";
-      else texto.textContent = "A IA cria a foto. Descreva no chat aqui embaixo e envie.";
+      if (fotoFluxo && fluxoCriar === "arte") texto.textContent = "Foto escolhida. Escreva a frase aqui embaixo e envie. Se não quiser inventar, a IA cria a frase.";
+      else if (fotoFluxo) texto.textContent = "Foto escolhida. Escreva aqui embaixo o ajuste que quer, ou: pode ficar como está.";
+      else if (fluxoCriar === "arte") texto.textContent = "A IA cria a foto e três artes. Descreva aqui embaixo e envie.";
+      else texto.textContent = "A IA cria a foto. Descreva aqui embaixo e envie.";
     }
 
     function irParaPronto() {
@@ -3912,6 +4005,11 @@
       const textoPedido = pedidoCampo.value.trim();
       if (passoCriar && passoCriar !== "pronto") return;
       if (textoPedido.length < 2) return;
+      if (!paginaCriarAberta) {
+        trabalhoNoHome = true;
+        criarPost(textoPedido);
+        return;
+      }
       if (arteEmCima) criarArte(textoPedido);
       else if (rascunhoAtual) ajustarRascunho(textoPedido);
       else if (modoArte) criarArte(textoPedido);
@@ -4240,6 +4338,7 @@
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         prateleiraAberta = false;
+        abrirPaginaCriar("Criar arte");
         aplicarRascunho(dados.rascunho);
       } catch (falha) {
         vista.hidden = false;
@@ -4593,13 +4692,25 @@
       botao.addEventListener("click", () => usarAtalho(botao.dataset.atalho));
     });
     document.getElementById("voltar-tamanhos").addEventListener("click", () => {
-      passoCriar = "";
-      fluxoCriar = "";
-      fotoFluxo = null;
-      modoImagem = false;
-      modoArte = false;
       marcarFormato(formatoAntesFluxo);
-      atualizarTopoConversa();
+      fecharPaginaCriar(false);
+    });
+    document.getElementById("voltar-pagina-criar").addEventListener("click", () => {
+      if (passoCriar === "origem") {
+        passoCriar = "tamanho";
+        atualizarTopoConversa();
+        return;
+      }
+      if (passoCriar === "memoria" || passoCriar === "pronto") {
+        fotoFluxo = null;
+        passoCriar = "origem";
+        modoImagem = false;
+        modoArte = false;
+        atualizarTopoConversa();
+        return;
+      }
+      marcarFormato(formatoAntesFluxo);
+      fecharPaginaCriar(false);
     });
     document.getElementById("voltar-origem").addEventListener("click", () => {
       passoCriar = "tamanho";
