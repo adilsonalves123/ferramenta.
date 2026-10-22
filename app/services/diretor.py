@@ -683,6 +683,13 @@ async def desenhar_um(
     }
 
     def desenhar():
+        caixa = plano.get("recorte_caixa")
+        if isinstance(caixa, (list, tuple)) and len(caixa) == 4:
+            assunto = tuple(float(valor) for valor in caixa)
+        elif plano.get("modelo") == "tela_limpa":
+            assunto = (0.0, 0.0, 1.0, 1.0)
+        else:
+            assunto = recortes.get(str(plano.get("recorte") or ""))
         return molde.compor(
             arte.abrir(base),
             plano["modelo"],
@@ -690,7 +697,7 @@ async def desenhar_um(
             ident,
             alvo,
             bool(plano.get("tela_app")),
-            assunto=recortes.get(str(plano.get("recorte") or "")),
+            assunto=assunto,
         )
 
     imagem = await asyncio.to_thread(desenhar)

@@ -188,6 +188,9 @@
     #mini-fluxo[hidden] { display: none !important; }
     button.cartao-atalho strong { margin-top: 4px; font-size: 14.5px; }
     button.cartao-atalho small { color: var(--mudo); font-size: 12px; line-height: 1.4; }
+    button.cartao-ideia { min-height: 92px; justify-content: center; padding: 16px; }
+    button.cartao-ideia strong { margin-top: 0; }
+    .ferramentas-inicio { justify-content: center; margin-top: 14px; }
     .estudio-tarefa { overflow: auto; }
     .estudio-tarefa #tarefa { margin: 12px auto 24px; }
     .mesa-rascunho { min-height: 0; overflow: auto; padding-bottom: 8px; display: flex; flex-direction: column; gap: 16px; container-type: inline-size; }
@@ -215,6 +218,10 @@
     .mesa-rascunho .post.modo-story #foto-previa { aspect-ratio: 9 / 16; }
     .mesa-rascunho .post.modo-facebook #foto-previa { aspect-ratio: 1 / 1; }
     .mesa-rascunho #foto-previa.vazio-foto {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       object-fit: unset;
       color: var(--mudo);
       gap: 4px;
@@ -265,6 +272,10 @@
     }
     .painel-rascunho .acoes-mesa .secundario:hover { background: #fff1f2; }
     .painel-rascunho .nota { margin: 0; }
+    .mesa-rascunho .faixa-memoria,
+    .mesa-rascunho .versoes-rascunho,
+    .mesa-rascunho button.criar-foto,
+    .mesa-rascunho details.detalhes-arte { margin-top: 12px; }
     @container (max-width: 740px) {
       .mesa-grade { grid-template-columns: 1fr; }
       .mesa-cabeca { align-items: flex-start; flex-wrap: wrap; }
@@ -1221,9 +1232,10 @@
         <div class="area-estudio" id="area-estudio">
           <div class="vazio-estudio" id="vazio-estudio">
             <div id="inicio-estudio">
-            <h2>O que vamos postar hoje?</h2>
-            <p>Escreva aqui embaixo o que você quer, ou comece por um atalho.</p>
-            <div class="atalhos-estudio">
+            <h2 id="titulo-inicio">O que vamos postar hoje?</h2>
+            <p id="texto-inicio">Escreva aqui embaixo o que você quer, ou comece por uma ideia da marca.</p>
+            <div class="atalhos-estudio" id="ideias-estudio" hidden></div>
+            <div class="atalhos-estudio" id="atalhos-estudio">
               <button class="cartao-atalho" type="button" data-atalho="imagem">
                 <img class="capa-atalho" src="/quadros/criar-foto.jpg?v=2" alt="" />
                 <strong>Criar foto</strong>
@@ -1244,6 +1256,12 @@
                 <strong>Foto</strong>
                 <small>Cole o link do seu site: a foto usa a imagem da página, e a IA escreve a legenda.</small>
               </button>
+            </div>
+            <div class="atalhos em-linha ferramentas-inicio" id="ferramentas-inicio" hidden>
+              <button class="chip" type="button" data-atalho="imagem">Criar foto</button>
+              <button class="chip" type="button" data-atalho="arte">Criar arte</button>
+              <button class="chip" type="button" data-atalho="texto">Anúncio</button>
+              <button class="chip" type="button" data-atalho="foto">Foto</button>
             </div>
             </div>
             <div class="assistente-criar" id="assistente-criar" hidden>
@@ -1301,14 +1319,22 @@
             <div id="fila-dias"></div>
           </div>
           <div class="mesa-rascunho" id="mesa-rascunho" hidden>
-            <div class="previa-topo">
-              <p class="secao">Rascunho · <span class="canal-nome" id="canal-previa">Feed</span></p>
-              <button class="link-mini" type="button" id="ver-outro" hidden>Ver Story</button>
-            </div>
+            <header class="mesa-cabeca">
+              <div>
+                <h2>Rascunho</h2>
+                <p class="apoio">Revise a imagem e ajuste a legenda antes de aprovar.</p>
+              </div>
+              <div class="mesa-meta">
+                <span class="estado-rascunho" id="estado-rascunho">Pronto para revisar</span>
+                <span class="selo-canal" id="canal-previa">Feed</span>
+                <button class="link-mini" type="button" id="ver-outro" hidden>Ver Story</button>
+              </div>
+            </header>
+            <div class="mesa-grade">
             <div class="cartao-previa">
               <div class="opcoes-arte" id="opcoes-arte" hidden></div>
               <div class="post" id="previa">
-                <div class="vazio-foto" id="foto-previa"><i class="fa-regular fa-image"></i><span>A imagem aparece aqui</span></div>
+                <div class="vazio-foto" id="foto-previa"><span class="vazio-anel"><i class="fa-regular fa-image"></i></span><strong>A imagem aparece aqui</strong><span>Ela entra neste quadro quando o post ficar pronto.</span></div>
                 <div class="faixa-memoria" id="faixa-memoria" hidden>
                   <img id="faixa-memoria-foto" alt="Foto da memória escolhida" />
                   <span id="faixa-memoria-texto">Foto da Memória da marca</span>
@@ -1322,11 +1348,6 @@
                     <button class="secundario" type="button" id="voltar-versao">Voltar para esta</button>
                   </div>
                   <p class="nota" id="nota-versoes" hidden></p>
-                </div>
-                <textarea class="legenda" id="legenda-previa" rows="3" aria-label="Legenda do post" placeholder="A legenda aparece aqui. Você pode escrever ou mudar o texto aqui mesmo."></textarea>
-                <div class="frase-arte" id="frase-arte" hidden>
-                  <label>Frase da arte<input id="frase-arte-texto" maxlength="60" /></label>
-                  <button class="secundario" type="button" id="frase-arte-atualizar">Atualizar na arte</button>
                 </div>
                 <button class="criar-foto" type="button" id="criar-foto"><i class="fa-solid fa-wand-magic-sparkles"></i><span id="criar-foto-texto">Criar foto com IA</span></button>
                 <p class="nota" id="nota-foto" hidden></p>
@@ -1383,11 +1404,22 @@
                 </details>
               </div>
             </div>
-            <div class="acoes-mesa">
-              <button class="principal" type="button" id="aprovar"><i class="fa-solid fa-check"></i> <span id="aprovar-texto">Aprovar</span></button>
-              <button class="secundario" type="button" id="descartar">Descartar</button>
+            <aside class="painel-rascunho">
+              <label class="campo-legenda">
+                <span class="campo-rotulo"><span>Legenda</span><span id="conta-legenda">0 caracteres</span></span>
+                <textarea class="legenda" id="legenda-previa" rows="8" aria-label="Legenda do post" placeholder="Escreva ou ajuste a legenda aqui."></textarea>
+              </label>
+              <div class="frase-arte" id="frase-arte" hidden>
+                <label>Frase da arte<input id="frase-arte-texto" maxlength="60" /></label>
+                <button class="secundario" type="button" id="frase-arte-atualizar">Atualizar na arte</button>
+              </div>
+              <div class="acoes-mesa">
+                <button class="principal" type="button" id="aprovar"><i class="fa-solid fa-check"></i> <span id="aprovar-texto">Aprovar</span></button>
+                <button class="secundario" type="button" id="descartar"><i class="fa-regular fa-trash-can"></i> Descartar</button>
+              </div>
+              <p class="nota" id="nota-mesa" hidden></p>
+            </aside>
             </div>
-            <p class="nota" id="nota-mesa" hidden></p>
           </div>
           <div class="fio" id="fio" hidden></div>
         </div>
@@ -2871,10 +2903,10 @@
       if (!url) {
         const vazio = document.createElement("div");
         vazio.id = "foto-previa";
-        vazio.className = "vazio-foto";
+        vazio.className = gerando ? "vazio-foto gerando" : "vazio-foto";
         vazio.innerHTML = gerando
-          ? '<span class="spinner"></span><span>Criando o post...</span>'
-          : '<i class="fa-regular fa-image"></i><span>A imagem aparece aqui</span>';
+          ? '<span class="vazio-anel"><span class="spinner"></span></span><strong>Criando o post</strong><span>A imagem entra neste quadro em instantes.</span>'
+          : '<span class="vazio-anel"><i class="fa-regular fa-image"></i></span><strong>A imagem aparece aqui</strong><span>Ela entra neste quadro quando o post ficar pronto.</span>';
         lugar.replaceWith(vazio);
         mostrarBotaoFoto();
         atualizarEstudio();
@@ -2911,6 +2943,7 @@
       poster: "Pôster",
       minimal: "Minimalista",
       livre: "Só a imagem",
+      tela_limpa: "Tela",
     };
     const ANGULOS_ARTE = {
       recurso: "O que está na foto",
@@ -3232,8 +3265,11 @@
 
     function ajustarLegenda() {
       const campo = document.getElementById("legenda-previa");
-      campo.style.height = "auto";
-      campo.style.height = campo.scrollHeight + "px";
+      const conta = document.getElementById("conta-legenda");
+      if (!campo || !conta) return;
+      const n = campo.value.length;
+      conta.textContent = n === 1 ? "1 caractere" : n + " caracteres";
+      conta.classList.toggle("longa", n > 2200);
     }
 
     function escreverLegenda(valor) {
@@ -3590,6 +3626,14 @@
       document.querySelector(".acoes-mesa").hidden = Boolean(opcoesArte.length);
       document.getElementById("aprovar").hidden = Boolean(opcoesArte.length);
       document.getElementById("previa").hidden = Boolean(opcoesArte.length);
+      pintarEstadoRascunho();
+    }
+
+    function pintarEstadoRascunho() {
+      const selo = document.getElementById("estado-rascunho");
+      if (!selo) return;
+      selo.classList.toggle("gerando", gerando);
+      selo.textContent = gerando ? "Gerando" : "Pronto para revisar";
     }
 
     function abrirPaginaCriar(titulo) {
@@ -4714,8 +4758,56 @@
       }
     }
 
+    function usarIdeia(ideia) {
+      if (!ideia || ideia.tipo === "pergunta" || !String(ideia.pedido || "").trim()) {
+        abrirFicha().then(() => {
+          const campo = document.getElementById("memoria-itens");
+          if (campo) campo.focus();
+        });
+        return;
+      }
+      trabalhoNoHome = true;
+      criarPost(ideia.pedido);
+    }
+
+    function desenharInicio(dados) {
+      const ideias = (dados && dados.ideias) || [];
+      const grade = document.getElementById("ideias-estudio");
+      const atalhos = document.getElementById("atalhos-estudio");
+      const ferramentas = document.getElementById("ferramentas-inicio");
+      const titulo = document.getElementById("titulo-inicio");
+      const texto = document.getElementById("texto-inicio");
+      if (!grade || !atalhos) return;
+      grade.innerHTML = "";
+      const nome = dados && dados.nome && dados.nome !== "Minha marca" ? dados.nome : "";
+      titulo.textContent = nome ? `O que vamos postar hoje, ${nome}?` : "O que vamos postar hoje?";
+      if (!ideias.length) {
+        grade.hidden = true;
+        atalhos.hidden = false;
+        ferramentas.hidden = true;
+        texto.textContent = "Escreva aqui embaixo o que você quer, ou comece por um atalho.";
+        return;
+      }
+      grade.hidden = false;
+      atalhos.hidden = true;
+      ferramentas.hidden = false;
+      const pergunta = ideias.length === 1 && ideias[0].tipo === "pergunta";
+      texto.textContent = pergunta
+        ? "Sem um produto na memória, a ideia sai genérica. Escreva o que a marca vende."
+        : "Cada ideia usa um item da memória. Clique para montar o post, ou escreva o seu aqui embaixo.";
+      ideias.forEach((ideia) => {
+        const botao = document.createElement("button");
+        botao.type = "button";
+        botao.className = "cartao-atalho cartao-ideia";
+        botao.append(elemento("strong", "", ideia.rotulo || "Ideia"), elemento("small", "", ideia.motivo || ""));
+        botao.addEventListener("click", () => usarIdeia(ideia));
+        grade.append(botao);
+      });
+    }
+
     function desenharResumoDia(dados) {
       resumoAtual = dados;
+      desenharInicio(dados);
       const erros = dados.erros || [];
       const alerta = document.getElementById("alerta-falha");
       alerta.hidden = !erros.length;

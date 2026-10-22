@@ -879,12 +879,30 @@ def moldes_da_rodada(marca: Ficha | None, giro: int, e_tela: bool) -> tuple[str,
     return base[giro:] + base[:giro]
 
 
-def _aplicar_tres(opcoes: list[dict], marca: Ficha | None, giro: int, e_tela: bool) -> list[dict]:
+def _aplicar_tres(opcoes: list[dict], marca: Ficha | None, giro: int, e_tela: bool, leitura=None) -> list[dict]:
     moldes = moldes_da_rodada(marca, giro, e_tela)
     posicoes = ("base", "topo", "auto")
     trio = TRIOS_TELA[giro % len(TRIOS_TELA)]
+    faixa = leitura.quieta if leitura is not None and leitura.quieta in ("topo", "base") else ""
+    if leitura is not None:
+        segundo = leitura.botao if leitura.botao[3] > leitura.botao[1] else leitura.lista
+        if segundo[3] <= segundo[1]:
+            segundo = (0.06, 0.62, 0.94, 0.9)
+        alvos = (leitura.numero, segundo, (0.0, 0.0, 1.0, 1.0))
+    else:
+        alvos = ()
     for indice, plano in enumerate(opcoes):
-        if e_tela:
+        if leitura is not None:
+            plano["modelo"] = "tela_limpa"
+            plano["posicao_texto"] = faixa or "fixo"
+            plano["recorte_caixa"] = [float(valor) for valor in alvos[indice % 3]]
+            plano["chamada"] = ""
+            plano["subtitulo_arte"] = ""
+            plano["tela_app"] = False
+            plano["edicao_foto"] = diretor.NENHUMA
+            titulo = " ".join(str(plano.get("titulo_arte") or "").split()[:4])
+            plano["titulo_arte"] = titulo if faixa else ""
+        elif e_tela:
             modelo, posicao, recorte = trio[indice % 3]
             plano["modelo"] = modelo
             plano["posicao_texto"] = posicao
@@ -1012,6 +1030,16 @@ async def criar_tres_artes(
             "A pessoa anexou uma foto própria. foto_base_id = null e edicao_foto = nenhuma. "
             "A foto está anexada: leia o que aparece nela antes de escrever."
         )
+    leitura = None
+    if foto_lida:
+        from app.services.leitura_tela import ler_tela_bytes
+
+        try:
+            leitura = await asyncio.to_thread(ler_tela_bytes, foto_lida)
+        except Exception:
+            leitura = None
+        if leitura is not None and (leitura.e_tela or any(e_captura(foto) for foto in escolhidas)):
+            partes.append(leitura.texto())
 
     async def pedir(extra: str = ""):
         usuario = "\n\n".join(partes)
@@ -1074,7 +1102,8 @@ async def criar_tres_artes(
     if escolhidas:
         base_comum["foto_base_id"] = escolhidas[0].id
         base_comum["edicao_foto"] = diretor.NENHUMA
-    e_tela = bool(pacote.e_tela) or any(e_captura(foto) for foto in escolhidas)
+    e_tela = bool(pacote.e_tela) or any(e_captura(foto) for foto in escolhidas) or (leitura is not None and leitura.e_tela)
+    usar_leitura = leitura if leitura is not None and (leitura.e_tela or any(e_captura(foto) for foto in escolhidas)) else None
     planos = []
     for indice, opcao in enumerate(opcoes):
         bruto = {**base_comum, **opcao.model_dump()}
@@ -1087,7 +1116,7 @@ async def criar_tres_artes(
         planos.append(copia)
     for plano in planos:
         diretor._coerencia(plano)
-    planos = _aplicar_tres(planos[:3], marca, len(ja) // 3, e_tela)
+    planos = _aplicar_tres(planos[:3], marca, len(ja) // 3, e_tela, usar_leitura)
 
     if escolhidas:
         dados = escolhidas[0].arquivo

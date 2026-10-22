@@ -37,6 +37,7 @@ MODELOS = (
     "poster",
     "minimal",
     "livre",
+    "tela_limpa",
 )
 NOMES_MODELOS = {
     "faixa": "Faixa",
@@ -52,6 +53,7 @@ NOMES_MODELOS = {
     "poster": "Pôster",
     "minimal": "Minimalista",
     "livre": "Só a imagem",
+    "tela_limpa": "Tela",
 }
 # (cor de ênfase, cor de apoio escura). "marca" usa as cores da marca; "livre" usa a cor que a pessoa pediu.
 PALETAS = {
@@ -1523,6 +1525,38 @@ def _layout_livre(ident, textos, formato, _pos):
     return [logo], desenhar
 
 
+def _layout_tela_limpa(ident, textos, formato, pos):
+    """Uma linha na faixa livre e o resto da tela do produto à mostra."""
+    largura, altura, topo, base = _area(formato)
+    titulo = None
+    if pos in ("topo", "base") and textos.titulo.strip():
+        titulo = ajustar(textos.titulo, "forte", largura - 2 * MARGEM - 220, 150, 58, 34, 2, 1.02)
+    bloco = (titulo.altura + 36) if titulo else 0
+    if pos == "topo" and titulo:
+        y_texto = topo + (28 if formato == "feed" else 36)
+        ocupados = [(0, 0, largura, y_texto + bloco + 20)]
+        ancora = (largura - MARGEM, y_texto, "topo")
+    elif pos == "base" and titulo:
+        y_texto = base - (28 if formato == "feed" else 36) - titulo.altura
+        ocupados = [(0, y_texto - 20, largura, altura)]
+        ancora = (largura - MARGEM, y_texto, "topo")
+    else:
+        y_texto = 0
+        ocupados = []
+        ancora = (largura - MARGEM, base - (MARGEM if formato == "feed" else 16), "base")
+    logo = caixa_assinatura(ident, ancora[0], ancora[1], "direita", ancora[2], 52, 160, largura)
+    ocupados.append(logo)
+
+    def desenhar(tela):
+        if titulo and pos in ("topo", "base"):
+            amostra = tela.crop((0, max(0, round(y_texto)), largura, min(altura, round(y_texto + max(titulo.altura, 1))))).convert("RGB")
+            cor = BRANCO if amostra.width < 1 or amostra.height < 1 else tinta(amostra.resize((1, 1)).getpixel((0, 0))[:3])
+            texto_com_sombra(tela, titulo, MARGEM, y_texto, cor, raio=8, opacidade=0.4)
+        assinar(tela, ident, ancora[0], ancora[1], "direita", ancora[2], 52, 160)
+
+    return ocupados, desenhar
+
+
 LAYOUTS = {
     "faixa": (_layout_faixa, ("topo", "base")),
     "selo": (_layout_selo, ("base", "topo")),
@@ -1535,6 +1569,7 @@ LAYOUTS = {
     "poster": (_layout_poster, ("topo", "base")),
     "minimal": (_layout_minimal, ("base", "topo")),
     "livre": (_layout_livre, ("fixo",)),
+    "tela_limpa": (_layout_tela_limpa, ("topo", "base", "fixo")),
 }
 
 
@@ -1596,7 +1631,7 @@ def compor(
     modelo = modelo if modelo in MODELOS else "destaque"
     if modelo == "selo" and not textos.selo.strip():
         modelo = "destaque"
-    if not textos.titulo.strip() and modelo != "livre":
+    if not textos.titulo.strip() and modelo not in ("livre", "tela_limpa"):
         textos = Textos(**{**textos.__dict__, "titulo": textos.chamada or ident.assinatura or " "})
     foto = foto.convert("RGB")
     if textos.camadas:

@@ -176,6 +176,33 @@ class ContextoMemoria:
         return REGRAS_MEMORIA + CAMPO_GANCHO if self.tem_memoria else CAMPOS_SEM_MEMORIA
 
 
+def nomes_de_item(ficha: Ficha | None) -> list[str]:
+    """Nomes curtos escritos pelo dono. A ideia do dia cita um destes, ou pergunta."""
+    fatos = ler_fatos(ficha)
+    nomes: list[str] = []
+    vistos: set[str] = set()
+
+    def guardar(texto: str) -> None:
+        for linha in re.split(r"[\n;]+", texto or ""):
+            nome = re.split(r"\s+[—–\-]\s+|\s+\(", linha.strip(), maxsplit=1)[0].strip(" .•")
+            chave = _sem_acento(nome.lower())
+            if len(nome) < 2 or len(nome) > 48 or chave in vistos:
+                continue
+            vistos.add(chave)
+            nomes.append(nome)
+            if len(nomes) == 6:
+                return
+
+    guardar(fatos.get("itens") or "")
+    if len(nomes) < 6:
+        guardar(fatos.get("promocoes") or "")
+    if not nomes:
+        oferta = re.split(r"[.\n,;]", fatos.get("oferta") or "", maxsplit=1)[0].strip(" .")
+        if 2 <= len(oferta) <= 48:
+            nomes.append(oferta)
+    return nomes
+
+
 def ler_fatos(ficha: Ficha | None) -> dict[str, str]:
     vazio = {chave: "" for chave, _rotulo in CAMPOS_FATOS}
     if ficha is None or not (ficha.memoria or "").strip():

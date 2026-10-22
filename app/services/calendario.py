@@ -522,32 +522,12 @@ def chave_perfil(perfil: Perfil) -> str:
 
 
 ROTULO_TIPO = {"feriado": "Feriado", "data": "Data", "cidade": "Cidade"}
-ANGULO = {
-    ("calor", "fornecedor"): "dica para os clientes da marca se prepararem para o calor e o movimento diferente, mostrando como a marca ajuda",
-    ("calor", "geral"): "algo refrescante ligado ao que a marca faz",
-    ("frio", "fornecedor"): "dica para os clientes da marca aproveitarem o dia frio, mostrando como a marca ajuda",
-    ("frio", "casa"): "algo quentinho do que a casa oferece e ambiente aconchegante",
-    ("frio", "geral"): "aconchego para o dia frio",
-    ("chuva", "fornecedor"): "dica para os clientes da marca manterem o movimento num dia de chuva, sem prometer resultado",
-    ("chuva", "delivery"): "chamar para pedir no delivery e ficar em casa",
-    ("chuva", "casa"): "ambiente aconchegante, um bom lugar para esperar a chuva passar",
-    ("chuva", "geral"): "conforto e aconchego no dia de chuva",
-    ("feriado", "fornecedor"): "dica para os clientes da marca se organizarem para o feriado (equipe, horário, atendimento)",
-    ("feriado", "casa"): "avisar se a casa abre ou fecha no feriado; deixe [horário] para o dono completar",
-    ("feriado", "geral"): "avisar se a marca atende no feriado; deixe [horário] para o dono completar",
-    ("data", "fornecedor"): "ideia para os clientes da marca aproveitarem a data, mostrando como a marca ajuda",
-    ("data", "casa"): "como a casa entra no clima da data, com um produto real da memória da marca",
-}
-
-
-def angulo(assunto: str, perfil: Perfil) -> str:
-    chave = chave_perfil(perfil)
-    if assunto == "chuva" and perfil.delivery and chave != "fornecedor":
-        chave = "delivery"
-    if assunto == "calor" and chave == "casa":
-        bebida = perfil.bebida.lower() if perfil.bebida else "algo gelado"
-        return f"{bebida} ou algo refrescante do que a casa oferece para enfrentar o calor"
-    return ANGULO.get((assunto, chave), "")
+def angulo(assunto: str, perfil: Perfil, item: str = "") -> str:
+    """O post cita um item da memória. Sem item, a sugestão pede o nome em vez de inventar."""
+    del assunto, perfil
+    if item.strip():
+        return f"Cite este item da memória pelo nome: {item.strip()}."
+    return "Não invente produto. Pergunte qual item da marca entra neste post."
 
 
 def frase_clima(dia: DiaClima, sinal: str, onde: str) -> str:
@@ -563,11 +543,15 @@ def frase_clima(dia: DiaClima, sinal: str, onde: str) -> str:
 def montar_sugestoes(
     marca: Ficha, eventos: list[Evento], clima: list[DiaClima], hoje: date, hora: int = 0
 ) -> list[dict]:
+    from app.services.memoria import nomes_de_item
+
     ultimo = hoje + timedelta(days=JANELA - 1)
     onde = _onde(marca)
     perfil = perfil_da_marca(marca)
     aviso = aviso_da_marca(perfil)
+    nomes = nomes_de_item(marca)
     itens: list[dict] = []
+    ordem = 0
 
     def adicionar(dia: date, tipo: str, titulo: str, detalhe: str, evento: date) -> None:
         if hoje <= dia <= ultimo:
@@ -586,7 +570,9 @@ def montar_sugestoes(
         titulo = f"{ROTULO_TIPO[evento.tipo]} · {evento.nome} · {_dm(evento.data)}"
         semana_evento = SEMANA[evento.data.weekday()]
         base = f"{nome_tipo}: {evento.nome}{_onde(marca, evento.tipo, evento.nome)}, {semana_evento} {_dm(evento.data)}."
-        jeito = angulo(evento.tipo, perfil)
+        nome_item = nomes[ordem % len(nomes)] if nomes else ""
+        ordem += 1
+        jeito = angulo(evento.tipo, perfil, nome_item)
         extra = f" Ângulo: {jeito}." if jeito else ""
         if evento.antecipar or evento.tipo == "feriado":
             antes = evento.data - timedelta(days=3)
@@ -610,13 +596,15 @@ def montar_sugestoes(
     primeiro = hoje if hora < HORA_SEM_HOJE else hoje + timedelta(days=1)
     for dia, sinal, rotulo in sinais_do_clima([d for d in clima if d.data >= primeiro]):
         quando = max(hoje, dia.data - timedelta(days=1))
+        nome_item = nomes[ordem % len(nomes)] if nomes else ""
+        ordem += 1
         adicionar(
             quando,
             "clima",
             f"{rotulo} · {SEMANA[dia.data.weekday()]}",
             (
                 f"{frase_clima(dia, sinal, onde)} Faça um post para o dia {_dm(quando)}. "
-                f"Ângulo: {angulo(sinal, perfil)}. Não prometa o tempo como certo. {aviso}"
+                f"Ângulo: {angulo(sinal, perfil, nome_item)}. Não prometa o tempo como certo. {aviso}"
             ),
             dia.data,
         )
