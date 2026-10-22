@@ -6,7 +6,7 @@
   <title>__PRODUTO__</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
   <style>
     :root {
@@ -811,8 +811,41 @@
     .campos-arte label.largo { grid-column: 1 / -1; }
     .campos-arte label[hidden] { display: none; }
     .campos-arte input, .campos-arte select { width: 100%; padding: 6px 8px; font-size: 12.5px; border: 1px solid var(--linha); border-radius: 7px; font-family: inherit; background: white; color: var(--tinta); }
-    .editor-arte button.secundario { width: 100%; height: 34px; margin: 0; font-size: 12.5px; }
-    .post.modo-story .editor-arte { color: var(--tinta); }
+    .paletas { display: flex; flex-wrap: wrap; gap: 8px; }
+    .paletas button { width: 48px; height: 34px; margin: 0; padding: 3px; border: 2px solid transparent; border-radius: 10px; background: white; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; cursor: pointer; box-shadow: inset 0 0 0 1px var(--linha); }
+    .paletas button span { display: block; border-radius: 5px; }
+    .paletas button.ativa { border-color: var(--azul); }
+    .paletas button.miuda { width: 36px; height: 28px; }
+    select#arte-paleta { display: none; }
+    .estudio-arte { position: fixed; inset: 0; z-index: 90; background: rgba(15, 23, 42, 0.78); display: grid; place-items: center; padding: 20px; }
+    .estudio-arte[hidden] { display: none !important; }
+    .estudio-caixa { width: min(980px, 100%); max-height: 100%; background: white; border-radius: 18px; display: flex; flex-direction: column; overflow: hidden; }
+    .estudio-topo { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--linha); }
+    .estudio-topo strong { font-size: 15px; white-space: nowrap; }
+    .estudio-topo button { width: auto; flex: none; height: 38px; margin: 0; padding: 0 14px; border-radius: 10px; }
+    .estudio-topo button.principal { margin-left: auto; margin-top: 0; }
+    .estudio-corpo { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; padding: 16px; min-height: 0; overflow: auto; }
+    .palco { position: relative; height: min(72vh, 720px); margin: 0 auto; background: #0f172a; border-radius: 16px; overflow: hidden; }
+    .palco[data-formato="feed"] { aspect-ratio: 4 / 5; }
+    .palco[data-formato="story"] { aspect-ratio: 9 / 16; }
+    .palco[data-formato="facebook"] { aspect-ratio: 1; }
+    .palco img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+    #palco-camadas { position: absolute; inset: 0; }
+    .peca-camada { position: absolute; max-width: 78%; cursor: grab; font-family: Montserrat, Inter, sans-serif; line-height: 1.05; letter-spacing: -0.02em; user-select: none; touch-action: none; }
+    .peca-camada.ativa { outline: 2px solid #4f46e5; outline-offset: 3px; box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.85); }
+    .peca-camada.faixa { background: var(--tom); color: var(--tinta-peca, #fff); padding: 0.35em 0.55em; border-radius: 8px; }
+    .peca-camada.pilula { background: var(--tom); color: var(--tinta-peca, #fff); padding: 0.3em 0.7em; border-radius: 999px; }
+    .peca-camada.selo { background: var(--tom); color: var(--tinta-peca, #fff); padding: 0.25em 0.5em; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .peca-camada.texto { color: white; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.65); }
+    .estudio-painel { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    .estudio-painel p { margin: 0; font-size: 12px; font-weight: 600; color: var(--mudo); }
+    .estudio-painel .escolhas { display: flex; flex-wrap: wrap; gap: 6px; }
+    .estudio-painel .escolhas button { height: 32px; margin: 0; padding: 0 10px; border-radius: 8px; border: 1px solid var(--linha); background: white; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .estudio-painel .escolhas button.ativa { border-color: var(--azul); background: var(--azul-suave); color: var(--azul); }
+    .estudio-painel button.secundario { width: 100%; margin-top: 4px; }
+    .estudio-painel input[type="color"] { width: 42px; height: 32px; padding: 0; border: 1px solid var(--linha); border-radius: 8px; background: white; }
+    @media (max-width: 800px) { .estudio-corpo { grid-template-columns: 1fr; } .palco { height: 52vh; } }
+    .editor-arte button.secundario { width: 100%; height: 38px; margin: 0; font-size: 13px; border-radius: 10px; }
     .ficha-cores { display: flex; flex-wrap: wrap; gap: 12px; }
     .ficha-corpo label.cor-campo { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-weight: 600; cursor: pointer; }
     .ficha-corpo label.cor-campo input { width: 44px; height: 34px; padding: 2px; border-radius: 8px; border: 1px solid var(--linha); background: white; cursor: pointer; }
@@ -1219,7 +1252,7 @@
                 <button class="criar-foto" type="button" id="criar-foto"><i class="fa-solid fa-wand-magic-sparkles"></i><span id="criar-foto-texto">Criar foto com IA</span></button>
                 <p class="nota" id="nota-foto" hidden></p>
                 <details class="detalhes-arte" id="detalhes-arte">
-                  <summary>Editar a arte à mão</summary>
+                <summary>Editar a arte</summary>
                   <div class="editor-arte" id="editor-arte" hidden>
                     <p class="ideia-arte" id="ideia-arte"></p>
                     <p class="aviso-arte" id="aviso-arte" hidden></p>
@@ -1241,8 +1274,9 @@
                           <option value="livre">Só a imagem</option>
                         </select>
                       </label>
-                      <label>Cores
-                        <select id="arte-paleta">
+                      <label class="largo">Cores
+                        <div class="paletas" id="paletas-arte"></div>
+                        <select id="arte-paleta" hidden>
                           <option value="marca">Cores da marca</option>
                           <option value="urgencia">Amarelo e preto</option>
                           <option value="quente">Laranja e marrom</option>
@@ -1263,6 +1297,7 @@
                       <label>Chamada<input id="arte-chamada" maxlength="32" placeholder="Ex.: Peça já" /></label>
                       <label class="largo" id="arte-antes-campo" hidden>Antes (o problema do cliente)<input id="arte-antes" maxlength="90" /></label>
                     </div>
+                    <button class="secundario" type="button" id="abrir-na-imagem"><i class="fa-solid fa-up-right-and-down-left-from-center"></i> Abrir na imagem</button>
                     <button class="secundario" type="button" id="refazer-arte"><i class="fa-solid fa-rotate"></i> Refazer arte</button>
                     <p class="nota" id="nota-arte">Refazer arte troca só o texto, o estilo e as cores, com a mesma foto: não gasta IA.</p>
                   </div>
@@ -1549,6 +1584,22 @@
   <img class="mini-flutuante" id="mini-flutuante" alt="" hidden />
   <div class="luz" id="luz" hidden>
     <div class="luz-caixa" id="luz-caixa"></div>
+  </div>
+  <div class="estudio-arte" id="estudio-arte" hidden>
+    <div class="estudio-caixa">
+      <div class="estudio-topo">
+        <strong>Editar na imagem</strong>
+        <button class="secundario" type="button" id="estudio-fechar">Fechar</button>
+        <button class="principal" type="button" id="estudio-aplicar">Aplicar na arte</button>
+      </div>
+      <div class="estudio-corpo">
+        <div class="palco" id="palco-arte" data-formato="feed">
+          <img id="palco-foto" alt="Foto da arte" />
+          <div id="palco-camadas"></div>
+        </div>
+        <aside class="estudio-painel" id="estudio-painel"></aside>
+      </div>
+    </div>
   </div>
   <script>
     const FERRAMENTAS = {
@@ -2768,8 +2819,243 @@
       document.getElementById("frase-arte").hidden = editor.hidden;
       if (!editor.hidden) document.getElementById("frase-arte-texto").value = artePrevia.titulo_arte || "";
       document.getElementById("nota-arte").textContent = imagemProjeto
-        ? "Refazer arte troca só o texto, o estilo e as cores, com a mesma foto: não gasta IA."
+        ? "Escolha o tom na paleta ou abra a imagem para arrastar o texto. Refazer arte não gasta IA."
         : "A foto ainda não foi feita: clique em Criar foto com IA, escolha uma da memória ou agende (a IA faz até 3 horas antes).";
+      desenharPaletasArte();
+    }
+
+    const PALETAS_VISUAIS = [
+      ["marca", "Cores da marca", "#1B2A41", "#E63946"],
+      ["urgencia", "Amarelo e preto", "#FFD60A", "#111111"],
+      ["quente", "Laranja e marrom", "#F48C2E", "#481E0E"],
+      ["fresca", "Verde-limão", "#A3E635", "#083A2C"],
+      ["fria", "Azul", "#38BDF8", "#0C1834"],
+      ["elegante", "Dourado e preto", "#D4AF5A", "#101012"],
+      ["doce", "Rosa", "#F472B6", "#4A1646"],
+      ["natural", "Verde-sálvia", "#BED68C", "#283822"],
+      ["vibrante", "Magenta e roxo", "#D946EF", "#280E60"],
+      ["neutra", "Branco e grafite", "#FFFFFF", "#141820"],
+      ["vermelha", "Vermelho", "#E63946", "#241418"],
+    ];
+
+    function tonsDaPaleta(id) {
+      if (id === "marca") return [marcaAtual.cor_destaque || "#E63946", marcaAtual.cor_principal || "#1B2A41"];
+      const achada = PALETAS_VISUAIS.find((item) => item[0] === id);
+      return achada ? [achada[2], achada[3]] : ["#E63946", "#1B2A41"];
+    }
+
+    function desenharPaletas(alvo, atual, aoEscolher, miuda) {
+      if (!alvo) return;
+      alvo.innerHTML = "";
+      PALETAS_VISUAIS.forEach(([id, nome, a, b]) => {
+        const cores = id === "marca" ? tonsDaPaleta("marca") : [a, b];
+        const botao = document.createElement("button");
+        botao.type = "button";
+        botao.className = "paleta" + (miuda ? " miuda" : "") + (id === atual ? " ativa" : "");
+        botao.title = nome;
+        botao.setAttribute("aria-label", nome);
+        const um = document.createElement("span");
+        const dois = document.createElement("span");
+        um.style.background = cores[0];
+        dois.style.background = cores[1];
+        botao.append(um, dois);
+        botao.addEventListener("click", () => aoEscolher(id));
+        alvo.append(botao);
+      });
+    }
+
+    function desenharPaletasArte() {
+      const atual = document.getElementById("arte-paleta").value || "marca";
+      desenharPaletas(document.getElementById("paletas-arte"), atual, (id) => {
+        document.getElementById("arte-paleta").value = id;
+        desenharPaletasArte();
+      });
+    }
+
+    let camadasEdicao = [];
+    let camadaAtiva = 0;
+    let paletaEstudio = "marca";
+
+    function camadasIniciais() {
+      if (artePrevia && Array.isArray(artePrevia.camadas) && artePrevia.camadas.length) {
+        return artePrevia.camadas.map((item) => ({ ...item }));
+      }
+      const campos = [
+        ["titulo", "arte-titulo", 0.08, 0.58, "forte", "faixa"],
+        ["subtitulo", "arte-subtitulo", 0.08, 0.74, "medio", "texto"],
+        ["selo", "arte-selo", 0.08, 0.06, "negrito", "selo"],
+        ["chamada", "arte-chamada", 0.08, 0.86, "negrito", "pilula"],
+      ];
+      return campos
+        .map(([id, campo, x, y, fonte, estilo]) => ({
+          id, texto: document.getElementById(campo).value.trim(), x, y, escala: 1, fonte, cor: "", estilo,
+        }))
+        .filter((item) => item.texto);
+    }
+
+    function corDoTexto(hex) {
+      const n = String(hex || "").replace("#", "");
+      if (n.length !== 6) return "#ffffff";
+      const r = parseInt(n.slice(0, 2), 16);
+      const g = parseInt(n.slice(2, 4), 16);
+      const b = parseInt(n.slice(4, 6), 16);
+      const luz = (r * 299 + g * 587 + b * 114) / 1000;
+      return luz > 170 ? "#111827" : "#ffffff";
+    }
+
+    function desenharCamadas() {
+      const caixa = document.getElementById("palco-camadas");
+      caixa.innerHTML = "";
+      const basePx = { titulo: 26, subtitulo: 15, selo: 12, chamada: 14 };
+      camadasEdicao.forEach((camada, indice) => {
+        const el = document.createElement("div");
+        const cor = camada.cor || tonsDaPaleta(paletaEstudio)[0];
+        el.className = "peca-camada " + (camada.estilo || "faixa") + (indice === camadaAtiva ? " ativa" : "");
+        el.textContent = camada.texto;
+        el.style.left = (camada.x * 100) + "%";
+        el.style.top = (camada.y * 100) + "%";
+        el.style.fontSize = Math.round((basePx[camada.id] || 16) * (camada.escala || 1)) + "px";
+        el.style.fontWeight = camada.fonte === "medio" ? "600" : (camada.fonte === "negrito" ? "700" : "800");
+        el.style.setProperty("--tom", cor);
+        el.style.setProperty("--tinta-peca", corDoTexto(cor));
+        if (camada.estilo === "texto" && camada.cor) el.style.color = camada.cor;
+        el.addEventListener("pointerdown", (evento) => {
+          evento.preventDefault();
+          camadaAtiva = indice;
+          const palco = document.getElementById("palco-arte").getBoundingClientRect();
+          const origemX = evento.clientX;
+          const origemY = evento.clientY;
+          const x0 = camada.x;
+          const y0 = camada.y;
+          function mover(ev) {
+            camada.x = Math.min(0.82, Math.max(0, x0 + (ev.clientX - origemX) / palco.width));
+            camada.y = Math.min(0.9, Math.max(0, y0 + (ev.clientY - origemY) / palco.height));
+            el.style.left = (camada.x * 100) + "%";
+            el.style.top = (camada.y * 100) + "%";
+          }
+          function soltar() {
+            window.removeEventListener("pointermove", mover);
+            window.removeEventListener("pointerup", soltar);
+            desenharPainelEstudio();
+            desenharCamadas();
+          }
+          window.addEventListener("pointermove", mover);
+          window.addEventListener("pointerup", soltar);
+          desenharPainelEstudio();
+        });
+        caixa.append(el);
+      });
+    }
+
+    function desenharPainelEstudio() {
+      const painel = document.getElementById("estudio-painel");
+      painel.innerHTML = "";
+      const camada = camadasEdicao[camadaAtiva];
+      painel.append(elemento("p", "", "Paleta"));
+      const paletas = document.createElement("div");
+      paletas.className = "paletas";
+      painel.append(paletas);
+      desenharPaletas(paletas, paletaEstudio, (id) => {
+        paletaEstudio = id;
+        document.getElementById("arte-paleta").value = id;
+        desenharPaletasArte();
+        desenharPainelEstudio();
+        desenharCamadas();
+      }, true);
+      if (!camada) {
+        painel.append(elemento("p", "", "Nenhum texto na imagem. Aplicar deixa só a foto."));
+        return;
+      }
+      painel.append(elemento("p", "", "Peça selecionada"));
+      const estilos = document.createElement("div");
+      estilos.className = "escolhas";
+      [["faixa", "Faixa"], ["pilula", "Pílula"], ["selo", "Selo"], ["texto", "Texto"]].forEach(([valor, nome]) => {
+        const botao = document.createElement("button");
+        botao.type = "button";
+        botao.textContent = nome;
+        botao.className = camada.estilo === valor ? "ativa" : "";
+        botao.addEventListener("click", () => { camada.estilo = valor; desenharPainelEstudio(); desenharCamadas(); });
+        estilos.append(botao);
+      });
+      painel.append(estilos);
+      painel.append(elemento("p", "", "Fonte"));
+      const fontes = document.createElement("div");
+      fontes.className = "escolhas";
+      [["forte", "Impacto"], ["negrito", "Forte"], ["medio", "Média"]].forEach(([valor, nome]) => {
+        const botao = document.createElement("button");
+        botao.type = "button";
+        botao.textContent = nome;
+        botao.className = camada.fonte === valor ? "ativa" : "";
+        botao.addEventListener("click", () => { camada.fonte = valor; desenharPainelEstudio(); desenharCamadas(); });
+        fontes.append(botao);
+      });
+      painel.append(fontes);
+      painel.append(elemento("p", "", "Cor desta peça"));
+      const cores = document.createElement("div");
+      cores.className = "escolhas";
+      const personalizada = document.createElement("input");
+      personalizada.type = "color";
+      personalizada.value = camada.cor || tonsDaPaleta(paletaEstudio)[0];
+      personalizada.addEventListener("input", () => { camada.cor = personalizada.value.toUpperCase(); desenharCamadas(); });
+      cores.append(personalizada);
+      painel.append(cores);
+      const tamanho = document.createElement("label");
+      tamanho.append(document.createTextNode("Tamanho"));
+      const faixa = document.createElement("input");
+      faixa.type = "range";
+      faixa.min = "0.55";
+      faixa.max = "2.4";
+      faixa.step = "0.05";
+      faixa.value = String(camada.escala || 1);
+      faixa.addEventListener("input", () => {
+        camada.escala = Number(faixa.value);
+        desenharCamadas();
+      });
+      tamanho.append(faixa);
+      painel.append(tamanho);
+      const excluir = document.createElement("button");
+      excluir.type = "button";
+      excluir.className = "secundario";
+      excluir.textContent = "Excluir esta peça";
+      excluir.addEventListener("click", () => {
+        camadasEdicao.splice(camadaAtiva, 1);
+        camadaAtiva = Math.max(0, camadaAtiva - 1);
+        desenharPainelEstudio();
+        desenharCamadas();
+      });
+      painel.append(excluir);
+    }
+
+    function abrirNaImagem() {
+      if (!artePrevia) return;
+      const url = artePrevia.base_url || artePrevia.feed_url || imagemProjeto;
+      if (!url) return;
+      paletaEstudio = document.getElementById("arte-paleta").value || artePrevia.paleta || "marca";
+      camadasEdicao = camadasIniciais();
+      camadaAtiva = 0;
+      const formato = formatoAgenda === "story" ? "story" : (formatoAgenda === "facebook" ? "facebook" : "feed");
+      document.getElementById("palco-arte").dataset.formato = formato;
+      document.getElementById("palco-foto").src = url;
+      desenharCamadas();
+      desenharPainelEstudio();
+      document.getElementById("estudio-arte").hidden = false;
+    }
+
+    function aplicarEstudio() {
+      const mapa = { titulo: "arte-titulo", subtitulo: "arte-subtitulo", selo: "arte-selo", chamada: "arte-chamada" };
+      Object.values(mapa).forEach((id) => { document.getElementById(id).value = ""; });
+      camadasEdicao.forEach((camada) => {
+        const campo = mapa[camada.id];
+        if (campo) document.getElementById(campo).value = camada.texto;
+      });
+      if (mapa.titulo) document.getElementById("frase-arte-texto").value = document.getElementById("arte-titulo").value;
+      document.getElementById("arte-paleta").value = paletaEstudio;
+      if (!camadasEdicao.length) document.getElementById("arte-modelo").value = "livre";
+      artePrevia.camadas = camadasEdicao.map((item) => ({ ...item }));
+      artePrevia.paleta = paletaEstudio;
+      document.getElementById("estudio-arte").hidden = true;
+      desenharPaletasArte();
+      document.getElementById("refazer-arte").click();
     }
 
     function arteDoEditor() {
@@ -5170,7 +5456,7 @@
       const plano = arteDoEditor();
       const nota = document.getElementById("nota-arte");
       if (!plano) return;
-      if (!plano.titulo_arte) {
+      if (!plano.titulo_arte && !(plano.camadas && plano.camadas.length) && plano.modelo !== "livre") {
         nota.textContent = "Escreva o título da arte.";
         return;
       }
@@ -5201,7 +5487,13 @@
     });
     document.getElementById("arte-modelo").addEventListener("change", (evento) => {
       document.getElementById("arte-antes-campo").hidden = evento.target.value !== "antes_depois";
+      if (artePrevia) artePrevia.camadas = [];
     });
+    document.getElementById("abrir-na-imagem").addEventListener("click", abrirNaImagem);
+    document.getElementById("estudio-fechar").addEventListener("click", () => {
+      document.getElementById("estudio-arte").hidden = true;
+    });
+    document.getElementById("estudio-aplicar").addEventListener("click", aplicarEstudio);
 
     document.getElementById("faixa-memoria-trocar").addEventListener("click", () => {
       abrirSeletor({

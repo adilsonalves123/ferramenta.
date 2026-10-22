@@ -108,6 +108,7 @@ class Textos:
     paleta: str = "marca"
     posicao: str = "auto"
     cor_livre: str = ""
+    camadas: list | None = None
 
 
 @dataclass
@@ -1487,6 +1488,49 @@ LAYOUTS = {
 }
 
 
+def _compor_camadas(foto: Image.Image, textos: Textos, ident: Identidade, formato: str) -> Image.Image:
+    """A pessoa posicionou cada texto na imagem: desenha a foto e as peças onde ela deixou."""
+    largura, altura, _topo, base = _area(formato)
+    tela = cobrir(foto, largura, altura)
+    enfase, _fundo = _cores(ident, textos)
+    tamanhos = {"titulo": 78, "subtitulo": 40, "selo": 30, "chamada": 36}
+    for item in textos.camadas or []:
+        texto = (item.get("texto") or "").strip()
+        if not texto:
+            continue
+        escala = float(item.get("escala") or 1)
+        tamanho = max(18, min(160, round(tamanhos.get(item.get("id"), 48) * escala)))
+        peso = item.get("fonte") if item.get("fonte") in ARQUIVOS_FONTE else "forte"
+        cor = cor_hex(item.get("cor") or "", "#%02X%02X%02X" % enfase)
+        x = float(item.get("x") or 0) * largura
+        y = float(item.get("y") or 0) * altura
+        largura_max = max(180, largura - int(x) - 36)
+        estilo = item.get("estilo") or "faixa"
+        if estilo == "texto":
+            bloco = ajustar(texto, peso, largura_max, altura, tamanho, max(16, tamanho // 2), 3)
+            texto_com_sombra(tela, bloco, x, y, BRANCO if not item.get("cor") else cor)
+            continue
+        if estilo in ("pilula", "selo"):
+            pilula(
+                tela,
+                texto,
+                x,
+                y,
+                cor,
+                tamanho=tamanho,
+                largura_max=largura_max,
+                caixa_alta=estilo == "selo",
+                peso=peso,
+            )
+            continue
+        bloco = ajustar(texto, peso, largura_max, altura, tamanho, max(16, tamanho // 2), 2)
+        faixa = Image.new("RGBA", (bloco.largura + 48, bloco.altura + 28), tuple(cor[:3]) + (235,))
+        escrever(faixa, bloco, 24, 14, tinta(cor))
+        colar_com_sombra(tela, arredondar(faixa, 12), round(x), round(y), raio=12, opacidade=0.3, desloc=(0, 6))
+    assinar(tela, ident, largura - MARGEM, base - (MARGEM if formato == "feed" else 10), "direita", "base", 60, 200)
+    return tela
+
+
 def compor(
     foto: Image.Image,
     modelo: str,
@@ -1505,6 +1549,8 @@ def compor(
     if not textos.titulo.strip() and modelo != "livre":
         textos = Textos(**{**textos.__dict__, "titulo": textos.chamada or ident.assinatura or " "})
     foto = foto.convert("RGB")
+    if textos.camadas:
+        return _compor_camadas(foto, textos, ident, formato).convert("RGB")
     if modelo == "antes_depois":
         return _molde_antes_depois(foto, ident, textos, formato, tela_app).convert("RGB")
     if modelo == "tela_app":

@@ -54,6 +54,7 @@ CAMPOS_GUARDADOS = (
     "feed_url",
     "story_url",
     "editada",
+    "camadas",
     "passos",
 )
 
@@ -255,6 +256,44 @@ def _conar(plano: dict, pedido: str, legenda: str) -> str:
     return com_moderacao(nova_legenda) if nova_legenda else nova_legenda
 
 
+def _camadas_validas(bruto) -> list:
+    """Posição livre de cada texto na imagem: arrastar, tamanho, fonte, cor e estilo."""
+    if not isinstance(bruto, list):
+        return []
+    limites = {"titulo": LIMITES["titulo_arte"], "subtitulo": LIMITES["subtitulo_arte"], "selo": LIMITES["selo"], "chamada": LIMITES["chamada"]}
+    estilos = {"texto", "faixa", "pilula", "selo"}
+    fontes = {"forte", "negrito", "medio"}
+    saida = []
+    for item in bruto[:6]:
+        if not isinstance(item, dict) or item.get("id") not in limites:
+            continue
+        palavras, caracteres = limites[item["id"]]
+        texto = _texto_arte(item.get("texto"), palavras, caracteres)
+        if not texto:
+            continue
+        def numero(chave: str, padrao: float, minimo: float, maximo: float) -> float:
+            try:
+                valor = float(item.get(chave))
+            except (TypeError, ValueError):
+                valor = padrao
+            return max(minimo, min(maximo, valor))
+
+        cor = str(item.get("cor") or "").strip().upper()
+        saida.append(
+            {
+                "id": item["id"],
+                "texto": texto,
+                "x": round(numero("x", 0.08, 0, 0.86), 4),
+                "y": round(numero("y", 0.08, 0, 0.92), 4),
+                "escala": round(numero("escala", 1, 0.55, 2.4), 3),
+                "fonte": item.get("fonte") if item.get("fonte") in fontes else "forte",
+                "cor": cor if HEX.match(cor) else "",
+                "estilo": item.get("estilo") if item.get("estilo") in estilos else "faixa",
+            }
+        )
+    return saida
+
+
 def _coerencia(plano: dict) -> None:
     if plano.get("paleta") == "livre" and not plano.get("cor_livre"):
         plano["paleta"] = "marca"
@@ -313,6 +352,7 @@ def validar_plano(
     _sem_preco_inventado(plano, f"{contexto.fatos} {pedido}")
     legenda = _conar(plano, pedido, legenda)
     _coerencia(plano)
+    plano["camadas"] = _camadas_validas(dados.get("camadas"))
     return plano, legenda
 
 
@@ -539,6 +579,7 @@ def textos_do_plano(plano: dict) -> molde.Textos:
         paleta=plano.get("paleta") or "marca",
         posicao=plano.get("posicao_texto") or "auto",
         cor_livre=plano.get("cor_livre") or "",
+        camadas=list(plano.get("camadas") or []),
     )
 
 
