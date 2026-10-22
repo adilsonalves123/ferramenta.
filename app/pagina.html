@@ -842,7 +842,7 @@
     .opcoes-arte { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; }
     .opcoes-arte[hidden] { display: none; }
     .opcoes-arte .nota { grid-column: 1 / -1; margin: 0; }
-    .opcoes-arte .cancelar-opcoes { grid-column: 1 / -1; justify-self: start; width: auto; height: 40px; margin: 0; padding: 0 16px; }
+    .opcoes-arte .cancelar-opcoes { grid-column: 1 / -1; width: 100%; height: 44px; margin: 0; }
     .opcao-arte { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
     .opcoes-arte .opcao-arte img { width: 100%; height: min(46vh, 520px); object-fit: contain; border-radius: 12px; background: #0f172a; cursor: zoom-in; }
     .opcao-arte small { color: var(--mudo); font-size: 12px; }
@@ -3297,6 +3297,7 @@
     let fotoFluxo = null;
     let formatoAntesFluxo = "feed";
     let opcoesArte = [];
+    let voltouAoChat = false;
     let antesDasOpcoes = null;
     let filtroPrateleira = "todas";
     let prateleiraAberta = false;
@@ -3602,21 +3603,21 @@
       const painel = (prateleiraAberta || filaAberta) && !paginaCriarAberta;
       const noPagina = paginaCriarAberta;
       const noHomeTrabalho = trabalhoNoHome && !noPagina;
-      const mesa = !naPrevia && !tarefaAberta && !painel && temConteudoNaMesa() && !fotoNoChat && (noPagina || noHomeTrabalho);
+      const mesa = !voltouAoChat && !naPrevia && !tarefaAberta && !painel && temConteudoNaMesa() && !fotoNoChat && (noPagina || noHomeTrabalho);
       document.getElementById("mesa-rascunho").hidden = !mesa;
       document.getElementById("prateleira").hidden = !prateleiraAberta || tarefaAberta || noPagina;
       document.getElementById("fila").hidden = !filaAberta || tarefaAberta || noPagina;
-      const wizard = noPagina && Boolean(passoCriar) && !tarefaAberta && !mesa && !fotoNoChat;
+      const wizard = !voltouAoChat && noPagina && Boolean(passoCriar) && !tarefaAberta && !mesa && !fotoNoChat;
       document.getElementById("vazio-estudio").hidden = noPagina || tarefaAberta || painel || noHomeTrabalho;
       document.getElementById("inicio-estudio").hidden = noPagina || noHomeTrabalho;
       document.getElementById("assistente-criar").hidden = !wizard;
       desenharAssistente();
       document.getElementById("estudio-tarefa").hidden = !(tarefaAberta && noPagina);
       fio.hidden = noPagina
-        ? !(fotoNoChat || (temBaloes && !mesa && !wizard && !tarefaAberta))
-        : !(noHomeTrabalho && !painel && (temBaloes || fotoNoChat));
+        ? !(fotoNoChat || (temBaloes && !mesa && !wizard && !tarefaAberta) || (voltouAoChat && temBaloes))
+        : !(noHomeTrabalho && !painel && (temBaloes || fotoNoChat || voltouAoChat));
       document.getElementById("area-estudio").classList.remove("com-mesa");
-      const precisaDigitar = noPagina && !tarefaAberta && !mesa && (passoCriar === "pronto" || fotoNoChat || arteEmCima);
+      const precisaDigitar = voltouAoChat || (noPagina && !tarefaAberta && !mesa && (passoCriar === "pronto" || fotoNoChat || arteEmCima));
       document.getElementById("composer").hidden = painel || tarefaAberta || (noPagina ? !precisaDigitar : false);
       document.getElementById("novo-post").hidden = noPagina
         ? wizard || !(mesa || temBaloes || fotoNoChat)
@@ -3835,6 +3836,10 @@
         document.getElementById("ia-frase").hidden = true;
         atualizarEstudio();
         return;
+      } else if (voltouAoChat) {
+        titulo.textContent = "Criar arte";
+        enviarChat.textContent = "Criar arte";
+        pedidoCampo.placeholder = "Diga o que ficou ruim. Ex.: sem cena de bar, mostra a tela do sistema.";
       } else if (arteEmCima) {
         modoArte = true;
         modoImagem = false;
@@ -3874,7 +3879,7 @@
         enviarChat.textContent = "Gerar";
         pedidoCampo.placeholder = "Descreva a publicação. Ex.: promoção de terça para os clientes";
       }
-      document.getElementById("ia-frase").hidden = !(arteEmCima || (passoCriar === "pronto" && fluxoCriar === "arte" && fotoFluxo));
+      document.getElementById("ia-frase").hidden = voltouAoChat || !(arteEmCima || (passoCriar === "pronto" && fluxoCriar === "arte" && fotoFluxo));
       if (paginaCriarAberta && !tarefaAberta) {
         const tituloPagina = document.getElementById("titulo-pagina-criar");
         if (fluxoCriar === "foto" || modoImagem || (fotoNoChat && !arteEmCima)) tituloPagina.textContent = "Criar foto";
@@ -4169,8 +4174,16 @@
 
     function enviarChat() {
       const textoPedido = pedidoCampo.value.trim();
-      if (passoCriar && passoCriar !== "pronto") return;
+      if (passoCriar && passoCriar !== "pronto" && !voltouAoChat) return;
       if (textoPedido.length < 2) return;
+      if (voltouAoChat) {
+        voltouAoChat = false;
+        if (!paginaCriarAberta) {
+          trabalhoNoHome = true;
+          criarPost(textoPedido);
+        } else criarArte(textoPedido);
+        return;
+      }
       if (!paginaCriarAberta) {
         trabalhoNoHome = true;
         criarPost(textoPedido);
@@ -4224,11 +4237,11 @@
       document.getElementById("previa").hidden = Boolean(opcoesArte.length);
       document.getElementById("aprovar").hidden = Boolean(opcoesArte.length);
       if (!opcoesArte.length) return;
-      faixa.append(elemento("p", "nota", "Clique na imagem para ver grande. Quando decidir, escolha embaixo."));
+      faixa.append(elemento("p", "nota", "Clique na imagem para ver grande. Se nenhuma servir, volte ao chat e diga o que mudar."));
       const cancelar = document.createElement("button");
       cancelar.type = "button";
       cancelar.className = "secundario cancelar-opcoes";
-      cancelar.textContent = "Cancelar";
+      cancelar.textContent = "Não gostei, voltar ao chat";
       cancelar.addEventListener("click", cancelarOpcoes);
       faixa.append(cancelar);
       opcoesArte.forEach((opcao, indice) => {
@@ -4268,6 +4281,7 @@
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         opcoesArte = [];
         antesDasOpcoes = null;
+        voltouAoChat = false;
         modoArte = false;
         marcarFormato(formatoArte);
         aplicarRascunho(dados.rascunho);
@@ -4308,6 +4322,7 @@
 
     async function criarArte(textoPedido, falaPessoa) {
       naPrevia = false;
+      voltouAoChat = false;
       const escolhidas = fotoFluxo && fotoFluxo.tipo === "memoria" ? [fotoFluxo] : fotosEscolhidas.slice();
       const anexo = fotoFluxo && fotoFluxo.tipo === "anexo" ? fotoFluxo.url : (origemFoto === "anexo" && imagemProjeto ? imagemProjeto : "");
       const fluxoGuardado = fluxoCriar;
@@ -4362,7 +4377,7 @@
         fotoNoChat = false;
         arteEmCima = false;
         desenharOpcoes();
-        fala.textContent = "Escolha uma das 3. A foto é a mesma. Cada arte defende um argumento diferente. Se pedir de novo, estas frases não voltam.";
+        fala.textContent = "Escolha uma das 3, ou clique em Não gostei para voltar ao chat e pedir outra.";
       } catch (falha) {
         const demorou = falha.name === "TimeoutError" || falha.name === "AbortError";
         fala.textContent = demorou ? "As artes demoraram demais. Tente de novo." : (falha.message || "Não consegui criar as artes agora.");
@@ -4401,8 +4416,12 @@
         }
         if (antes.texto) pedidoCampo.value = antes.texto;
       }
+      voltouAoChat = true;
       desenharOpcoes();
+      falar("assistente", "Essas três ficaram de fora. Escreva aqui o que você quer diferente.");
       atualizarTopoConversa();
+      pedidoCampo.focus();
+      fio.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
 
     function urlDaFila(item, vista) {
