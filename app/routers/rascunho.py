@@ -165,7 +165,13 @@ async def post_ajustar(
     except Exception as erro:
         await session.rollback()
         raise _falha_ia(erro, "Não consegui ajustar o post agora. Tente de novo em instantes.") from erro
-    await session.refresh(registro)
+    ident = feito.pop("rascunho_id", None)
+    if ident and ident != registro.id:
+        outro = await session.get(Rascunho, ident)
+        if outro is not None:
+            registro = outro
+    else:
+        await session.refresh(registro)
     return RespostaAjuste(rascunho=servico.para_item(registro), **feito)
 
 

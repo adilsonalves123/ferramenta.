@@ -676,8 +676,22 @@ async def desenhar_um(
     marca_id = marca.id if marca and marca.id else 0
     alvo = formato if formato in ("story", "facebook") else "feed"
 
+    recortes = {
+        "topo": (0.0, 0.0, 1.0, 0.42),
+        "meio": (0.0, 0.3, 1.0, 0.7),
+        "base": (0.0, 0.58, 1.0, 1.0),
+    }
+
     def desenhar():
-        return molde.compor(arte.abrir(base), plano["modelo"], textos, ident, alvo, bool(plano.get("tela_app")))
+        return molde.compor(
+            arte.abrir(base),
+            plano["modelo"],
+            textos,
+            ident,
+            alvo,
+            bool(plano.get("tela_app")),
+            assunto=recortes.get(str(plano.get("recorte") or "")),
+        )
 
     imagem = await asyncio.to_thread(desenhar)
     return await guardar_figura(imagem, marca_id, "arte")

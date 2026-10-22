@@ -4,6 +4,7 @@ em vez de criar outro post. Guarda as últimas versões para a pessoa voltar atr
 import asyncio
 import json
 import logging
+import random
 import re
 import unicodedata
 
@@ -527,7 +528,42 @@ async def editar_imagem(
     return plano, "editada", True
 
 
-def prompt_criar_imagem(descricao: str, referencias: int, alcool: bool) -> str:
+_ENQUADRAMENTOS = (
+    "Close framing, subject large, side light from a window.",
+    "Wider view, subject off to one side, late-day light.",
+    "Slightly above the subject, more of the place visible, soft light.",
+    "Eye level, shallow background, the subject in the middle of being used.",
+)
+_OUTRA_FOTO = re.compile(
+    r"\b(de novo|outra vez|outra foto|outro angulo|cria outra|criar outra|faz outra|gera outra|"
+    r"nao gostei|diferente|muda tudo|recomeca|cria de novo|fazer de novo)\b"
+)
+_PEDE_CRIAR = re.compile(r"\b(cria|criar|gera|gerar|faz|fazer)\b")
+_AJUSTE_PEQUENO = re.compile(r"\b(fundo|luz|cor|cores|tira|remove|coloca|aproxima|afasta|escuro|claro|desfoca)\b")
+
+
+def pede_outra_foto(mensagem: str) -> bool:
+    """A pessoa pediu para criar de novo, não para um retoque."""
+    simples = _sem_acento(mensagem).lower()
+    if _OUTRA_FOTO.search(simples):
+        return True
+    return bool(_PEDE_CRIAR.search(simples) and not _AJUSTE_PEQUENO.search(simples))
+
+
+def _foto_crua(plano: dict) -> bool:
+    if plano.get("modelo") != "livre":
+        return False
+    return not any(str(plano.get(campo) or "").strip() for campo in ("titulo_arte", "subtitulo_arte", "selo", "chamada", "antes"))
+
+
+def prompt_criar_imagem(
+    descricao: str,
+    referencias: int,
+    alcool: bool,
+    negocio: str = "",
+    evitar: str = "",
+    enquadramento: str = "",
+) -> str:
     if referencias:
         partes = [
             f"Use image 1{' and the other images' if referencias > 1 else ''} as the real material for this request: {descricao.strip()[:1200]}.",
@@ -536,6 +572,14 @@ def prompt_criar_imagem(descricao: str, referencias: int, alcool: bool) -> str:
         ]
     else:
         partes = [f"Create an image for an Instagram post of a small local business: {descricao.strip()[:1200]}."]
+    if negocio.strip():
+        partes.append(f"The business really does this: {negocio.strip()[:400]}. Photograph that, not a generic stock scene.")
+    if evitar.strip():
+        partes.append(
+            f"Do not repeat this earlier scene: {evitar.strip()[:400]}. "
+            "Change the moment, the angle and what is in the foreground."
+        )
+    partes.append(enquadramento.strip() or random.choice(_ENQUADRAMENTOS))
     partes += [
         "Professional, attractive lighting and composition, sharp focus on the main subject. "
         "Leave some calm, uncluttered space at the top or at the bottom of the frame.",
@@ -566,11 +610,23 @@ async def criar_imagem(
         if foto is not None and foto.marca_id == marca_id:
             referencias.append(foto.arquivo)
     alcool = fala_de_alcool(descricao)
+    from app.services.memoria import ler_fatos
+
+    fatos = ler_fatos(marca)
+    negocio = ". ".join(fatos[chave] for chave in ("oferta", "itens", "diferenciais") if fatos.get(chave))
+    recentes = await session.exec(
+        select(Rascunho.cena)
+        .where(Rascunho.marca_id == marca_id, Rascunho.cena != "")
+        .order_by(col(Rascunho.id).desc())
+        .limit(3)
+    )
+    evitar = " | ".join(cena.strip() for cena in recentes.all() if cena and cena.strip() and cena.strip() != descricao.strip())
+    prompt = prompt_criar_imagem(descricao, len(referencias), alcool, negocio, evitar, random.choice(_ENQUADRAMENTOS))
     if referencias:
         largura, altura = (await asyncio.to_thread(arte.abrir, referencias[0])).size
-        dados = await editar_varias(prompt_criar_imagem(descricao, len(referencias), alcool), referencias[:4], tamanho_para(largura, altura, _modelo()))
+        dados = await editar_varias(prompt, referencias[:4], tamanho_para(largura, altura, _modelo()))
     else:
-        dados = await gerar_com_ia(prompt_criar_imagem(descricao, 0, alcool))
+        dados = await gerar_com_ia(prompt)
     plano = {
         "ideia": descricao.strip()[:200],
         "foto_base_id": None,
@@ -678,6 +734,18 @@ async def ajustar(
     lista = await listar_fotos(session, marca_id)
     fotos = {foto.id: foto for foto in lista if foto.usar_em_posts or foto.id in anexos}
     plano = plano_de(registro) or diretor.plano_padrao(registro.legenda or "", registro.gancho or "")
+    if _foto_crua(plano) and pede_outra_foto(mensagem):
+        descricao = (registro.cena or plano.get("ideia") or mensagem).strip()
+        descricao = f"{descricao}. Faça outra foto, diferente da anterior."[:1500]
+        novo = await criar_imagem(session, marca, descricao, anexos, "", registro.formato or "feed")
+        return {
+            "tipos": ["imagem"],
+            "novo": False,
+            "pergunta": False,
+            "custo_imagem": True,
+            "resposta": "Fiz outra foto, com outro enquadramento.",
+            "rascunho_id": novo.id,
+        }
     intencao = await ler_intencao(mensagem, registro, plano, fotos, anexos, contexto.fatos)
     lido = _conferir_intencao(intencao, mensagem, fotos, anexos)
     tipos = lido["tipos"]
@@ -771,7 +839,14 @@ _PALAVRA_FRACA = {
     "para", "como", "pelo", "pela", "mais", "seus", "suas", "seu", "sua",
     "com", "sem", "uma", "que", "voce", "este", "esta", "isso", "aqui",
 }
-MOLDES_TELA = ("minimal", "destaque", "faixa")
+MOLDES_TELA = ("minimal", "selo", "livre")
+# Na tela do produto, cada arte mostra um pedaço diferente e um jeito diferente de escrever.
+# Sem faixa, sem bloco de cor e sem o botão repetido em cima do sistema.
+TRIOS_TELA = (
+    (("minimal", "base", "meio"), ("selo", "topo", "base"), ("livre", "auto", "topo")),
+    (("livre", "auto", "meio"), ("minimal", "topo", "base"), ("selo", "base", "topo")),
+    (("selo", "base", "meio"), ("livre", "auto", "topo"), ("minimal", "topo", "base")),
+)
 ANGULOS = ("recurso", "dia", "resultado")
 
 
@@ -807,17 +882,26 @@ def moldes_da_rodada(marca: Ficha | None, giro: int, e_tela: bool) -> tuple[str,
 def _aplicar_tres(opcoes: list[dict], marca: Ficha | None, giro: int, e_tela: bool) -> list[dict]:
     moldes = moldes_da_rodada(marca, giro, e_tela)
     posicoes = ("base", "topo", "auto")
+    trio = TRIOS_TELA[giro % len(TRIOS_TELA)]
     for indice, plano in enumerate(opcoes):
-        if not e_tela and plano.get("modelo") in ("tela_app", "antes_depois", "livre"):
-            pass
-        else:
-            plano["modelo"] = moldes[indice % len(moldes)]
         if e_tela:
+            modelo, posicao, recorte = trio[indice % 3]
+            plano["modelo"] = modelo
+            plano["posicao_texto"] = posicao
+            plano["recorte"] = recorte
+            plano["chamada"] = ""
+            plano["subtitulo_arte"] = ""
             plano["tela_app"] = False
             plano["edicao_foto"] = diretor.NENHUMA
+            if modelo == "selo" and not str(plano.get("selo") or "").strip():
+                plano["selo"] = " ".join(str(plano.get("titulo_arte") or "").split()[:2])[:24]
+        else:
+            if plano.get("modelo") not in ("tela_app", "antes_depois", "livre"):
+                plano["modelo"] = moldes[indice % len(moldes)]
+            plano["posicao_texto"] = posicoes[indice % 3]
+            plano["recorte"] = ""
         plano["paleta"] = "marca"
         plano["cor_livre"] = ""
-        plano["posicao_texto"] = posicoes[indice % 3]
         plano["angulo"] = ANGULOS[indice] if plano.get("angulo") not in ANGULOS else plano["angulo"]
     return opcoes
 

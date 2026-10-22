@@ -190,14 +190,85 @@
     button.cartao-atalho small { color: var(--mudo); font-size: 12px; line-height: 1.4; }
     .estudio-tarefa { overflow: auto; }
     .estudio-tarefa #tarefa { margin: 12px auto 24px; }
-    .mesa-rascunho { min-height: 0; overflow: auto; padding-bottom: 16px; }
-    .mesa-rascunho .post img.arte { max-height: 64vh; width: auto; max-width: 100%; margin: 0 auto; }
-    .mesa-rascunho .post #foto-previa.vazio-foto { height: 300px; }
-    .mesa-rascunho img#foto-previa:not(.arte), .mesa-rascunho video#foto-previa { height: auto; max-height: 64vh; object-fit: contain; background: #0f172a; }
-    .mesa-rascunho .vazio-foto .spinner { border-color: rgba(79, 70, 229, 0.25); border-top-color: var(--azul); }
-    .mesa-rascunho .post textarea.legenda { border-top: 1px solid var(--linha); }
-    .acoes-mesa { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; margin-top: 10px; }
-    .acoes-mesa button { margin: 0; }
+    .mesa-rascunho { min-height: 0; overflow: auto; padding-bottom: 8px; display: flex; flex-direction: column; gap: 16px; container-type: inline-size; }
+    .mesa-cabeca { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+    .mesa-cabeca h2 { margin: 0; font-size: 22px; letter-spacing: -0.03em; font-weight: 700; }
+    .mesa-cabeca .apoio { margin: 4px 0 0; color: var(--mudo); font-size: 13px; line-height: 1.45; }
+    .mesa-meta { display: flex; align-items: center; gap: 8px; flex: none; }
+    .selo-canal, .estado-rascunho {
+      display: inline-flex; align-items: center; height: 28px; padding: 0 10px;
+      border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap;
+    }
+    .selo-canal { background: white; border: 1px solid var(--linha); color: var(--tinta); }
+    .estado-rascunho { gap: 6px; background: #ecfdf3; color: #067647; border: 1px solid #abefc6; }
+    .estado-rascunho.gerando { background: #eef2ff; color: #4338ca; border-color: #c7d2fe; }
+    .estado-rascunho.gerando::before {
+      content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor;
+      box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.16);
+    }
+    .mesa-cabeca button.link-mini { height: 32px; padding: 0 12px; border: 1px solid var(--linha); border-radius: 999px; background: white; }
+    .mesa-cabeca button.link-mini:hover { border-color: #c7cbff; background: var(--azul-suave); }
+    .mesa-grade { display: grid; grid-template-columns: minmax(280px, 420px) minmax(260px, 1fr); gap: 18px; align-items: stretch; }
+    .mesa-grade:has(#previa[hidden]) { grid-template-columns: 1fr; }
+    .mesa-rascunho .cartao-previa { border-radius: 16px; overflow: hidden; box-shadow: 0 16px 40px rgba(16, 24, 40, 0.07); }
+    .mesa-rascunho #foto-previa { width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: contain; background: #0f172a; display: block; }
+    .mesa-rascunho .post.modo-story #foto-previa { aspect-ratio: 9 / 16; }
+    .mesa-rascunho .post.modo-facebook #foto-previa { aspect-ratio: 1 / 1; }
+    .mesa-rascunho #foto-previa.vazio-foto {
+      object-fit: unset;
+      color: var(--mudo);
+      gap: 4px;
+      padding: 28px 24px;
+      text-align: center;
+      background:
+        radial-gradient(380px 220px at 50% 42%, rgba(255, 255, 255, 0.92), transparent 68%),
+        linear-gradient(165deg, #eef2ff 0%, #f5f3ff 46%, #fdeef6 100%);
+    }
+    .vazio-anel {
+      width: 56px; height: 56px; margin-bottom: 8px; border-radius: 50%;
+      display: grid; place-items: center; background: white;
+      box-shadow: 0 10px 24px rgba(79, 70, 229, 0.14);
+    }
+    .mesa-rascunho .vazio-anel i { font-size: 18px; color: var(--azul); }
+    .mesa-rascunho .vazio-anel .spinner { width: 22px; height: 22px; border-width: 2.5px; border-color: rgba(79, 70, 229, 0.2); border-top-color: var(--azul); }
+    .mesa-rascunho #foto-previa.vazio-foto strong { margin-top: 2px; color: var(--tinta); font-size: 15px; font-weight: 600; letter-spacing: -0.02em; }
+    .mesa-rascunho #foto-previa.vazio-foto > span:last-child { max-width: 240px; font-size: 13px; line-height: 1.45; }
+    .vazio-foto.gerando .vazio-anel { animation: pulso-anel 1.6s ease-in-out infinite; }
+    @keyframes pulso-anel {
+      0%, 100% { box-shadow: 0 10px 24px rgba(79, 70, 229, 0.14); }
+      50% { box-shadow: 0 10px 28px rgba(79, 70, 229, 0.32); }
+    }
+    .painel-rascunho {
+      display: flex; flex-direction: column; gap: 14px; min-width: 0; padding: 18px;
+      background: white; border: 1px solid var(--linha); border-radius: 16px;
+      box-shadow: 0 16px 40px rgba(16, 24, 40, 0.05);
+    }
+    .campo-legenda { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; }
+    .campo-rotulo { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 12px; font-weight: 600; color: var(--mudo); }
+    .campo-rotulo > span:first-child { letter-spacing: 0.05em; text-transform: uppercase; }
+    #conta-legenda { font-weight: 500; letter-spacing: 0; text-transform: none; }
+    #conta-legenda.longa { color: #b45309; }
+    .painel-rascunho textarea.legenda {
+      flex: 1; min-height: 180px; margin: 0; padding: 12px 14px;
+      border: 1px solid var(--linha); border-radius: 12px; background: #f8fafc;
+      color: var(--tinta); font-size: 14px; line-height: 1.55; resize: vertical;
+    }
+    .painel-rascunho textarea.legenda:focus { background: white; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.16); }
+    .painel-rascunho .frase-arte { margin: 0; }
+    .painel-rascunho .acoes-mesa { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; }
+    .painel-rascunho .acoes-mesa button { margin: 0; height: 44px; border-radius: 12px; }
+    .painel-rascunho .acoes-mesa .principal { flex: 1; min-width: 160px; }
+    .painel-rascunho .acoes-mesa .principal:hover { background: #4338ca; }
+    .painel-rascunho .acoes-mesa .secundario {
+      width: auto; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      color: #9f1239; background: white; border-color: #fecdd3;
+    }
+    .painel-rascunho .acoes-mesa .secundario:hover { background: #fff1f2; }
+    .painel-rascunho .nota { margin: 0; }
+    @container (max-width: 740px) {
+      .mesa-grade { grid-template-columns: 1fr; }
+      .mesa-cabeca { align-items: flex-start; flex-wrap: wrap; }
+    }
     details.detalhes-arte { margin: 0 14px 12px; font-size: 12.5px; }
     details.detalhes-arte[hidden] { display: none; }
     details.detalhes-arte summary { cursor: pointer; color: var(--azul); font-weight: 600; margin-bottom: 8px; }
@@ -3967,7 +4038,7 @@
           return;
         }
         fala.textContent = dados.resposta || "Pronto.";
-        if (dados.rascunho && rascunhoAtual && rascunhoAtual.id === alvo.id) aplicarRascunho(dados.rascunho);
+        if (dados.rascunho) aplicarRascunho(dados.rascunho);
       } catch (falha) {
         const demorou = falha.name === "TimeoutError" || falha.name === "AbortError";
         fala.textContent = demorou ? "O ajuste demorou demais. Tente de novo." : (falha.message || "Não consegui ajustar agora.");
