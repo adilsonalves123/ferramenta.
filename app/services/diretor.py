@@ -700,8 +700,6 @@ async def _preparar_base(
 
     foto = await _foto_da_marca(session, plano.get("foto_base_id"), marca_id)
     estilos = await _fotos_estilo(session, plano, marca_id)
-    if foto is None and plano.get("modelo") == "tela_limpa":
-        raise ValueError("Sem foto real, a arte não inventa a cena.")
     if foto is not None:
         if _sem_edicao(foto, plano, forcar_ia):
             return foto.arquivo, url_memoria(foto.id or 0), "foto da memória usada como está (sem custo de imagem)", False

@@ -3407,7 +3407,8 @@
       textoFaixa.textContent = "";
       let rotulo = comFoto ? "Foto da Memória da marca" : "Foto sem a Memória da marca";
       if (comFoto && origemFoto === "arte" && artePrevia && artePrevia.editada) rotulo = "Foto da memória editada pela IA";
-      if (!comFoto && origemFoto === "arte") rotulo = "Foto criada pela IA";
+      if (!comFoto && origemFoto === "arte" && imagemProjeto) rotulo = "Foto criada pela IA";
+      if (!comFoto && !imagemProjeto) rotulo = "Ainda sem foto";
       textoFaixa.append(document.createTextNode(rotulo));
       if (memoriaPrevia.angulo) textoFaixa.append(elemento("small", "", "Ângulo: " + memoriaPrevia.angulo));
       botaoFaixa.textContent = comFoto ? "Trocar foto" : "Escolher da memória";
@@ -3655,7 +3656,8 @@
       const painel = (prateleiraAberta || filaAberta) && !paginaCriarAberta;
       const noPagina = paginaCriarAberta;
       const noHomeTrabalho = trabalhoNoHome && !noPagina;
-      const mesa = !voltouAoChat && !naPrevia && !tarefaAberta && !painel && temConteudoNaMesa() && !fotoNoChat && (noPagina || noHomeTrabalho);
+      const escolhendoCriacao = noPagina && Boolean(passoCriar) && !imagemProjeto && !videoProjeto && !opcoesArte.length && !gerando;
+      const mesa = !voltouAoChat && !naPrevia && !tarefaAberta && !painel && temConteudoNaMesa() && !fotoNoChat && !escolhendoCriacao && (noPagina || noHomeTrabalho);
       document.getElementById("mesa-rascunho").hidden = !mesa;
       document.getElementById("prateleira").hidden = !prateleiraAberta || tarefaAberta || noPagina;
       document.getElementById("fila").hidden = !filaAberta || tarefaAberta || noPagina;
@@ -4447,7 +4449,6 @@
           const nota = document.getElementById("nota-fluxo");
           nota.hidden = false;
           nota.textContent = dados.precisa_foto;
-          document.getElementById("origem-inteligente").hidden = true;
           fala.textContent = dados.precisa_foto;
           return;
         }
@@ -6407,13 +6408,10 @@
 
     document.getElementById("criar-foto").addEventListener("click", async () => {
       const nota = document.getElementById("nota-foto");
-      const legenda = document.getElementById("legenda-previa").value.trim();
+      const legendaCampo = document.getElementById("legenda-previa").value.trim();
+      const ideia = ((artePrevia && artePrevia.ideia) || (memoriaPrevia && memoriaPrevia.cena) || "").trim();
+      const legenda = legendaCampo.length >= 2 ? legendaCampo : (ideia || "Foto do negócio para o post");
       nota.hidden = true;
-      if (legenda.length < 2) {
-        nota.textContent = "Escreva ou gere a legenda antes de criar a foto.";
-        nota.hidden = false;
-        return;
-      }
       const botao = document.getElementById("criar-foto");
       const rotulo = document.getElementById("criar-foto-texto");
       const icone = botao.querySelector("i");
