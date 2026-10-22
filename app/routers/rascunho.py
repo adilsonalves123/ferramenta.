@@ -89,6 +89,7 @@ async def post_tres_artes(pedido: PedidoTresArtes, session: AsyncSession = Depen
             pedido.formato,
             pedido.fotos_ids,
             pedido.anexo_url,
+            pedido.ja_usadas,
         )
     except Exception as erro:
         await session.rollback()
@@ -101,6 +102,7 @@ async def post_tres_artes(pedido: PedidoTresArtes, session: AsyncSession = Depen
                 plano_arte=servico.diretor.resumo_plano(plano) or plano,
                 foto_url=plano.get("feed_url") or "",
                 modelo=plano.get("modelo") or "",
+                angulo=plano.get("angulo") or "",
             )
             for plano in feito["opcoes"]
         ],

@@ -47,12 +47,14 @@ async def _com_memoria(pedido: PedidoCampanha, marca: Ficha, session: AsyncSessi
         quando = nome_do_dia(pedido.dia) + (f" às {pedido.hora}" if pedido.hora else "")
     recentes = await posts_recentes(session, marca.id or 0)
     artes = await artes_recentes(session, marca.id or 0)
-    gerada = await gerar_campanha_memoria(pedido, contexto.regras(), contexto.texto, quando, recentes, artes)
+    gerada = await gerar_campanha_memoria(
+        pedido, contexto.regras() + "\n" + diretor.texto_kit(marca), contexto.texto, quando, recentes, artes
+    )
     gancho = limpar_gancho(gerada.gancho)
     plano, legenda = diretor.validar_plano(
         gerada.plano_arte, contexto, diretor.pedido_do_usuario(pedido.produto), gerada.legenda_redes, gancho
     )
-    plano = diretor.variar(plano, await combinacoes_recentes(session, marca.id or 0), diretor.tem_cores(marca))
+    plano = diretor.variar(plano, await combinacoes_recentes(session, marca.id or 0), marca)
     foto_id = plano.get("foto_base_id")
     completa = CampanhaCompleta(
         titulo_anuncio=gerada.titulo_anuncio,

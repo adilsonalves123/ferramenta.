@@ -39,8 +39,8 @@ NOME_PADRAO = "Minha marca"
 
 SISTEMA = """Você monta publicações para Instagram e Facebook, em português do Brasil.
 Cada item precisa de titulo, legenda e cena.
-titulo: uma frase curta.
-legenda: texto de post, com 5 a 8 hashtags no final.
+titulo: uma frase curta que nomeia o item do post.
+legenda: siga o contrato da memória. Sem memória, primeira linha com o item do pedido, um parágrafo com um detalhe concreto e no máximo 2 hashtags do assunto. Sem "Peça já", "Saiba mais" ou "Responda QUERO".
 cena: descrição de uma fotografia realista, diferente da anterior, que combina com o negócio da ficha. Se aparecer celular ou tela, ela fica virada ou apagada. Sem gráfico, sem botão, sem menu e sem texto escrito.
 Use somente a ficha. Não invente preço, cidade, telefone, depoimento ou número de clientes.
 Não invente horário de funcionamento, preço, desconto nem promoção que não esteja na ficha ou no contexto.
@@ -96,6 +96,8 @@ async def criar_marca(
     marca_dagua: str = "",
     memoria: dict[str, str] | None = None,
     cores: tuple[str, str] | None = None,
+    moldes: str = "",
+    logo_lado: str = "",
 ) -> Ficha:
     registro = Ficha(
         nome=nome.strip()[:120],
@@ -108,6 +110,8 @@ async def criar_marca(
         gravar_fatos(registro, memoria)
     if cores is not None:
         registro.cor_principal, registro.cor_destaque = (cor.strip().upper()[:7] for cor in cores)
+    registro.moldes = diretor.normalizar_moldes(moldes)
+    registro.logo_lado = logo_lado if logo_lado in diretor.LADOS_LOGO else ""
     session.add(registro)
     await session.commit()
     await session.refresh(registro)
@@ -124,6 +128,8 @@ async def atualizar_marca(
     marca_dagua: str = "",
     memoria: dict[str, str] | None = None,
     cores: tuple[str, str] | None = None,
+    moldes: str = "",
+    logo_lado: str = "",
 ) -> Ficha | None:
     resultado = await session.exec(select(Ficha).where(Ficha.id == marca_id))
     registro = resultado.first()
@@ -138,6 +144,8 @@ async def atualizar_marca(
         gravar_fatos(registro, memoria)
     if cores is not None:
         registro.cor_principal, registro.cor_destaque = (cor.strip().upper()[:7] for cor in cores)
+    registro.moldes = diretor.normalizar_moldes(moldes)
+    registro.logo_lado = logo_lado if logo_lado in diretor.LADOS_LOGO else ""
     registro.atualizado_em = agora()
     await session.commit()
     await session.refresh(registro)
@@ -195,6 +203,7 @@ async def escrever_semana(
     quando: list[str] | None = None,
     recentes: list[str] | None = None,
     artes: list[str] | None = None,
+    kit: str = "",
 ) -> list[tuple[PosteGerado, dict]]:
     """Escreve os posts e o plano de arte de cada um. Devolve (post, plano validado)."""
     memoria = memoria or ContextoMemoria()
@@ -213,9 +222,11 @@ async def escrever_semana(
             f"- {linha}" for linha in recentes
         )
     if artes:
-        pedido_tema += "\nÚltimas artes desta marca (varie o modelo e o ângulo):\n" + "\n".join(
+        pedido_tema += "\nÚltimas artes desta marca (não repita a frase; o molde fica no kit):\n" + "\n".join(
             f"- {linha}" for linha in artes
         )
+    if kit.strip():
+        pedido_tema += "\n" + kit.strip()
     bloco_memoria = f"\n\n{memoria.texto[:14000]}" if memoria.tem_memoria else ""
     alcool = fala_de_alcool(ficha) or fala_de_alcool(contexto) or fala_de_alcool(memoria.texto)
     sistema = SISTEMA + memoria.regras() + diretor.REGRAS_ARTE
@@ -306,7 +317,7 @@ async def montar_dias(
     quando = [f"{nome_do_dia(dia)} às {hora}" for dia, hora in pedidos]
     try:
         posts = await escrever_semana(
-            ficha, len(pedidos), tema, marca.site or "", contexto, memoria, quando, recentes, artes
+            ficha, len(pedidos), tema, marca.site or "", contexto, memoria, quando, recentes, artes, diretor.texto_kit(marca)
         )
     except APIError as erro:
         detalhe = str(erro)
@@ -317,7 +328,7 @@ async def montar_dias(
     planos: list[dict] = []
     combinacoes = await combinacoes_recentes(session, marca.id or 0)
     for (dia, hora), (post, plano) in zip(pedidos, posts, strict=False):
-        plano = diretor.variar(plano, combinacoes, diretor.tem_cores(marca))
+        plano = diretor.variar(plano, combinacoes, marca)
         combinacoes = [(plano["modelo"], plano.get("paleta") or "marca"), *combinacoes][:5]
         registro = Agendamento(
             dia=dia,

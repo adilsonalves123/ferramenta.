@@ -8,8 +8,8 @@ from app.schemas import (
     PedidoSugestao,
     SugestaoVideo,
 )
-from app.services.midia import montar_midia
-from app.services.pagina import ler_pagina
+from app.services.midia import guardar_foto_post, montar_midia
+from app.services.pagina import baixar_imagem, ler_pagina
 from app.services.sugestao import sugerir_video
 
 router = APIRouter()
@@ -22,7 +22,7 @@ async def post_sugerir_video(pedido: PedidoSugestao) -> SugestaoVideo:
             lido = await asyncio.to_thread(ler_pagina, pedido.link.strip())
         except ValueError as erro:
             raise HTTPException(status_code=422, detail=str(erro)) from erro
-        pedido = pedido.model_copy(update={"transcricao": lido})
+        pedido = pedido.model_copy(update={"transcricao": lido.texto, "imagem_site": lido.imagem or pedido.imagem_site})
     try:
         return await sugerir_video(pedido)
     except ValueError as erro:
@@ -38,6 +38,23 @@ async def post_sugerir_video(pedido: PedidoSugestao) -> SugestaoVideo:
 
 @router.post("/confirmar-foto")
 async def post_confirmar_foto(pedido: PedidoFotoConfirmada) -> dict:
+    if pedido.imagem_site.strip() and not pedido.foto_base64.strip():
+        try:
+            dados = await asyncio.to_thread(baixar_imagem, pedido.imagem_site.strip())
+            url = await guardar_foto_post(dados, 0, "site")
+        except Exception:
+            url = ""
+        if url:
+            return {
+                "titulo_anuncio": pedido.titulo.strip(),
+                "legenda_redes": pedido.legenda.strip(),
+                "roteiro_video": {"gancho": "", "problema": "", "solucao": "", "cta": ""},
+                "google_meu_negocio": {"nome_otimizado": "", "categoria": "", "descricao_seo": ""},
+                "foto_url": url,
+                "audio_url": None,
+                "video_url": None,
+                "aviso_midia": None,
+            }
     campanha = PedidoCampanha(
         nicho=pedido.nicho.strip(),
         produto=pedido.produto.strip()[:200],

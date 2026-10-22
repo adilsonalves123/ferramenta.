@@ -51,6 +51,30 @@ def _endereco_publico(url: str) -> str:
     return url
 
 
+class PaginaLida:
+    def __init__(self, texto: str, imagem: str = "") -> None:
+        self.texto = texto
+        self.imagem = imagem
+
+
+def extrair_imagem(html: str, base: str) -> str:
+    """Endereço da imagem que a própria página declara (og:image ou twitter:image)."""
+    for meta in re.findall(r"(?is)<meta\b[^>]*>", html):
+        if not re.search(r"(?is)(?:name|property)\s*=\s*['\"](?:og:image|twitter:image)['\"]", meta):
+            continue
+        conteudo = re.search(r"(?is)\bcontent\s*=\s*['\"](.*?)['\"]", meta)
+        if not conteudo:
+            continue
+        endereco = unescape(conteudo.group(1)).strip()
+        if not endereco:
+            continue
+        absoluto = urljoin(base, endereco)
+        partes = urlparse(absoluto)
+        if partes.scheme in {"http", "https"} and partes.hostname:
+            return absoluto[:1000]
+    return ""
+
+
 def extrair_texto(html: str) -> str:
     sem_bloco = re.sub(r"(?is)<(script|style|noscript|svg|template).*?>.*?</\1>", " ", html)
     titulo = ""
@@ -70,7 +94,42 @@ def extrair_texto(html: str) -> str:
     return texto[:6000]
 
 
-def ler_pagina(url: str) -> str:
+def _imagem_valida(dados: bytes) -> bool:
+    if dados.startswith(b"\xff\xd8\xff") or dados.startswith(b"\x89PNG\r\n\x1a\n"):
+        return True
+    return len(dados) > 12 and dados.startswith(b"RIFF") and dados[8:12] == b"WEBP"
+
+
+def baixar_imagem(url: str) -> bytes:
+    """Baixa a imagem pública da página. Recusa endereço interno e arquivo que não seja foto."""
+    atual = _endereco_publico(url.strip())
+    abridor = build_opener(_SemRedirecionar)
+    pedido = Request(
+        atual,
+        headers={"User-Agent": "Mozilla/5.0 (compatible; Ferramenta/1.0)", "Accept": "image/*"},
+    )
+    for _ in range(4):
+        try:
+            with abridor.open(pedido, timeout=12) as resposta:
+                dados = resposta.read(4_000_001)
+        except _Redirecionou as erro:
+            if not erro.url:
+                raise ValueError("A imagem do site não abriu.") from erro
+            atual = _endereco_publico(urljoin(atual, erro.url))
+            pedido = Request(
+                atual,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; Ferramenta/1.0)", "Accept": "image/*"},
+            )
+            continue
+        except (HTTPError, URLError, TimeoutError) as erro:
+            raise ValueError("A imagem do site não abriu.") from erro
+        if len(dados) > 4_000_000 or not _imagem_valida(dados):
+            raise ValueError("A imagem do site não serve como foto.")
+        return dados
+    raise ValueError("A imagem do site ficou redirecionando.")
+
+
+def ler_pagina(url: str) -> PaginaLida:
     bruto = url.strip()
     if bruto and not re.match(r"^https?://", bruto, re.I):
         bruto = "https://" + bruto
@@ -102,8 +161,9 @@ def ler_pagina(url: str) -> str:
             raise ValueError("A página não abriu.") from erro
         except TimeoutError as erro:
             raise ValueError("A página demorou demais para abrir.") from erro
-        texto = extrair_texto(dados.decode("utf-8", errors="replace"))
+        html = dados.decode("utf-8", errors="replace")
+        texto = extrair_texto(html)
         if len(texto) < 40:
             raise ValueError("A página não trouxe texto. Escreva o que a marca faz em Produto ou serviço.")
-        return texto
+        return PaginaLida(texto, extrair_imagem(html, atual))
     raise ValueError("O link ficou redirecionando.")

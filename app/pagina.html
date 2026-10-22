@@ -760,6 +760,7 @@
     .opcoes-arte { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; }
     .opcoes-arte[hidden] { display: none; }
     .opcoes-arte .nota { grid-column: 1 / -1; margin: 0; }
+    .opcoes-arte .cancelar-opcoes { grid-column: 1 / -1; justify-self: start; width: auto; height: 40px; margin: 0; padding: 0 16px; }
     .opcao-arte { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
     .opcoes-arte .opcao-arte img { width: 100%; height: min(46vh, 520px); object-fit: contain; border-radius: 12px; background: #0f172a; cursor: zoom-in; }
     .opcao-arte small { color: var(--mudo); font-size: 12px; }
@@ -1170,7 +1171,7 @@
               <button class="cartao-atalho" type="button" data-atalho="foto">
                 <img class="capa-atalho" src="/quadros/foto.jpg" alt="" />
                 <strong>Foto</strong>
-                <small>Cole o link do seu site: a IA sugere a foto e a legenda.</small>
+                <small>Cole o link do seu site: a foto usa a imagem da página, e a IA escreve a legenda.</small>
               </button>
             </div>
             </div>
@@ -1460,6 +1461,27 @@
           <button class="link-mini" type="button" id="ficha-logo-tirar" hidden>Tirar logo</button>
         </div>
         <p class="nota" id="nota-logo">Opcional. Logo em PNG com fundo transparente fica melhor. Sem logo, a arte leva a marca d'água.</p>
+        <label for="ficha-logo-lado">Posição do logo</label>
+        <select id="ficha-logo-lado">
+          <option value="">Onde o molde colocar</option>
+          <option value="esquerda">Esquerda</option>
+          <option value="direita">Direita</option>
+          <option value="centro">Centro</option>
+        </select>
+        <p class="secao">Moldes da marca</p>
+        <p class="nota">Até 3. As artes usam as cores da marca e só esses moldes. O que muda de uma opção para outra é a frase.</p>
+        <div class="atalhos em-linha" id="ficha-moldes">
+          <button class="chip" type="button" data-molde="destaque">Destaque</button>
+          <button class="chip" type="button" data-molde="minimal">Minimalista</button>
+          <button class="chip" type="button" data-molde="story_chamada">Chamada</button>
+          <button class="chip" type="button" data-molde="faixa">Faixa</button>
+          <button class="chip" type="button" data-molde="poster">Pôster</button>
+          <button class="chip" type="button" data-molde="selo">Selo</button>
+          <button class="chip" type="button" data-molde="carimbo">Carimbo</button>
+          <button class="chip" type="button" data-molde="etiqueta">Etiqueta</button>
+          <button class="chip" type="button" data-molde="alerta">Alerta</button>
+          <button class="chip" type="button" data-molde="neon">Neon</button>
+        </div>
         <p class="secao">Alcance da marca</p>
         <div class="atalhos em-linha" id="ficha-alcance">
           <button class="chip ativo" type="button" data-alcance="cidade">Minha cidade</button>
@@ -1479,7 +1501,7 @@
         <p class="nota" id="nota-alcance">A cidade traz as sugestões de feriados e do clima de lá. Deixe em branco se não quiser.</p>
         <div class="bloco-memoria" id="memoria-marca">
           <h2><i class="fa-solid fa-brain"></i> Memória da marca</h2>
-          <p class="nota">A IA lê esta memória antes de escrever cada post e de escolher a foto. Ela usa só o que está aqui: não inventa produto, preço nem horário.</p>
+          <p class="nota">A IA lê esta memória antes de escrever cada post e de escolher a foto. A legenda sai daqui: um item real na primeira linha, a chamada no canal da marca e as hashtags fixas.</p>
           <label for="memoria-oferta">O que você vende ou faz</label>
           <textarea id="memoria-oferta" class="curto" maxlength="2000" placeholder="Ex.: Produtos e serviços para o dia a dia, com atendimento rápido."></textarea>
           <label for="memoria-itens">Produtos ou serviços (um por linha; pode pôr dia e horário)</label>
@@ -1494,6 +1516,23 @@
           <textarea id="memoria-tom" class="curto" maxlength="1000" placeholder="Ex.: Direto e simpático, fala como gente."></textarea>
           <label for="memoria-nunca">Nunca dizer</label>
           <textarea id="memoria-nunca" class="curto" maxlength="2000" placeholder="Ex.: Não falar de preço. Não prometer prazo."></textarea>
+          <label for="memoria-canal">Onde o cliente responde</label>
+          <select id="memoria-canal">
+            <option value="">Ainda não definido</option>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="balcao">Balcão</option>
+            <option value="site">Site</option>
+            <option value="direct">Direct do Instagram</option>
+            <option value="comentarios">Comentários do post</option>
+          </select>
+          <label for="memoria-chamada">Frase da chamada</label>
+          <input id="memoria-chamada" maxlength="120" placeholder="Ex.: Chama no WhatsApp e pede a feijoada" />
+          <label for="memoria-hashtags">Três hashtags fixas da marca</label>
+          <input id="memoria-hashtags" maxlength="80" placeholder="Ex.: #PadariaDoJoao #PaoQuentinho #LencoisPaulista" />
+          <label for="memoria-soa">Uma frase que soa como a gente</label>
+          <textarea id="memoria-soa" class="curto" maxlength="300" placeholder="Ex.: O pão saiu do forno agora. Se quiser quentinho, é só chegar."></textarea>
+          <label for="memoria-fora">Uma frase que a gente nunca escreveria</label>
+          <textarea id="memoria-fora" class="curto" maxlength="300" placeholder="Ex.: Venha viver uma experiência única de excelência e qualidade."></textarea>
         </div>
         <label for="texto-ficha">Outras instruções</label>
         <textarea id="texto-ficha" required minlength="20" placeholder="O que mais a IA deve lembrar dessa marca: para quem fala, o que não pode inventar e quais fotos combinam."></textarea>
@@ -1626,7 +1665,7 @@
       },
       foto: {
         titulo: "Foto",
-        ajuda: "Cole o link do seu site, se quiser. O chat lê a página, sugere a foto e a legenda. A foto só é criada quando você confirmar.",
+        ajuda: "Cole o link do seu site, se quiser. Se a página tiver uma imagem, a foto usa essa imagem. A tela do sistema não é desenhada. A foto só entra quando você confirmar.",
         botao: "Continuar",
         espera: "Lendo a página",
       },
@@ -1644,6 +1683,7 @@
     let sugestaoAtual = null;
     let mensagensCriacao = [];
     let transcricaoCriacao = "";
+    let imagemSiteCriacao = "";
     let fotoCriacao = "";
 
     function texto(valor) {
@@ -1690,6 +1730,7 @@
       sugestaoAtual = null;
       mensagensCriacao = [];
       transcricaoCriacao = "";
+      imagemSiteCriacao = "";
       fotoCriacao = "";
       document.getElementById("campos-foto").hidden = escolha !== "foto";
       document.getElementById("campo-link-app").hidden = escolha !== "foto";
@@ -1948,6 +1989,7 @@
       try {
         sugestaoAtual = await pedirSugestao();
         window.clearTimeout(pulsoMiniatura);
+        if (sugestaoAtual.imagem_site) imagemSiteCriacao = sugestaoAtual.imagem_site;
         document.getElementById("miniatura-criacao")?.remove();
         mensagensCriacao.push({ papel: "assistente", texto: sugestaoAtual.mensagem });
         desenharSugestao(sugestaoAtual);
@@ -2022,6 +2064,7 @@
             produto_servico: document.getElementById("produto_servico").value.trim(),
             origem: "foto",
             transcricao: transcricaoCriacao,
+            imagem_site: imagemSiteCriacao,
             link: document.getElementById("link_app").value.trim(),
             mensagens: mensagensCriacao,
           }),
@@ -2051,6 +2094,7 @@
       sugestaoAtual = await pedirSugestao();
       window.clearTimeout(pulsoMiniatura);
       if (sugestaoAtual.transcricao) transcricaoCriacao = sugestaoAtual.transcricao;
+      if (sugestaoAtual.imagem_site) imagemSiteCriacao = sugestaoAtual.imagem_site;
       mensagensCriacao = [{ papel: "assistente", texto: sugestaoAtual.mensagem }];
       document.getElementById("miniatura-criacao")?.remove();
       desenharSugestao(sugestaoAtual);
@@ -2086,6 +2130,7 @@
             legenda: String(sugestaoAtual.legenda || sugestaoAtual.roteiro || "").slice(0, 1000),
             cena: String(sugestaoAtual.cena || "").slice(0, 800),
             foto_base64: fotoCriacao,
+            imagem_site: imagemSiteCriacao,
           }),
         });
         const fotoPronta = await lerResposta(respostaFoto);
@@ -2796,6 +2841,11 @@
       minimal: "Minimalista",
       livre: "Só a imagem",
     };
+    const ANGULOS_ARTE = {
+      recurso: "O que está na foto",
+      dia: "O dia de quem usa",
+      resultado: "O que muda",
+    };
     const CAMPOS_ARTE = [
       ["arte-titulo", "titulo_arte"],
       ["arte-subtitulo", "subtitulo_arte"],
@@ -3140,6 +3190,7 @@
     let fotoFluxo = null;
     let formatoAntesFluxo = "feed";
     let opcoesArte = [];
+    let antesDasOpcoes = null;
     let filtroPrateleira = "todas";
     let prateleiraAberta = false;
     let filaAberta = false;
@@ -4059,6 +4110,12 @@
       document.getElementById("aprovar").hidden = Boolean(opcoesArte.length);
       if (!opcoesArte.length) return;
       faixa.append(elemento("p", "nota", "Clique na imagem para ver grande. Quando decidir, escolha embaixo."));
+      const cancelar = document.createElement("button");
+      cancelar.type = "button";
+      cancelar.className = "secundario cancelar-opcoes";
+      cancelar.textContent = "Cancelar";
+      cancelar.addEventListener("click", cancelarOpcoes);
+      faixa.append(cancelar);
       opcoesArte.forEach((opcao, indice) => {
         const cartao = document.createElement("div");
         cartao.className = "opcao-arte";
@@ -4066,7 +4123,7 @@
         imagem.src = opcao.foto_url;
         imagem.alt = "Arte " + (indice + 1);
         imagem.addEventListener("click", () => abrirLuz(opcao.foto_url, () => escolherArte(opcao)));
-        const nome = NOMES_MODELOS[opcao.modelo] || opcao.modelo || "Arte";
+        const nome = ANGULOS_ARTE[opcao.angulo] || NOMES_MODELOS[opcao.modelo] || opcao.modelo || "Arte";
         const escolher = document.createElement("button");
         escolher.type = "button";
         escolher.className = "principal";
@@ -4095,6 +4152,7 @@
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         opcoesArte = [];
+        antesDasOpcoes = null;
         modoArte = false;
         marcarFormato(formatoArte);
         aplicarRascunho(dados.rascunho);
@@ -4105,6 +4163,26 @@
       } finally {
         botao.disabled = false;
       }
+    }
+
+    function frasesJaUsadas() {
+      try {
+        const lista = JSON.parse(sessionStorage.getItem("risca-frases-" + ((marcaAtual && marcaAtual.id) || 0)) || "[]");
+        return Array.isArray(lista) ? lista.filter((item) => typeof item === "string" && item.trim()).slice(-12) : [];
+      } catch (erro) {
+        return [];
+      }
+    }
+
+    function guardarFrases(titulos) {
+      const lista = frasesJaUsadas();
+      titulos.forEach((titulo) => {
+        const limpo = String(titulo || "").trim();
+        if (limpo && !lista.includes(limpo)) lista.push(limpo);
+      });
+      try {
+        sessionStorage.setItem("risca-frases-" + ((marcaAtual && marcaAtual.id) || 0), JSON.stringify(lista.slice(-12)));
+      } catch (erro) {}
     }
 
     function pedidoFraseDaIa() {
@@ -4119,6 +4197,17 @@
       const anexo = fotoFluxo && fotoFluxo.tipo === "anexo" ? fotoFluxo.url : (origemFoto === "anexo" && imagemProjeto ? imagemProjeto : "");
       const fluxoGuardado = fluxoCriar;
       const fotoGuardada = fotoFluxo;
+      antesDasOpcoes = {
+        passo: passoCriar,
+        fluxo: fluxoCriar,
+        foto: fotoFluxo,
+        texto: falaPessoa ? "" : textoPedido,
+        arteEmCima,
+        modoArte,
+        modoImagem,
+        fotoNoChat,
+        legenda: document.getElementById("legenda-previa").value,
+      };
       passoCriar = "";
       fluxoCriar = "";
       fotoFluxo = null;
@@ -4147,16 +4236,18 @@
             formato: formatoArte,
             fotos_ids: escolhidas.map((foto) => foto.id),
             anexo_url: anexo,
+            ja_usadas: frasesJaUsadas(),
           }),
         });
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(mensagemErro(dados));
         escreverLegenda(dados.legenda || "");
         opcoesArte = dados.opcoes || [];
+        guardarFrases(opcoesArte.map((opcao) => (opcao.plano_arte && opcao.plano_arte.titulo_arte) || ""));
         fotoNoChat = false;
         arteEmCima = false;
         desenharOpcoes();
-        fala.textContent = "Escolha uma das 3. As três usam a mesma foto e mudam a frase, o estilo e as cores.";
+        fala.textContent = "Escolha uma das 3. A foto é a mesma. Cada arte defende um argumento diferente. Se pedir de novo, estas frases não voltam.";
       } catch (falha) {
         const demorou = falha.name === "TimeoutError" || falha.name === "AbortError";
         fala.textContent = demorou ? "As artes demoraram demais. Tente de novo." : (falha.message || "Não consegui criar as artes agora.");
@@ -4172,6 +4263,31 @@
         gerando = false;
         atualizarTopoConversa();
       }
+    }
+
+    function cancelarOpcoes() {
+      const antes = antesDasOpcoes;
+      opcoesArte = [];
+      antesDasOpcoes = null;
+      if (antes) {
+        passoCriar = antes.passo;
+        fluxoCriar = antes.fluxo;
+        fotoFluxo = antes.foto;
+        arteEmCima = antes.arteEmCima;
+        modoArte = antes.modoArte;
+        modoImagem = antes.modoImagem;
+        fotoNoChat = antes.fotoNoChat;
+        escreverLegenda(antes.legenda || "");
+        if (!passoCriar && paginaCriarAberta && !fotoNoChat && !arteEmCima) {
+          passoCriar = "pronto";
+          fluxoCriar = fluxoCriar || "arte";
+          modoArte = fluxoCriar !== "foto";
+          modoImagem = fluxoCriar === "foto";
+        }
+        if (antes.texto) pedidoCampo.value = antes.texto;
+      }
+      desenharOpcoes();
+      atualizarTopoConversa();
     }
 
     function urlDaFila(item, vista) {
@@ -4696,6 +4812,10 @@
       fecharPaginaCriar(false);
     });
     document.getElementById("voltar-pagina-criar").addEventListener("click", () => {
+      if (opcoesArte.length) {
+        cancelarOpcoes();
+        return;
+      }
       if (passoCriar === "origem") {
         passoCriar = "tamanho";
         atualizarTopoConversa();
@@ -5141,6 +5261,7 @@
 
     let fichaEditando = 0;
     let alcanceFicha = "cidade";
+    let moldesFicha = ["destaque", "minimal", "story_chamada"];
     const NOTAS_ALCANCE = {
       cidade: "A cidade traz as sugestões de feriados e do clima de lá. Deixe em branco se não quiser.",
       estado: "Sugestões com os feriados nacionais e do seu estado e as datas comemorativas. Sem clima.",
@@ -5159,6 +5280,30 @@
 
     document.querySelectorAll("[data-alcance]").forEach((botao) => {
       botao.addEventListener("click", () => aplicarAlcance(botao.dataset.alcance));
+    });
+
+    function aplicarMoldes(lista) {
+      const limpos = [];
+      (lista || []).forEach((nome) => {
+        if (limpos.length < 3 && !limpos.includes(nome)) limpos.push(nome);
+      });
+      moldesFicha = limpos.length ? limpos : ["destaque", "minimal", "story_chamada"];
+      document.querySelectorAll("[data-molde]").forEach((botao) => {
+        botao.classList.toggle("ativo", moldesFicha.includes(botao.dataset.molde));
+      });
+    }
+
+    document.querySelectorAll("[data-molde]").forEach((botao) => {
+      botao.addEventListener("click", () => {
+        const nome = botao.dataset.molde;
+        if (moldesFicha.includes(nome)) {
+          if (moldesFicha.length === 1) return;
+          aplicarMoldes(moldesFicha.filter((item) => item !== nome));
+          return;
+        }
+        if (moldesFicha.length >= 3) return;
+        aplicarMoldes(moldesFicha.concat(nome));
+      });
     });
 
     function preencherFicha(id) {
@@ -5192,6 +5337,8 @@
       document.getElementById("apagar-marca").hidden = !achada || marcas.length <= 1;
       document.getElementById("ficha-cor-principal").value = (achada && achada.cor_principal) || "#1B2A41";
       document.getElementById("ficha-cor-destaque").value = (achada && achada.cor_destaque) || "#E63946";
+      document.getElementById("ficha-logo-lado").value = (achada && achada.logo_lado) || "";
+      aplicarMoldes(achada && achada.moldes ? achada.moldes.split(",") : ["destaque", "minimal", "story_chamada"]);
       mostrarLogo(achada ? achada.logo_url || "" : "");
       carregarFotosMarca(achada ? achada.id : 0);
     }
@@ -5255,7 +5402,7 @@
       }
     });
 
-    const CAMPOS_MEMORIA = ["oferta", "itens", "horarios", "diferenciais", "promocoes", "tom", "nunca"];
+    const CAMPOS_MEMORIA = ["oferta", "itens", "horarios", "diferenciais", "promocoes", "tom", "nunca", "canal", "chamada", "hashtags", "soa", "fora"];
     const TIPOS_FOTO = [
       ["auto", "Automático (a IA identifica)"],
       ["produto", "Produto"],
@@ -5871,6 +6018,8 @@
         memoria: Object.fromEntries(CAMPOS_MEMORIA.map((campo) => [campo, document.getElementById("memoria-" + campo).value.trim()])),
         cor_principal: document.getElementById("ficha-cor-principal").value.toUpperCase(),
         cor_destaque: document.getElementById("ficha-cor-destaque").value.toUpperCase(),
+        moldes: moldesFicha.join(","),
+        logo_lado: document.getElementById("ficha-logo-lado").value,
       };
       if (corpo.nome.length < 2) {
         nota.textContent = "Escreva o nome da marca.";

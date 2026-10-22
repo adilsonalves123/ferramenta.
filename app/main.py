@@ -150,8 +150,15 @@ def create_app() -> FastAPI:
                 "promocoes": "As promoções fixas podem ter até 2000 letras.",
                 "tom": "O tom de voz pode ter até 1000 letras.",
                 "nunca": "O Nunca dizer pode ter até 2000 letras.",
+                "canal": "Escolha onde o cliente responde.",
+                "chamada": "A frase da chamada pode ter até 120 letras.",
+                "hashtags": "As hashtags fixas podem ter até 80 letras.",
+                "soa": "A frase que soa como a marca pode ter até 300 letras.",
+                "fora": "A frase que a marca nunca escreveria pode ter até 300 letras.",
                 "cor_principal": "Escolha a cor principal na paleta.",
                 "cor_destaque": "Escolha a cor de destaque na paleta.",
+                "moldes": "Escolha até 3 moldes da marca.",
+                "logo_lado": "Escolha a posição do logo: esquerda, direita ou centro.",
             }.get(campo, "Não consegui salvar a marca. Confira os campos.")
             return JSONResponse(status_code=422, content={"detail": detalhe})
         if request.url.path.startswith("/memoria"):

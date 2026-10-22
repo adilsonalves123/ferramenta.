@@ -435,13 +435,12 @@ async def fotos_com_marca(
     story_base: str = "",
     marca_id: int = 0,
     plano: dict | None = None,
+    cta: str = "",
 ) -> tuple[str, str]:
     """Foto do feed com a marca d'água e o Story 1080x1920 (fundo desfocado, gancho e chamada).
     Com a arte do diretor (plano), o feed e o Story já saem prontos, com o logo. Vídeo segue sem marca d'água."""
     from app.services import arte
     from app.services.imagens import existe
-    from app.services.memoria import CTA_STORY
-
     usados = [alvo for alvo in alvos if _usa_foto(alvo, imagem_url, video_url)]
     arte_pronta = bool(plano and plano.get("feed_url") and plano["feed_url"] == imagem_url.strip())
     if arte_pronta:
@@ -459,9 +458,9 @@ async def fotos_com_marca(
         )
     if any(alvo.endswith(":story") for alvo in usados):
         base = story_base or imagem_url
-        chave = "story:" + hashlib.sha1(f"{gancho}|{CTA_STORY}|{marca_dagua}|{base}".encode()).hexdigest()[:16]
+        chave = "story:" + hashlib.sha1(f"{gancho}|{cta}|{marca_dagua}|{base}".encode()).hexdigest()[:16]
         story = await _variante(
-            base, chave, marca_id, lambda dados: arte.story(arte.abrir(dados), gancho, CTA_STORY, marca_dagua)
+            base, chave, marca_id, lambda dados, chamada=cta: arte.story(arte.abrir(dados), gancho, chamada, marca_dagua)
         )
     return feed, story
 
@@ -675,8 +674,18 @@ async def publicar_agora(
     site, marca_dagua = await dados_marca(session, marca)
     texto = com_site(texto_do_post(titulo, legenda), site)
     try:
+        from app.services.memoria import cta_do_story
+
         foto_feed, foto_story = await fotos_com_marca(
-            alvos, imagem_url, video_url, marca_dagua, gancho, await base_do_story(session, foto_id), marca, plano
+            alvos,
+            imagem_url,
+            video_url,
+            marca_dagua,
+            gancho,
+            await base_do_story(session, foto_id),
+            marca,
+            plano,
+            await cta_do_story(session, marca),
         )
     except Exception as erro:
         return "erro", (erro_marca(erro) + " Nada foi publicado.")[:300]
@@ -971,6 +980,8 @@ async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
         item.detalhe = " ".join(avisos_conta)[:300]
         return
     try:
+        from app.services.memoria import cta_do_story
+
         foto_feed, foto_story = await fotos_com_marca(
             prontos,
             item.imagem_url,
@@ -980,6 +991,7 @@ async def _publicar_item(session: AsyncSession, item: Agendamento) -> None:
             story_base,
             marca,
             ler_plano(item.plano_arte),
+            await cta_do_story(session, marca),
         )
     except Exception as erro:
         item.tentativas_marca = (item.tentativas_marca or 0) + 1

@@ -250,6 +250,8 @@ def _marca(registro, aviso: str = "", logos: dict[int, str] | None = None) -> It
     return ItemMarca(
         cor_principal=molde.hex_valido(registro.cor_principal, molde.COR_PRINCIPAL),
         cor_destaque=molde.hex_valido(registro.cor_destaque, molde.COR_DESTAQUE),
+        moldes=registro.moldes or "",
+        logo_lado=registro.logo_lado or "",
         logo_url=f"/marcas/{registro.id}/logo.png?v={versao}" if versao else "",
         id=registro.id or 0,
         nome=registro.nome or "",
@@ -312,6 +314,8 @@ async def post_marca(pedido: PedidoMarca, session: AsyncSession = Depends(get_se
         pedido.marca_dagua,
         pedido.memoria.model_dump() if pedido.memoria else None,
         _cores(pedido),
+        pedido.moldes,
+        pedido.logo_lado,
     )
     aviso = await ajustar_local(session, registro, pedido.cidade, uf, pedido.abrangencia)
     return _marca(registro, aviso, await _logos(session))
@@ -334,6 +338,8 @@ async def put_marca(
         pedido.marca_dagua,
         pedido.memoria.model_dump() if pedido.memoria else None,
         _cores(pedido),
+        pedido.moldes,
+        pedido.logo_lado,
     )
     if registro is None:
         raise HTTPException(status_code=404, detail="Essa marca não existe mais.")

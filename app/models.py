@@ -121,6 +121,8 @@ class Ficha(SQLModel, table=True):
     memoria: str = Field(default="", sa_type=Text)
     cor_principal: str = Field(default="", max_length=7)
     cor_destaque: str = Field(default="", max_length=7)
+    moldes: str = Field(default="", max_length=80)
+    logo_lado: str = Field(default="", max_length=10)
     atualizado_em: datetime = Field(default_factory=agora, sa_type=DateTime(timezone=True))
 
 

@@ -9,8 +9,8 @@ A pessoa descreve o negócio e pode mandar o texto lido do site dela. Use só o 
 Não invente preço, depoimento, número de clientes, cidade, telefone ou recurso que não apareça. Valor de exemplo numa imagem ou tela não é preço real. Não copie esses valores para a legenda.
 mensagem: descreva a foto e a legenda. Comece com "Na foto eu pretendo". Depois um parágrafo começando com "No post eu pretendo" com o texto da legenda. Não numere as opções dentro da mensagem.
 titulo: uma frase curta.
-roteiro: a legenda pronta, duas ou três frases, e no final de 5 a 8 hashtags.
-cenas: exatamente 1. narracao é a legenda curta. imagem descreve a fotografia real: o que a câmera mostra, o lugar e a luz. Se o assunto for digital (site ou serviço on-line), mostre o aparelho em uso com a tela sem palavras. Proibido texto legível, letra, logotipo, interface com palavras e objeto que não combine com o negócio.
+roteiro: a legenda pronta. Primeira linha com o item concreto do pedido. Um parágrafo com um detalhe que está no texto. No máximo 2 hashtags do assunto, sem hashtag genérica. Sem "Peça já", "Saiba mais" ou "Responda QUERO".
+cenas: exatamente 1. narracao é a legenda curta. imagem descreve a fotografia real: o que a câmera mostra, o lugar e a luz. Se o assunto for sistema, site ou aplicativo, não descreva celular, tablet, tela, ícone, botão nem interface: isso sai inventado e não é o produto. Mostre só o lugar onde o sistema é usado. Se a página tiver imagem real, diga na mensagem que a foto usa essa imagem, sem redesenhar a tela. Proibido texto legível, letra, logotipo e objeto que não combine com o negócio.
 legenda: igual ao roteiro.
 opcoes: exatamente 4 posts diferentes. titulo curto. detalhe em uma frase. Cada opção muda o assunto com base em um recurso que realmente está na página ou no pedido.
 Se a pessoa já escolheu um caminho, mantenha esse caminho, reescreva a foto e a legenda nele e ofereça 4 ajustes."""
@@ -35,6 +35,12 @@ class SugestaoTexto(BaseModel):
     opcoes: list[OpcaoTexto]
 
 
+def _fechar(texto: str) -> str:
+    from app.services.memoria import fechar_legenda
+
+    return fechar_legenda(texto.strip())
+
+
 def _historico(pedido: PedidoSugestao) -> str:
     linhas = [
         f"Título: {pedido.nicho.strip()}",
@@ -44,6 +50,8 @@ def _historico(pedido: PedidoSugestao) -> str:
         linhas.append(f"Link da página: {pedido.link.strip()}")
     if pedido.transcricao.strip():
         linhas.append(f"Texto lido da página:\n{pedido.transcricao.strip()}")
+    if pedido.imagem_site.strip():
+        linhas.append("A página tem uma imagem real do produto. A foto do post será essa imagem, sem redesenhar a tela.")
     if pedido.mensagens:
         linhas.append("Conversa:")
         for mensagem in pedido.mensagens[-8:]:
@@ -60,9 +68,10 @@ def _montar(pedido: PedidoSugestao, texto: SugestaoTexto) -> SugestaoVideo:
         mensagem=texto.mensagem.strip(),
         titulo=texto.titulo.strip() or pedido.nicho.strip(),
         cena=cenas[0].imagem.strip()[:800],
-        legenda=texto.legenda.strip(),
+        legenda=_fechar(texto.legenda),
         transcricao=pedido.transcricao.strip(),
-        roteiro=(texto.roteiro.strip() or cenas[0].narracao.strip())[:2500],
+        imagem_site=pedido.imagem_site.strip()[:1000],
+        roteiro=_fechar(texto.roteiro.strip() or cenas[0].narracao.strip())[:2500],
         cenas=[{"narracao": cena.narracao.strip()[:800], "imagem": cena.imagem.strip()[:800]} for cena in cenas],
         opcoes=[
             {"titulo": opcao.titulo.strip()[:80], "detalhe": opcao.detalhe.strip()[:240]}

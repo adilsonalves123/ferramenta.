@@ -8,8 +8,8 @@ from app.schemas import CampanhaGerada, CampanhaMemoria, PedidoCampanha
 
 SISTEMA = """Você escreve campanhas de marketing em português do Brasil para pequenos negócios.
 Use só o nicho e o produto informados. Não invente preço, cidade, telefone, avaliação, horário de funcionamento ou promessa que não dê para cumprir.
-titulo_anuncio: uma frase curta, pronta para anúncio.
-legenda_redes: texto de post e, no final, de 5 a 8 hashtags."""
+titulo_anuncio: uma frase curta, pronta para anúncio, que nomeia o item do post.
+legenda_redes: primeira linha com o item concreto; um parágrafo com um detalhe real; uma chamada só se houver canal; no máximo 2 hashtags do assunto. Sem hashtag genérica e sem "Peça já", "Saiba mais" ou "Responda QUERO". Se a memória trouxer o contrato da legenda, siga esse contrato."""
 
 SISTEMA_CENA = """Você descreve uma única fotografia realista para acompanhar um post de rede social, em português do Brasil.
 Responda só com a descrição da cena, em até 3 frases: o lugar, o que aparece em destaque e a luz.
@@ -71,9 +71,12 @@ async def gerar_campanha(pedido: PedidoCampanha) -> CampanhaGerada:
         raise ValueError(mensagem.refusal)
     if mensagem.parsed is None:
         raise ValueError("A IA não devolveu a campanha no formato esperado.")
+    from app.services.memoria import fechar_legenda
+
+    legenda = fechar_legenda(mensagem.parsed.legenda_redes)
     if alcool:
-        return mensagem.parsed.model_copy(update={"legenda_redes": com_moderacao(mensagem.parsed.legenda_redes)})
-    return mensagem.parsed
+        legenda = com_moderacao(legenda)
+    return mensagem.parsed.model_copy(update={"legenda_redes": legenda})
 
 
 async def gerar_campanha_memoria(

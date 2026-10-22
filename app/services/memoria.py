@@ -44,7 +44,6 @@ NOMES_PAPEIS = {
     "base": "base para editar",
     "estilo": "só inspiração de estilo",
 }
-CTA_STORY = "Responda QUERO"
 DIAS_SEMANA = ("segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo")
 
 CAMPOS_FATOS = (
@@ -55,7 +54,29 @@ CAMPOS_FATOS = (
     ("promocoes", "Promoções fixas"),
     ("tom", "Tom de voz"),
     ("nunca", "Nunca dizer"),
+    ("canal", "Onde o cliente responde"),
+    ("chamada", "Frase da chamada"),
+    ("hashtags", "Hashtags fixas da marca"),
+    ("soa", "Frase que soa como a gente"),
+    ("fora", "Frase que a gente nunca escreveria"),
 )
+
+CANAIS = {
+    "whatsapp": ("whatsapp", "zap", "No WhatsApp"),
+    "balcao": ("balcao", "No balcão"),
+    "site": ("site", "Veja no site"),
+    "direct": ("direct", "No direct"),
+    "comentarios": ("comentario", "comenta", "Comenta aqui"),
+}
+HASHTAGS_GENERICAS = {
+    "qualidade", "excelencia", "sucesso", "amor", "motivacao", "dica", "dicas", "oferta", "ofertas",
+    "promo", "promocao", "negocio", "negocios", "empreendedorismo", "felicidade", "gratidao",
+    "inspiracao", "lifestyle", "instagood", "love", "brasil", "marketing", "vendas", "cliente",
+    "clientes", "saudavel", "delicia", "food", "foodporn", "instafood", "omelhor", "top", "vida",
+    "feliz", "bomdia", "boatarde", "boanoite",
+}
+_TAG = re.compile(r"#([0-9A-Za-zÀ-ÿ_]+)")
+_MODERACAO = re.compile(r"\n*Beba com moderação\.\s*$", re.IGNORECASE)
 
 REGRAS_MEMORIA = """
 
@@ -66,7 +87,13 @@ Memória da marca: leia a MEMÓRIA DA MARCA antes de escrever. O dono escreveu e
 - Itens com dia ou horário (ex.: "Produto da semana — sábado") só aparecem como oferta do dia no dia certo do post. Em outro dia não prometa esse item para hoje.
 - A foto do post sai do plano_arte (foto_base_id e fotos_estilo_ids). Se o post fala de algo que tem foto na memória, use essa foto como base. Use só ids da lista.
 - Se a foto escolhida for captura de tela, a legenda explica o que aparece nela e por que importa para o cliente, sem citar valores de exemplo da tela.
-- Respeite o "Tom de voz" e tudo que está em "Nunca dizer"."""
+- Respeite o "Tom de voz" e tudo que está em "Nunca dizer".
+
+Contrato da legenda, nesta ordem, com uma linha em branco entre os blocos:
+1. Primeira linha: um item concreto de "Produtos ou serviços", com o nome dele. Se a lista estiver vazia, use o produto do pedido. Sem "qualidade", "excelência", "o melhor" ou "experiência única".
+2. Um parágrafo: um fato de "Diferenciais" ou "Horários", no ritmo de "Frase que soa como a gente". Não chegue perto de "Frase que a gente nunca escreveria".
+3. Uma linha de chamada, só no canal de "Onde o cliente responde". Se "Frase da chamada" estiver preenchida, use essa frase. Sem "Peça já", "Saiba mais", "Chame no direct" ou "Responda QUERO".
+4. Hashtags: as de "Hashtags fixas da marca", nesta ordem, e no máximo 2 hashtags novas do assunto deste post. Sem hashtag genérica."""
 
 CAMPOS_SEM_MEMORIA = """
 angulo: o ângulo concreto do post, em poucas palavras.
@@ -134,6 +161,7 @@ class ContextoMemoria:
 
     texto: str = ""
     fatos: str = ""
+    mapa: dict[str, str] = field(default_factory=dict)
     usaveis: set[int] = field(default_factory=set)
     lugar: set[int] = field(default_factory=set)
     estilo: set[int] = field(default_factory=set)
@@ -161,9 +189,143 @@ def ler_fatos(ficha: Ficha | None) -> dict[str, str]:
     return {chave: str(dados.get(chave) or "").strip() for chave in vazio}
 
 
+def _sem_acento(texto: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFKD", texto or "") if not unicodedata.combining(c))
+
+
+def canal_valido(valor: str) -> str:
+    chave = _sem_acento((valor or "").strip().lower())
+    return chave if chave in CANAIS else ""
+
+
 def gravar_fatos(ficha: Ficha, fatos: dict[str, str]) -> None:
-    limpos = {chave: str(fatos.get(chave) or "").strip() for chave, _rotulo in CAMPOS_FATOS}
+    limpos: dict[str, str] = {}
+    for chave, _rotulo in CAMPOS_FATOS:
+        valor = str(fatos.get(chave) or "").strip()
+        if chave == "canal":
+            valor = canal_valido(valor)
+        limpos[chave] = valor
     ficha.memoria = json.dumps(limpos, ensure_ascii=False) if any(limpos.values()) else ""
+
+
+def _hashtags_fixas(fatos: dict[str, str]) -> list[str]:
+    saida: list[str] = []
+    vistas: set[str] = set()
+    for pedaco in re.split(r"[\s,;]+", fatos.get("hashtags") or ""):
+        nome = pedaco.strip().lstrip("#")
+        if not nome or not _TAG.fullmatch("#" + nome):
+            continue
+        chave = _sem_acento(nome.lower())
+        if chave in vistas:
+            continue
+        vistas.add(chave)
+        saida.append("#" + nome)
+        if len(saida) == 3:
+            break
+    return saida
+
+
+def chamada_curta(fatos: dict[str, str]) -> str:
+    """Texto curto da arte e do Story: a frase do dono, se couber, ou a do canal."""
+    canal = canal_valido(fatos.get("canal", ""))
+    if not canal:
+        return ""
+    dono = (fatos.get("chamada") or "").strip()
+    if dono and len(dono) <= 32 and len(dono.split()) <= 4:
+        return dono
+    return CANAIS[canal][-1]
+
+
+def _linha_chamada(fatos: dict[str, str]) -> str:
+    canal = canal_valido(fatos.get("canal", ""))
+    if not canal:
+        return ""
+    dono = (fatos.get("chamada") or "").strip()
+    return (dono or CANAIS[canal][-1])[:120]
+
+
+def _ja_chama(corpo: str, fatos: dict[str, str]) -> bool:
+    canal = canal_valido(fatos.get("canal", ""))
+    if not canal:
+        return True
+    simples = _sem_acento(corpo.lower())
+    linha = _sem_acento(_linha_chamada(fatos).lower())
+    if linha and linha in simples:
+        return True
+    return any(re.search(rf"\b{pista}\b", simples) for pista in CANAIS[canal][:-1])
+
+
+_CTA_ESTOQUE = {
+    "peca ja",
+    "peca agora",
+    "saiba mais",
+    "chame no direct",
+    "chama no direct",
+    "responda quero",
+    "link na bio",
+    "comece ja",
+    "comece agora",
+    "experimente",
+    "experimente agora",
+    "experimente ja",
+}
+
+
+def _sem_cta_estoque(corpo: str) -> str:
+    linhas = []
+    for linha in corpo.splitlines():
+        simples = _sem_acento(linha).strip().lower().rstrip(".!")
+        if simples in _CTA_ESTOQUE:
+            continue
+        linhas.append(linha)
+    return "\n".join(linhas).strip()
+
+
+def fechar_legenda(legenda: str, fatos: dict[str, str] | None = None) -> str:
+    """Fecha a legenda no contrato da marca: chamada do canal, hashtags fixas e no máximo 2 do post."""
+    fatos = fatos or {}
+    texto = (legenda or "").strip()
+    if not texto:
+        return ""
+    achadas = _TAG.findall(texto)
+    corpo = _sem_cta_estoque(re.sub(r"(?:\s*#[0-9A-Za-zÀ-ÿ_]+)+\s*$", "", texto).strip())
+    moderacao = ""
+    achado = _MODERACAO.search(corpo)
+    if achado:
+        moderacao = "Beba com moderação."
+        corpo = corpo[: achado.start()].rstrip()
+    if not _ja_chama(corpo, fatos):
+        corpo = f"{corpo}\n\n{_linha_chamada(fatos)}".strip()
+    fixas = _hashtags_fixas(fatos)
+    vistas = {_sem_acento(tag.lstrip("#").lower()) for tag in fixas}
+    extras: list[str] = []
+    for nome in achadas:
+        chave = _sem_acento(nome.lower())
+        marca = "#" + nome
+        if chave in HASHTAGS_GENERICAS or chave in vistas:
+            continue
+        vistas.add(chave)
+        extras.append(marca)
+        if len(extras) == 2:
+            break
+    if not fixas:
+        extras = extras[:2]
+    blocos = [corpo]
+    if moderacao:
+        blocos.append(moderacao)
+    tags = fixas + extras
+    if tags:
+        blocos.append(" ".join(tags))
+    return "\n\n".join(bloco for bloco in blocos if bloco)
+
+
+async def cta_do_story(session: AsyncSession, marca_id: int) -> str:
+    if marca_id <= 0:
+        return ""
+    ficha = await session.get(Ficha, marca_id)
+    if ficha is None:
+        return ""
+    return chamada_curta(ler_fatos(ficha))
 
 
 def _colunas_lista():
@@ -313,7 +475,7 @@ async def montar_contexto(session: AsyncSession, ficha: Ficha | None) -> Context
     linhas_fatos = [f"{rotulo}:\n{fatos[chave]}" for chave, rotulo in CAMPOS_FATOS if fatos[chave]]
     if linhas_fatos:
         partes.append("MEMÓRIA DA MARCA (fatos escritos pelo dono):\n" + "\n\n".join(linhas_fatos))
-    contexto = ContextoMemoria(fatos="\n".join(fatos.values()))
+    contexto = ContextoMemoria(fatos="\n".join(fatos.values()), mapa=fatos)
     linhas_fotos = []
     linhas_estilo = []
     for foto in fotos:

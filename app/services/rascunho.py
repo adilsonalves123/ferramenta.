@@ -7,7 +7,7 @@ import logging
 import re
 import unicodedata
 
-from PIL import Image, ImageChops, ImageFilter
+from PIL import Image, ImageChops, ImageFilter, ImageOps
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -16,7 +16,7 @@ from app.models import Agendamento, Ficha, MemoriaFoto, Rascunho, agora
 from app.schemas import IntencaoAjuste, ItemRascunho, VersaoRascunho
 from app.services import arte, diretor
 from app.services.imagens import bytes_da_url, existe, guardar_figura, id_da_url, url_memoria
-from app.services.memoria import NOMES_TIPOS, artes_recentes, e_captura, listar_fotos, montar_contexto, tipo_efetivo
+from app.services.memoria import NOMES_TIPOS, artes_recentes, e_captura, fechar_legenda, listar_fotos, montar_contexto, tipo_efetivo
 from app.services.openai_campanha import cliente_openai, com_moderacao, fala_de_alcool
 
 log = logging.getLogger("uvicorn.error")
@@ -54,7 +54,7 @@ arte: só os campos que ela pediu para mudar, com o texto novo exato; null nos o
 - cor_livre: código #RRGGBB se ela pedir uma cor específica ("faz em amarelo" = "#FFD60A", "azul" = "#2563EB", "verde" = "#16A34A", "laranja" = "#F97316", "roxo" = "#7C3AED", "rosa" = "#EC4899", "preto" = "#111111"); null se não.
 - posicao_texto: "topo" ou "base" se ela pedir o texto em cima ou embaixo, "auto" para deixar a arte decidir; null se não pediu.
 - cor: principal ou destaque (qual cor da marca vai na ênfase); null se ela não pediu.
-legenda_nova: se tipos tem legenda, a legenda inteira reescrita como ela pediu, mantendo os fatos, as hashtags e o site da legenda atual. Senão "". Não invente preço, produto, horário nem promoção.
+legenda_nova: se tipos tem legenda, a legenda inteira reescrita como ela pediu, no contrato da marca: item concreto na primeira linha, a frase da chamada do canal e as hashtags fixas. Mantenha os fatos e o site da legenda atual. Senão "". Não invente preço, produto, horário nem promoção.
 formato: feed, story ou ambos se tipos tem formato; senão null.
 pergunta: uma pergunta curta SÓ se não der para saber o que fazer (ex.: ela fala "o print" e a memória tem vários prints e nenhum foi anexado: "Qual print? A tela de fiado ou a de vendas?"). Senão "".
 resumo_mudanca: em primeira pessoa, curto, o que você vai mudar (ex.: "Coloquei o print da tela de fiado no celular"). Sem ponto final."""
@@ -709,7 +709,7 @@ async def ajustar(
             frases.append(_frase_arte(plano, mudou))
             precisa_montar = True
     if "legenda" in tipos and intencao.legenda_nova.strip():
-        legenda = com_moderacao(intencao.legenda_nova.strip()[:5000])
+        legenda = com_moderacao(fechar_legenda(intencao.legenda_nova.strip()[:5000], contexto.mapa))
         frases.append("reescrevi a legenda")
     if "formato" in tipos and intencao.formato in FORMATOS and intencao.formato != formato:
         formato = intencao.formato
@@ -763,54 +763,76 @@ async def ajustar(
     return {**resposta, "resposta": texto}
 
 
-MODELOS_LIVRES = (
-    "poster",
-    "alerta",
-    "destaque",
-    "neon",
-    "faixa",
-    "minimal",
-    "etiqueta",
-    "carimbo",
-    "story_chamada",
-    "selo",
+_FRASE_VAZIA = re.compile(
+    r"praticidade|facilidade|simplif|gerenc|controle total|sem estresse|suas maos|"
+    r"descomplique|tecnologia|experimente|saiba mais|peca ja|comece ja|comece agora"
 )
-PALETAS_LIVRES = (
-    "marca",
-    "urgencia",
-    "quente",
-    "fresca",
-    "fria",
-    "elegante",
-    "doce",
-    "natural",
-    "vibrante",
-    "neutra",
-    "vermelha",
-)
+_PALAVRA_FRACA = {
+    "para", "como", "pelo", "pela", "mais", "seus", "suas", "seu", "sua",
+    "com", "sem", "uma", "que", "voce", "este", "esta", "isso", "aqui",
+}
+MOLDES_TELA = ("minimal", "destaque", "faixa")
+ANGULOS = ("recurso", "dia", "resultado")
 
 
-def _diferentes(opcoes: list[dict]) -> list[dict]:
-    """Garante três estilos e três paletas, mesmo se a IA repetir."""
-    usados_modelo: set[str] = set()
-    usados_paleta: set[str] = set()
-    for plano in opcoes:
-        if plano.get("modelo") not in MODELOS_LIVRES or plano["modelo"] in usados_modelo:
-            for candidato in MODELOS_LIVRES:
-                if candidato in usados_modelo:
-                    continue
-                if candidato == "selo" and not plano.get("selo"):
-                    continue
-                plano["modelo"] = candidato
-                break
-        usados_modelo.add(plano["modelo"])
-        if plano.get("paleta") not in PALETAS_LIVRES or plano["paleta"] in usados_paleta:
-            for candidato in PALETAS_LIVRES:
-                if candidato not in usados_paleta:
-                    plano["paleta"] = candidato
-                    break
-        usados_paleta.add(plano["paleta"])
+def _palavras_fortes(texto: str) -> set[str]:
+    simples = "".join(c for c in unicodedata.normalize("NFKD", texto.lower()) if not unicodedata.combining(c))
+    return {p for p in re.findall(r"[a-z]{4,}", simples) if p not in _PALAVRA_FRACA}
+
+
+def frases_repetidas(titulos: list[str], ja_usadas: list[str]) -> bool:
+    """True se a frase é anúncio vazio ou repete a ideia de outra."""
+    for titulo in titulos:
+        simples = "".join(c for c in unicodedata.normalize("NFKD", titulo.lower()) if not unicodedata.combining(c))
+        if _FRASE_VAZIA.search(simples):
+            return True
+    grupos = [_palavras_fortes(titulo) for titulo in titulos if titulo.strip()]
+    usados = [_palavras_fortes(titulo) for titulo in ja_usadas if titulo.strip()]
+    for indice, atual in enumerate(grupos):
+        if len(atual) < 2:
+            continue
+        for outro in grupos[indice + 1 :] + usados:
+            if len(atual & outro) >= 2:
+                return True
+    return False
+
+
+def moldes_da_rodada(marca: Ficha | None, giro: int, e_tela: bool) -> tuple[str, ...]:
+    """Cada rodada começa num molde diferente. Tela de produto não leva pôster por cima."""
+    base = MOLDES_TELA if e_tela else diretor.moldes_da_marca(marca)
+    giro = giro % len(base)
+    return base[giro:] + base[:giro]
+
+
+def _aplicar_tres(opcoes: list[dict], marca: Ficha | None, giro: int, e_tela: bool) -> list[dict]:
+    moldes = moldes_da_rodada(marca, giro, e_tela)
+    posicoes = ("base", "topo", "auto")
+    for indice, plano in enumerate(opcoes):
+        if not e_tela and plano.get("modelo") in ("tela_app", "antes_depois", "livre"):
+            pass
+        else:
+            plano["modelo"] = moldes[indice % len(moldes)]
+        if e_tela:
+            plano["tela_app"] = False
+            plano["edicao_foto"] = diretor.NENHUMA
+        plano["paleta"] = "marca"
+        plano["cor_livre"] = ""
+        plano["posicao_texto"] = posicoes[indice % 3]
+        plano["angulo"] = ANGULOS[indice] if plano.get("angulo") not in ANGULOS else plano["angulo"]
     return opcoes
+
+
+def _jpeg_leitura(dados: bytes) -> str:
+    """Foto pequena para o modelo ler o que está na imagem, sem gastar geração."""
+    import base64
+    import io
+
+    with Image.open(io.BytesIO(dados)) as aberta:
+        foto = ImageOps.exif_transpose(aberta).convert("RGB")
+    foto.thumbnail((768, 768))
+    buf = io.BytesIO()
+    foto.save(buf, "JPEG", quality=70)
+    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 async def criar_tres_artes(
@@ -820,11 +842,13 @@ async def criar_tres_artes(
     formato: str,
     fotos_ids: list[int],
     anexo_url: str = "",
+    ja_usadas: list[str] | None = None,
 ) -> dict:
     """Uma foto, três artes. A IA de imagem roda no máximo uma vez; o texto e o molde são de graça."""
     from pydantic import BaseModel, Field
 
     class _Opcao(BaseModel):
+        angulo: str = ""
         modelo: str
         paleta: str
         posicao_texto: str = "auto"
@@ -836,6 +860,7 @@ async def criar_tres_artes(
 
     class _Pacote(BaseModel):
         ideia: str
+        e_tela: bool = False
         legenda: str
         foto_base_id: int | None = None
         fotos_estilo_ids: list[int] = Field(default_factory=list)
@@ -852,14 +877,29 @@ async def criar_tres_artes(
         if foto is not None and foto.marca_id == marca_id:
             escolhidas.append(foto)
     recente = await artes_recentes(session, marca_id)
+    ja = [titulo.strip()[:80] for titulo in (ja_usadas or []) if titulo and titulo.strip()][:12]
     sistema = (
-        "Você cria 3 artes diferentes para o MESMO post de um pequeno negócio, em português do Brasil. "
-        "As 3 compartilham a mesma foto e a mesma legenda. Cada uma muda o modelo, a paleta e a frase. "
-        "Os 3 modelos têm de ser diferentes entre si. As 3 paletas têm de ser diferentes entre si. "
+        "Você cria 3 artes de um pequeno negócio, em português do Brasil. "
+        "As 3 usam a mesma foto e a mesma paleta, e cada uma defende um argumento diferente. "
+        "Não são 3 jeitos de dizer a mesma frase.\n"
+        "Opção 1, angulo recurso: o título nomeia uma coisa concreta que aparece na foto ou na memória "
+        "(um botão, uma tela, um prato, um serviço). Se a foto for uma tela, use um rótulo que está visível nela.\n"
+        "Opção 2, angulo dia: uma situação real de quem usa, o momento do trabalho, sem adjetivo de anúncio.\n"
+        "Opção 3, angulo resultado: o que muda na rotina, em fato curto.\n"
         "titulo_arte: 2 a 6 palavras, forte, para ler de longe. Sem emoji e sem hashtag. "
-        "Se a pessoa escreveu a frase, use essa frase como titulo_arte nas 3 artes. "
-        "Se ela pediu para você criar a frase, invente 3 frases diferentes, uma em cada arte, e não copie a instrução para o título. "
-        "Não invente preço, telefone, desconto, endereço, dia nem horário. Use só o pedido e a memória.\n"
+        "Proibido no título e no subtítulo: praticidade, facilidade, simplifique, gerenciamento, gerencie, "
+        "controle total, sem estresse, nas suas mãos, descomplique, tecnologia, experimente, saiba mais, peça já, comece já.\n"
+        "chamada: só a chamada curta da marca. Se a marca não tiver, deixe vazia. "
+        "Nunca Saiba mais, Peça já, Comece já ou Experimente agora.\n"
+        "Se a pessoa escreveu a frase dela, essa frase entra só na arte do angulo recurso. As outras duas continuam com argumentos diferentes.\n"
+        "Não invente preço, telefone, desconto, endereço, dia, horário nem recurso que não esteja na foto ou na memória. "
+        "Se não houver fato para o subtítulo, deixe o subtítulo vazio.\n"
+        "e_tela: true se a foto for captura, print, dashboard ou tela de sistema.\n"
+        "A legenda segue o contrato da memória: item concreto na primeira linha, um fato da marca, "
+        "a chamada do canal e as hashtags fixas mais no máximo 2 do assunto.\n"
+        + contexto.regras()
+        + "\n"
+        + diretor.texto_kit(marca)
         + diretor.REGRAS_ARTE
     )
     if fala_de_alcool(f"{descricao} {contexto.fatos}"):
@@ -868,29 +908,79 @@ async def criar_tres_artes(
     if contexto.texto.strip():
         partes.append(contexto.texto.strip()[:12000])
     if recente:
-        partes.append("Últimas artes desta marca (não repita modelo nem paleta):\n" + "\n".join(f"- {linha}" for linha in recente))
+        partes.append("Artes já feitas desta marca. Não repita o título nem a ideia:\n" + "\n".join(f"- {linha}" for linha in recente))
+    if ja:
+        partes.append("Frases já mostradas agora. Não repita e não troque por sinônimo:\n" + "\n".join(f"- {titulo}" for titulo in ja))
+    foto_lida = b""
     if escolhidas:
+        foto_lida = escolhidas[0].arquivo or b""
         partes.append(
             "A pessoa já escolheu a foto. foto_base_id = "
             + str(escolhidas[0].id)
-            + " e edicao_foto = nenhuma. A arte nasce em cima dessa foto, sem recriar a cena."
+            + " e edicao_foto = nenhuma. A arte nasce em cima dessa foto, sem recriar a cena. "
+            "A foto está anexada: leia o que aparece nela antes de escrever."
         )
-    elif anexo_url.strip():
-        partes.append("A pessoa anexou uma foto própria. foto_base_id = null e edicao_foto = nenhuma.")
-    resposta = await cliente_openai().with_options(timeout=90).chat.completions.parse(
-        model=get_settings().openai_model,
-        messages=[
-            {"role": "system", "content": sistema},
-            {"role": "user", "content": "\n\n".join(partes)},
-        ],
-        response_format=_Pacote,
-    )
-    mensagem = resposta.choices[0].message
-    if mensagem.refusal:
-        raise ValueError(mensagem.refusal)
-    if mensagem.parsed is None or not mensagem.parsed.opcoes:
-        raise ValueError("A IA não devolveu as artes. Tente descrever de novo.")
-    pacote = mensagem.parsed
+        if e_captura(escolhidas[0]):
+            partes.append("Essa foto é uma tela do produto. e_tela = true. O título do recurso usa um rótulo visível.")
+    elif anexo_url.strip() and id_da_url(anexo_url) is not None:
+        foto_lida = await bytes_da_url(anexo_url)
+        partes.append(
+            "A pessoa anexou uma foto própria. foto_base_id = null e edicao_foto = nenhuma. "
+            "A foto está anexada: leia o que aparece nela antes de escrever."
+        )
+
+    async def pedir(extra: str = ""):
+        usuario = "\n\n".join(partes)
+        if extra:
+            usuario += "\n\n" + extra
+        mensagens = [{"role": "system", "content": sistema}]
+        if foto_lida:
+            mensagens.append(
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": usuario},
+                        {"type": "image_url", "image_url": {"url": _jpeg_leitura(foto_lida)}},
+                    ],
+                }
+            )
+        else:
+            mensagens.append({"role": "user", "content": usuario})
+        try:
+            resposta = await cliente_openai().with_options(timeout=90).chat.completions.parse(
+                model=get_settings().openai_model,
+                messages=mensagens,
+                response_format=_Pacote,
+            )
+        except Exception:
+            if not foto_lida:
+                raise
+            resposta = await cliente_openai().with_options(timeout=90).chat.completions.parse(
+                model=get_settings().openai_model,
+                messages=[
+                    {"role": "system", "content": sistema},
+                    {"role": "user", "content": usuario},
+                ],
+                response_format=_Pacote,
+            )
+        mensagem = resposta.choices[0].message
+        if mensagem.refusal:
+            raise ValueError(mensagem.refusal)
+        if mensagem.parsed is None or not mensagem.parsed.opcoes:
+            raise ValueError("A IA não devolveu as artes. Tente descrever de novo.")
+        return mensagem.parsed
+
+    pacote = await pedir()
+    titulos = [f"{opcao.titulo_arte} {opcao.subtitulo_arte}".strip() for opcao in pacote.opcoes[:3]]
+    angulos = {opcao.angulo for opcao in pacote.opcoes[:3]}
+    if frases_repetidas(titulos, ja) or angulos != set(ANGULOS):
+        pacote = await pedir(
+            "A tentativa anterior foi recusada. Frases: "
+            + "; ".join(titulos)
+            + ". Escreva outras, uma por angulo (recurso, dia, resultado), sem sinônimo e sem frase de anúncio vazia."
+        )
+    ordem = {nome: indice for indice, nome in enumerate(ANGULOS)}
+    opcoes = sorted(pacote.opcoes[:3], key=lambda opcao: ordem.get(opcao.angulo, 9))
     base_comum = {
         "ideia": pacote.ideia,
         "foto_base_id": pacote.foto_base_id,
@@ -900,32 +990,32 @@ async def criar_tres_artes(
     if escolhidas:
         base_comum["foto_base_id"] = escolhidas[0].id
         base_comum["edicao_foto"] = diretor.NENHUMA
+    e_tela = bool(pacote.e_tela) or any(e_captura(foto) for foto in escolhidas)
     planos = []
-    for opcao in pacote.opcoes[:3]:
+    for indice, opcao in enumerate(opcoes):
         bruto = {**base_comum, **opcao.model_dump()}
         plano, _legenda = diretor.validar_plano(bruto, contexto, descricao, pacote.legenda)
+        plano["angulo"] = ANGULOS[indice]
         planos.append(plano)
     while len(planos) < 3:
         copia = dict(planos[0])
+        copia["angulo"] = ANGULOS[len(planos)]
         planos.append(copia)
     for plano in planos:
         diretor._coerencia(plano)
-    planos = _diferentes(planos[:3])
+    planos = _aplicar_tres(planos[:3], marca, len(ja) // 3, e_tela)
 
-    anexo = b""
-    if anexo_url.strip() and id_da_url(anexo_url) is not None and not escolhidas:
-        anexo = await bytes_da_url(anexo_url)
-    if anexo:
-        dados = anexo
-        url_base = anexo_url.strip()
-        editada = False
-    elif escolhidas:
+    if escolhidas:
         dados = escolhidas[0].arquivo
         url_base = url_memoria(escolhidas[0].id or 0)
         editada = False
         for plano in planos:
             plano["foto_base_id"] = escolhidas[0].id
             plano["edicao_foto"] = diretor.NENHUMA
+    elif foto_lida:
+        dados = foto_lida
+        url_base = anexo_url.strip()
+        editada = False
     else:
         dados, url_base, _passo, editada = await diretor._preparar_base(session, marca_id, planos[0], descricao, False)
     for plano in planos:
@@ -934,7 +1024,9 @@ async def criar_tres_artes(
         url = await diretor.desenhar_um(session, marca, plano, dados, alvo)
         plano["feed_url"] = url
         plano["story_url"] = url if alvo == "story" else ""
-    legenda = com_moderacao(pacote.legenda.strip()[:5000]) if fala_de_alcool(f"{descricao} {pacote.legenda}") else pacote.legenda.strip()[:5000]
+    legenda = fechar_legenda(pacote.legenda.strip()[:5000], contexto.mapa)
+    if fala_de_alcool(f"{descricao} {legenda}"):
+        legenda = com_moderacao(legenda)
     return {"legenda": legenda, "formato": formato, "opcoes": planos}
 
 

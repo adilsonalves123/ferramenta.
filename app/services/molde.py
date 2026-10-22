@@ -95,6 +95,7 @@ class Identidade:
     destaque: tuple[int, int, int] = (230, 57, 70)
     logo: Image.Image | None = None
     assinatura: str = ""
+    lado: str = ""
 
 
 @dataclass
@@ -488,10 +489,29 @@ def _chip_assinatura(
     return None
 
 
+def _canto_logo(ident: Identidade, x: float, alinhar: str, largura: int) -> tuple[float, str]:
+    """Se a marca escolheu o lado do logo, ignora o canto que o molde usaria."""
+    if ident.lado not in ("esquerda", "direita", "centro") or largura <= 0:
+        return x, alinhar
+    if ident.lado == "centro":
+        return largura / 2, "centro"
+    if ident.lado == "direita":
+        return largura - MARGEM, "direita"
+    return float(MARGEM), "esquerda"
+
+
 def caixa_assinatura(
-    ident: Identidade, x: float, y: float, alinhar: str = "esquerda", vertical: str = "topo", altura_max: int = 76, largura_max: int = 250
+    ident: Identidade,
+    x: float,
+    y: float,
+    alinhar: str = "esquerda",
+    vertical: str = "topo",
+    altura_max: int = 76,
+    largura_max: int = 250,
+    largura: int = 0,
 ) -> tuple[int, int, int, int]:
     """Onde o logo vai ficar (para reservar o lugar antes de pôr a foto)."""
+    x, alinhar = _canto_logo(ident, x, alinhar, largura)
     chip = _chip_assinatura(ident, altura_max, largura_max)
     if chip is None:
         return (int(x), int(y), int(x), int(y))
@@ -509,11 +529,14 @@ def assinar(
     vertical: str = "topo",
     altura_max: int = 76,
     largura_max: int = 250,
+    posicionado: bool = False,
 ) -> tuple[int, int, int, int]:
     chip = _chip_assinatura(ident, altura_max, largura_max)
     if chip is None:
         return (int(x), int(y), int(x), int(y))
-    x0, y0, x1, y1 = caixa_assinatura(ident, x, y, alinhar, vertical, altura_max, largura_max)
+    x0, y0, x1, y1 = caixa_assinatura(
+        ident, x, y, alinhar, vertical, altura_max, largura_max, 0 if posicionado else tela.width
+    )
     colar_com_sombra(tela, chip, x0, y0, raio=10, opacidade=0.25, desloc=(0, 4))
     return (x0, y0, x1, y1)
 
@@ -574,9 +597,14 @@ def _rodape(tela: Image.Image, ident: Identidade, textos: Textos, enfase, base: 
     altura_linha = 92
     y = (topo_rodape if topo_rodape is not None else base - MARGEM - altura_linha)
     caixa_logo = assinar(tela, ident, largura - MARGEM, y + altura_linha / 2 - 52, "direita", altura_max=76)
-    espaco = (caixa_logo[0] - MARGEM - 30) if caixa_logo[2] > caixa_logo[0] else largura - 2 * MARGEM
-    if textos.chamada.strip():
-        pilula(tela, textos.chamada, MARGEM, y + 8, enfase, tamanho=40, largura_max=max(320, espaco))
+    if textos.chamada.strip() and caixa_logo[2] > caixa_logo[0]:
+        if caixa_logo[0] <= MARGEM + 8:
+            x_chamada = caixa_logo[2] + 30
+            espaco = largura - MARGEM - x_chamada
+        else:
+            x_chamada = MARGEM
+            espaco = caixa_logo[0] - MARGEM - 30
+        pilula(tela, textos.chamada, x_chamada, y + 8, enfase, tamanho=40, largura_max=max(200, espaco))
     return y
 
 
@@ -699,12 +727,17 @@ def _layout_faixa(ident, textos, formato, pos):
 def _caixas_rodape(ident: Identidade, textos: Textos, base: int, largura: int = FEED[0]) -> list[Caixa]:
     """O que a linha de baixo ocupa (chamada à esquerda e logo à direita)."""
     y = base - MARGEM - 92
-    caixas = [caixa_assinatura(ident, largura - MARGEM, y + 92 / 2 - 52, "direita", altura_max=76)]
+    caixas = [caixa_assinatura(ident, largura - MARGEM, y + 92 / 2 - 52, "direita", altura_max=76, largura=largura)]
     if textos.chamada.strip():
         logo = caixas[0]
-        espaco = (logo[0] - MARGEM - 30) if logo[2] > logo[0] else largura - 2 * MARGEM
-        w, h = medir_pilula(textos.chamada, 40, max(320, espaco))
-        caixas.append((MARGEM, y + 8, MARGEM + w, y + 8 + h))
+        if logo[2] > logo[0] and logo[0] <= MARGEM + 8:
+            x_chamada = logo[2] + 30
+            espaco = largura - MARGEM - x_chamada
+        else:
+            x_chamada = MARGEM
+            espaco = (logo[0] - MARGEM - 30) if logo[2] > logo[0] else largura - 2 * MARGEM
+        w, h = medir_pilula(textos.chamada, 40, max(200, espaco))
+        caixas.append((x_chamada, y + 8, x_chamada + w, y + 8 + h))
     return caixas
 
 
@@ -793,10 +826,10 @@ def _layout_destaque(ident, textos, formato, pos):
     conteudo += (40 + altura_chamada) if altura_chamada else 0
     if pos == "topo":
         y0 = topo + (MARGEM if formato == "feed" else 20)
-        logo = caixa_assinatura(ident, MARGEM, base - (MARGEM if formato == "feed" else 10), vertical="base")
+        logo = caixa_assinatura(ident, MARGEM, base - (MARGEM if formato == "feed" else 10), vertical="base", largura=largura)
     else:
         y0 = base - MARGEM - conteudo - (10 if formato == "feed" else 20)
-        logo = caixa_assinatura(ident, MARGEM, topo + (MARGEM if formato == "feed" else 10))
+        logo = caixa_assinatura(ident, MARGEM, topo + (MARGEM if formato == "feed" else 10), largura=largura)
     ocupados = [(0, y0 - 20, largura, y0 + conteudo + 20), logo]
 
     def desenhar(tela):
@@ -819,7 +852,7 @@ def _layout_destaque(ident, textos, formato, pos):
             y += sub.altura
         if altura_chamada:
             pilula(tela, textos.chamada, MARGEM, y + 40, enfase, tamanho=40, largura_max=largura_texto)
-        assinar(tela, ident, logo[0], logo[1])
+        assinar(tela, ident, logo[0], logo[1], posicionado=True)
 
     return ocupados, desenhar
 
@@ -990,19 +1023,20 @@ def _layout_story_chamada(ident, textos, formato, _pos):
     titulo = ajustar(textos.titulo, "forte", largura - 2 * MARGEM, 300, 100, 48, 3, 1.02)
     sub = ajustar(textos.subtitulo, "medio", largura - 2 * MARGEM, 120, 42, 28, 2, 1.15) if textos.subtitulo.strip() else None
     y_inicio = topo + (MARGEM if formato == "feed" else 10)
-    logo = caixa_assinatura(ident, largura / 2, y_inicio, "centro", altura_max=64)
+    logo = caixa_assinatura(ident, largura / 2, y_inicio, "centro", altura_max=64, largura=largura)
     y_titulo = logo[3] + 32 if logo[3] > logo[1] else y_inicio
     fim_topo = y_titulo + titulo.altura + ((20 + sub.altura) if sub else 0)
     meia = max(titulo.largura, sub.largura if sub else 0, logo[2] - logo[0]) / 2 + 20
-    chamada = textos.chamada.strip() or "Responda QUERO"
-    w_chamada, h_chamada = medir_pilula(chamada, 50, largura - 2 * MARGEM, peso="forte")
+    chamada = textos.chamada.strip()
+    w_chamada, h_chamada = medir_pilula(chamada, 50, largura - 2 * MARGEM, peso="forte") if chamada else (0, 0)
     y_pilula = base - h_chamada - (MARGEM if formato == "feed" else 30)
     w_selo, h_selo = medir_pilula(textos.selo, 32, 600, True, "forte")
     y_selo = y_pilula - h_selo - 24
     ocupados = [
         (largura / 2 - meia, y_inicio, largura / 2 + meia, fim_topo + 10),
-        (largura / 2 - w_chamada / 2, y_pilula, largura / 2 + w_chamada / 2, y_pilula + h_chamada),
     ]
+    if w_chamada:
+        ocupados.append((largura / 2 - w_chamada / 2, y_pilula, largura / 2 + w_chamada / 2, y_pilula + h_chamada))
     if w_selo:
         ocupados.append((largura / 2 - w_selo / 2, y_selo, largura / 2 + w_selo / 2, y_selo + h_selo))
 
@@ -1013,7 +1047,8 @@ def _layout_story_chamada(ident, textos, formato, _pos):
         if sub:
             texto_com_sombra(tela, sub, largura / 2, y_titulo + titulo.altura + 20, (240, 240, 240), "centro", raio=8, opacidade=0.5)
         degrade(tela, (0, 0, 0), (y_selo if w_selo else y_pilula) - 240, altura, 0, 170, 1.4)
-        pilula(tela, chamada, largura / 2, y_pilula, BRANCO, GRAFITE, tamanho=50, largura_max=largura - 2 * MARGEM, alinhar="centro", peso="forte")
+        if chamada:
+            pilula(tela, chamada, largura / 2, y_pilula, BRANCO, GRAFITE, tamanho=50, largura_max=largura - 2 * MARGEM, alinhar="centro", peso="forte")
         if w_selo:
             pilula(tela, textos.selo, largura / 2, y_selo, enfase, tamanho=32, largura_max=600, alinhar="centro", caixa_alta=True, peso="forte")
 
@@ -1044,8 +1079,8 @@ def _escurecer_zona(tela: Image.Image, cor, pos: str, y0: float, y1: float, forc
 def _logo_oposto(ident: Identidade, pos: str, formato: str, topo: int, base: int, alinhar: str = "esquerda") -> Caixa:
     x = MARGEM if alinhar == "esquerda" else FEED[0] - MARGEM
     if pos == "topo":
-        return caixa_assinatura(ident, x, base - (MARGEM if formato == "feed" else 10), alinhar, "base", 70, 230)
-    return caixa_assinatura(ident, x, topo + (MARGEM if formato == "feed" else 10), alinhar, "topo", 70, 230)
+        return caixa_assinatura(ident, x, base - (MARGEM if formato == "feed" else 10), alinhar, "base", 70, 230, FEED[0])
+    return caixa_assinatura(ident, x, topo + (MARGEM if formato == "feed" else 10), alinhar, "topo", 70, 230, FEED[0])
 
 
 def _assinar_em(tela: Image.Image, ident: Identidade, caixa: Caixa) -> None:
@@ -1417,7 +1452,16 @@ def _layout_minimal(ident, textos, formato, pos):
     cor_sub = _misturar(cor_titulo, barra, 0.4)
     acento = enfase if _contraste(enfase, barra) >= 2.2 else (_fundo_escuro(fundo) if not elegante else (212, 175, 90))
     chip = _chip_assinatura(ident, 60, 200, (0, 0, 0, 0), tuple(acento) + (255,))
-    largura_texto = largura - 2 * MARGEM - ((chip.width + 36) if chip else 0)
+    folga_chip = (chip.width + 36) if chip else 0
+    if ident.lado == "esquerda":
+        x_texto = MARGEM + folga_chip
+        largura_texto = largura - MARGEM - x_texto
+    elif ident.lado == "centro" and chip:
+        x_texto = MARGEM
+        largura_texto = max(240, int((largura - chip.width) / 2 - MARGEM - 24))
+    else:
+        x_texto = MARGEM
+        largura_texto = largura - 2 * MARGEM - folga_chip
     selo = ajustar(textos.selo, "negrito", largura_texto, 40, 26, 20, 1, caixa_alta=True) if textos.selo.strip() else None
     titulo = ajustar(textos.titulo, "medio", largura_texto, 170, 66, 40, 2, 1.08)
     sub = ajustar(textos.subtitulo, "medio", largura_texto, 90, 32, 24, 2, 1.25) if textos.subtitulo.strip() else None
@@ -1441,31 +1485,37 @@ def _layout_minimal(ident, textos, formato, pos):
         tela.alpha_composite(Image.new("RGBA", (largura, round(caixa_barra[3] - caixa_barra[1])), barra + (250,)), (0, round(caixa_barra[1])))
         desenho = ImageDraw.Draw(tela)
         y = y_texto
-        desenho.rectangle((MARGEM, y, MARGEM + 90, y + 6), fill=tuple(acento) + (255,))
+        desenho.rectangle((x_texto, y, x_texto + 90, y + 6), fill=tuple(acento) + (255,))
         y += 6 + 24
         if selo:
-            escrever(tela, selo, MARGEM, y, acento)
+            escrever(tela, selo, x_texto, y, acento)
             y += selo.altura + 14
-        escrever(tela, titulo, MARGEM, y, cor_titulo)
+        escrever(tela, titulo, x_texto, y, cor_titulo)
         y += titulo.altura
         if sub:
             y += 14
-            escrever(tela, sub, MARGEM, y, cor_sub)
+            escrever(tela, sub, x_texto, y, cor_sub)
             y += sub.altura
         if chamada:
             y += 26
-            escrever(tela, chamada, MARGEM, y, acento)
-            _seta(tela, MARGEM + chamada.largura + 16, y + chamada.altura / 2, 34, acento)
+            escrever(tela, chamada, x_texto, y, acento)
+            _seta(tela, x_texto + chamada.largura + 16, y + chamada.altura / 2, 34, acento)
         if chip:
             meio = y_texto + conteudo / 2
-            colar_com_sombra(tela, chip, largura - MARGEM - chip.width, round(meio - chip.height / 2), raio=8, opacidade=0.18, desloc=(0, 3))
+            if ident.lado == "esquerda":
+                x_chip = MARGEM
+            elif ident.lado == "centro":
+                x_chip = (largura - chip.width) / 2
+            else:
+                x_chip = largura - MARGEM - chip.width
+            colar_com_sombra(tela, chip, round(x_chip), round(meio - chip.height / 2), raio=8, opacidade=0.18, desloc=(0, 3))
 
     return ocupados, desenhar
 
 
 def _layout_livre(ident, textos, formato, _pos):
     largura, _altura, _topo, base = _area(formato)
-    logo = caixa_assinatura(ident, largura - MARGEM, base - (MARGEM if formato == "feed" else 10), "direita", "base", 60, 200)
+    logo = caixa_assinatura(ident, largura - MARGEM, base - (MARGEM if formato == "feed" else 10), "direita", "base", 60, 200, largura)
 
     def desenhar(tela):
         assinar(tela, ident, largura - MARGEM, base - (MARGEM if formato == "feed" else 10), "direita", "base", 60, 200)

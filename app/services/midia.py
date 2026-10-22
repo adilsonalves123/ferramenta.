@@ -70,7 +70,9 @@ def _prompt_foto(pedido: PedidoCampanha, tem_referencia: bool) -> str:
         cena = (
             "Fotografia realista para post de rede social, luz natural do lugar. "
             f"{brief} "
-            "Sem texto legível, sem letras, sem números na imagem, sem logotipo, sem marca d'água, sem tela com palavras."
+            "Sem texto legível, sem letras, sem números, sem logotipo e sem marca d'água. "
+            "Não desenhe celular, tablet, computador, tela, ícone, botão nem interface. "
+            "Se o texto pedir aparelho ou tela, deixe o aparelho fora da foto."
         )
         if tem_referencia:
             return (

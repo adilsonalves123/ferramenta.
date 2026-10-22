@@ -85,12 +85,14 @@ class PedidoTresArtes(BaseModel):
     formato: str = Field(default="feed", max_length=20)
     fotos_ids: list[int] = Field(default_factory=list, max_length=4)
     anexo_url: str = ""
+    ja_usadas: list[str] = Field(default_factory=list, max_length=12)
 
 
 class OpcaoArtePronta(BaseModel):
     plano_arte: dict
     foto_url: str
     modelo: str = ""
+    angulo: str = ""
 
 
 class RespostaTresArtes(BaseModel):
@@ -238,6 +240,11 @@ class FatosMarca(BaseModel):
     promocoes: str = Field(default="", max_length=2000)
     tom: str = Field(default="", max_length=1000)
     nunca: str = Field(default="", max_length=2000)
+    canal: str = Field(default="", max_length=20)
+    chamada: str = Field(default="", max_length=120)
+    hashtags: str = Field(default="", max_length=80)
+    soa: str = Field(default="", max_length=300)
+    fora: str = Field(default="", max_length=300)
 
 
 class ItemFotoMemoria(BaseModel):
@@ -335,6 +342,7 @@ class PedidoSugestao(BaseModel):
     origem: Literal["foto"] = "foto"
     transcricao: str = Field(default="", max_length=8000)
     link: str = Field(default="", max_length=500)
+    imagem_site: str = Field(default="", max_length=1000)
     mensagens: list[MensagemCriacao] = Field(default_factory=list, max_length=12)
 
 
@@ -354,6 +362,7 @@ class SugestaoVideo(BaseModel):
     cena: str
     legenda: str
     transcricao: str = ""
+    imagem_site: str = ""
     roteiro: str = ""
     cenas: list[CenaHistoria] = Field(default_factory=list)
     opcoes: list[OpcaoCriacao] = Field(default_factory=list)
@@ -368,6 +377,7 @@ class PedidoFotoConfirmada(BaseModel):
     legenda: str = Field(default="", max_length=1000)
     cena: str = Field(min_length=2, max_length=800)
     foto_base64: str = Field(default="", max_length=6_000_000)
+    imagem_site: str = Field(default="", max_length=1000)
 
 
 class PedidoProjeto(BaseModel):
@@ -418,6 +428,8 @@ class PedidoMarca(BaseModel):
     memoria: FatosMarca | None = None
     cor_principal: str = Field(default="", pattern=r"^(#[0-9a-fA-F]{6})?$")
     cor_destaque: str = Field(default="", pattern=r"^(#[0-9a-fA-F]{6})?$")
+    moldes: str = Field(default="", max_length=80)
+    logo_lado: str = Field(default="", pattern=r"^(esquerda|direita|centro)?$")
 
 
 class ItemMarca(BaseModel):
@@ -436,6 +448,8 @@ class ItemMarca(BaseModel):
     memoria: FatosMarca = Field(default_factory=FatosMarca)
     cor_principal: str = ""
     cor_destaque: str = ""
+    moldes: str = ""
+    logo_lado: str = ""
     logo_url: str = ""
 
 
