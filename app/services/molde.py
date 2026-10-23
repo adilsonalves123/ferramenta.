@@ -38,6 +38,9 @@ MODELOS = (
     "minimal",
     "livre",
     "tela_limpa",
+    "painel",
+    "passos",
+    "vitrine",
 )
 NOMES_MODELOS = {
     "faixa": "Faixa",
@@ -54,6 +57,9 @@ NOMES_MODELOS = {
     "minimal": "Minimalista",
     "livre": "Só a imagem",
     "tela_limpa": "Tela",
+    "painel": "Benefícios",
+    "passos": "O caminho",
+    "vitrine": "A frase grande",
 }
 # (cor de ênfase, cor de apoio escura). "marca" usa as cores da marca; "livre" usa a cor que a pessoa pediu.
 PALETAS = {
@@ -112,6 +118,9 @@ class Textos:
     posicao: str = "auto"
     cor_livre: str = ""
     camadas: list | None = None
+    itens: list | None = None
+    etapas: list | None = None
+    sem_foto: bool = False
 
 
 @dataclass
@@ -1634,6 +1643,10 @@ def compor(
     if not textos.titulo.strip() and modelo not in ("livre", "tela_limpa"):
         textos = Textos(**{**textos.__dict__, "titulo": textos.chamada or ident.assinatura or " "})
     foto = foto.convert("RGB")
+    if modelo in ("painel", "passos", "vitrine"):
+        from app.services.peca import desenhar as desenhar_peca
+
+        return desenhar_peca(foto, modelo, textos, ident, formato, tela_app).convert("RGB")
     if textos.camadas:
         return _compor_camadas(foto, textos, ident, formato).convert("RGB")
     if modelo == "antes_depois":

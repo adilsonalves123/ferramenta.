@@ -3638,7 +3638,10 @@
       fotoFluxo = { tipo: "anexo", url, rotulo: "foto criada" };
       arteEmCima = true;
       fluxoCriar = "arte";
+      modoArte = true;
+      modoImagem = false;
       formatoArte = formatoAgenda;
+      if (!paginaCriarAberta) abrirPaginaCriar("Criar arte");
       atualizarTopoConversa();
       if (!document.getElementById("dica-frase")) {
         const dica = falar("assistente", "Escreva a frase aqui embaixo. Se não quiser inventar, clique em A IA cria a frase.");
@@ -4108,7 +4111,11 @@
           const plano = dados.rascunho.plano_arte || {};
           const temFoto = Boolean(plano.feed_url || plano.story_url || plano.base_url || dados.rascunho.feed_url || dados.rascunho.base_url);
           if (temFoto) {
-            trabalhoNoHome = true;
+            const crua = plano.modelo === "livre" && !["titulo_arte", "subtitulo_arte", "selo", "chamada", "antes"].some((campo) => String(plano[campo] || "").trim());
+            abrirPaginaCriar(crua ? "Criar foto" : "Criar arte");
+            fluxoCriar = crua ? "foto" : "arte";
+            modoImagem = crua;
+            modoArte = !crua;
             aplicarRascunho(dados.rascunho);
             return;
           }
