@@ -4473,9 +4473,10 @@
         fotoNoChat = false;
         arteEmCima = false;
         desenharOpcoes();
-        fala.textContent = (fotoGuardada || anexo)
-          ? "A foto é a sua. A frase só entra se sobrar faixa vazia. Se nenhuma servir, volte ao chat."
-          : "A foto foi criada. A frase só entra se sobrar faixa vazia. Se nenhuma servir, volte ao chat.";
+        const semFoto = (dados.opcoes || []).some((opcao) => opcao.plano_arte && opcao.plano_arte.sem_foto);
+        fala.textContent = semFoto
+          ? "Montei 3 artes, cada uma com uma frase e um arranjo. Sem foto da marca, entrou o monograma. Se nenhuma servir, volte ao chat."
+          : "Montei 3 artes. Cada uma tem uma frase e um arranjo diferente. Se nenhuma servir, volte ao chat.";
       } catch (falha) {
         const demorou = falha.name === "TimeoutError" || falha.name === "AbortError";
         fala.textContent = demorou ? "As artes demoraram demais. Tente de novo." : (falha.message || "Não consegui criar as artes agora.");
