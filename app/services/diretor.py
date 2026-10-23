@@ -218,6 +218,31 @@ CHAMADAS_GENERICAS = {
     "experimente ja",
 }
 HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+# Frase de anúncio vazio. "aproveite" sozinho já entra; "nossa tecnologia" pega o slogan inteiro.
+_SLOGAN_VAZIO = (
+    "aproveite",
+    "saiba mais",
+    "peca ja",
+    "comece ja",
+    "comece agora",
+    "experimente",
+    "praticidade",
+    "facilidade",
+    "nossa tecnologia",
+    "descomplique",
+    "simplifique",
+    "fale conosco",
+    "aumente seus lucros",
+    "sem estresse",
+    "controle total",
+)
+
+
+def _chamada_vazia(texto: str) -> bool:
+    simples = _sem_acento((texto or "").lower())
+    if not simples or simples in CHAMADAS_GENERICAS:
+        return True
+    return any(frase in simples for frase in _SLOGAN_VAZIO)
 
 
 def _sem_acento(texto: str) -> str:
@@ -457,7 +482,7 @@ def validar_plano(
     _sem_preco_inventado(plano, f"{contexto.fatos} {pedido}")
     legenda = fechar_legenda(_conar(plano, pedido, legenda), contexto.mapa)
     curta = chamada_curta(contexto.mapa)
-    generica = _sem_acento(plano["chamada"].lower()) in CHAMADAS_GENERICAS
+    generica = _chamada_vazia(plano["chamada"])
     if generica or not plano["chamada"]:
         plano["chamada"] = _texto_arte(curta, *LIMITES["chamada"]) if curta else ""
     _coerencia(plano)
@@ -874,6 +899,11 @@ async def produzir(
 async def refazer(session: AsyncSession, marca: Ficha | None, plano: dict, formato: str = "feed") -> dict:
     """Só o molde de novo (texto ou modelo mudou), com a mesma foto base: sem custo de IA."""
     base_url = plano.get("base_url") or ""
+    if not (base_url and await existe(base_url)):
+        feed = plano.get("feed_url") or ""
+        if feed and await existe(feed):
+            plano = {**plano, "base_url": feed, "editada": False}
+            base_url = feed
     if not (base_url and await existe(base_url)):
         marca_id = marca.id if marca and marca.id else 0
         foto = await _foto_da_marca(session, plano.get("foto_base_id"), marca_id)

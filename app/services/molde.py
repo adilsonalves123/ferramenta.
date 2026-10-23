@@ -18,7 +18,7 @@ ARQUIVOS_FONTE = {
     "negrito": "Montserrat-Bold.ttf",
     "medio": "Montserrat-SemiBold.ttf",
 }
-VERSAO = "3"
+VERSAO = "4"
 FEED = (1080, 1350)
 STORY = (1080, 1920)
 FACEBOOK = (1080, 1080)
@@ -959,37 +959,51 @@ def _molde_antes_depois(foto, ident, textos, formato, tela_app=False):
     return tela
 
 
+def _miolo_inteiro(foto: Image.Image, largura: int, altura: int, fundo: tuple[int, int, int]) -> Image.Image:
+    """A tela inteira, centralizada. Nada é cortado."""
+    largura, altura = max(1, largura), max(1, altura)
+    base = Image.new("RGBA", (largura, altura), tuple(fundo) + (255,))
+    peca = caber(foto.convert("RGBA"), largura, altura)
+    base.alpha_composite(peca, ((largura - peca.width) // 2, (altura - peca.height) // 2))
+    return base
+
+
 def _aparelho(foto: Image.Image, largura_max: int, altura_max: int) -> Image.Image:
-    """Print num celular (retrato) ou numa janela de navegador (paisagem)."""
-    proporcao = foto.width / foto.height
+    """Print inteiro num celular (retrato) ou numa janela de navegador (paisagem). Sem recorte."""
+    largura_max = max(80, largura_max)
+    altura_max = max(80, altura_max)
+    proporcao = foto.width / max(1, foto.height)
     if proporcao < 0.9:
         borda = 18
-        tela_prop = min(max(proporcao, 0.42), 0.62)
+        tela_prop = min(max(proporcao, 0.45), 0.72)
         altura = altura_max
         largura = round((altura - 2 * borda) * tela_prop) + 2 * borda
         if largura > largura_max:
             largura = largura_max
             altura = round((largura - 2 * borda) / tela_prop) + 2 * borda
+        altura = max(altura, 2 * borda + 40)
+        largura = max(largura, 2 * borda + 40)
         raio = round(largura * 0.12)
         corpo = caixa_redonda((largura, altura), raio, (15, 17, 21))
-        miolo = cobrir(foto, largura - 2 * borda, altura - 2 * borda, (0.5, 0.0))
-        corpo.alpha_composite(arredondar(miolo, raio - borda), (borda, borda))
+        miolo = _miolo_inteiro(foto, largura - 2 * borda, altura - 2 * borda, (15, 17, 21))
+        corpo.alpha_composite(arredondar(miolo, max(8, raio - borda)), (borda, borda))
         ImageDraw.Draw(corpo).rounded_rectangle(
             (largura / 2 - 60, borda + 14, largura / 2 + 60, borda + 44), radius=15, fill=(15, 17, 21, 255)
         )
         return corpo
     barra = 54
     largura = largura_max
-    altura = round(largura / proporcao) + barra
+    altura = round(largura / max(proporcao, 0.2)) + barra
     if altura > altura_max:
         altura = altura_max
-        largura = round((altura - barra) * proporcao)
+        largura = max(80, round((altura - barra) * proporcao))
+    altura = max(altura, barra + 40)
     janela = caixa_redonda((largura, altura), 22, (229, 231, 235))
     desenho = ImageDraw.Draw(janela)
     for i, cor in enumerate(((239, 68, 68), (245, 158, 11), (34, 197, 94))):
         cx = 34 + i * 30
         desenho.ellipse((cx - 9, barra / 2 - 9, cx + 9, barra / 2 + 9), fill=cor)
-    miolo = cobrir(foto, largura, altura - barra, (0.5, 0.0))
+    miolo = _miolo_inteiro(foto, largura, altura - barra, (255, 255, 255))
     mascara = Image.new("L", miolo.size, 255)
     canto = _mascara_redonda((44, 44), 22)
     mascara.paste(canto.crop((0, 22, 22, 44)), (0, miolo.height - 22))

@@ -3728,6 +3728,14 @@
       return !["titulo_arte", "subtitulo_arte", "selo", "chamada", "antes"].some((campo) => String(plano[campo] || "").trim());
     }
 
+    function fotoSemArteDesenhada() {
+      if (!imagemProjeto || videoProjeto) return false;
+      if (!artePrevia || ehFotoCrua(artePrevia)) return true;
+      if (!artePrevia.base_url && imagemProjeto === (artePrevia.feed_url || "")) return true;
+      if (artePrevia.modelo === "livre") return true;
+      return artePrevia.modelo === "tela_limpa" && !["topo", "base"].includes(artePrevia.posicao_texto || "");
+    }
+
     function desenharFotoNoChat() {
       const antiga = document.getElementById("foto-chat");
       if (!fotoNoChat || !imagemProjeto) {
@@ -3814,7 +3822,7 @@
       const painel = (prateleiraAberta || filaAberta) && !paginaCriarAberta;
       const noPagina = paginaCriarAberta;
       const noHomeTrabalho = trabalhoNoHome && !noPagina;
-      const escolhendoCriacao = noPagina && Boolean(passoCriar) && !imagemProjeto && !videoProjeto && !opcoesArte.length && !gerando;
+      const escolhendoCriacao = noPagina && Boolean(passoCriar) && !opcoesArte.length && !gerando && (!imagemProjeto || Boolean(fotoFluxo));
       const mesa = !voltouAoChat && !naPrevia && !tarefaAberta && !painel && temConteudoNaMesa() && !fotoNoChat && !escolhendoCriacao && (noPagina || noHomeTrabalho);
       document.getElementById("mesa-rascunho").hidden = !mesa;
       document.getElementById("prateleira").hidden = !prateleiraAberta || tarefaAberta || noPagina;
@@ -3829,7 +3837,7 @@
         ? !(fotoNoChat || anexoChat || (temBaloes && !mesa && !wizard && !tarefaAberta) || (voltouAoChat && temBaloes))
         : !(noHomeTrabalho && !painel && (temBaloes || fotoNoChat || voltouAoChat || anexoChat));
       document.getElementById("area-estudio").classList.remove("com-mesa");
-      const precisaDigitar = voltouAoChat || (noPagina && !tarefaAberta && !mesa && (passoCriar === "pronto" || fotoNoChat || arteEmCima));
+      const precisaDigitar = voltouAoChat || (noPagina && !tarefaAberta && fotoSemArteDesenhada()) || (noPagina && !tarefaAberta && !mesa && (passoCriar === "pronto" || fotoNoChat || arteEmCima));
       document.getElementById("composer").hidden = painel || tarefaAberta || (noPagina ? !precisaDigitar : false);
       document.getElementById("novo-post").hidden = noPagina
         ? wizard || !(mesa || temBaloes || fotoNoChat)
@@ -3904,13 +3912,14 @@
 
     function usarAtalho(qual) {
       const nomes = { imagem: "Criar foto", arte: "Criar arte", texto: "Anúncio", foto: "Foto" };
+      const fotoPronta = qual === "arte" && fotoSemArteDesenhada() ? imagemProjeto : "";
       abrirPaginaCriar(nomes[qual] || "Estúdio");
       if (qual === "imagem" || qual === "arte") {
-        if (rascunhoAtual) iniciarNovoPost(true);
+        if (rascunhoAtual && !fotoPronta) iniciarNovoPost(true);
         formatoAntesFluxo = formatoAgenda;
         fluxoCriar = qual === "arte" ? "arte" : "foto";
-        passoCriar = "tamanho";
-        fotoFluxo = null;
+        passoCriar = fotoPronta ? "pronto" : "tamanho";
+        fotoFluxo = fotoPronta ? { tipo: "anexo", url: fotoPronta, rotulo: "foto do link" } : null;
         modoImagem = false;
         modoArte = false;
         document.getElementById("origem-inteligente").hidden = false;
@@ -4058,12 +4067,14 @@
         titulo.textContent = "Criar arte";
         enviarChat.textContent = "Criar arte";
         pedidoCampo.placeholder = "Diga o que ficou ruim. Ex.: sem cena de bar, mostra a tela do sistema.";
-      } else if (arteEmCima) {
+      } else if (arteEmCima || fotoSemArteDesenhada()) {
         modoArte = true;
         modoImagem = false;
         titulo.textContent = "Criar arte";
         enviarChat.textContent = "Criar arte";
-        pedidoCampo.placeholder = "Escreva a frase, se quiser. Ex.: Bateu a fome?";
+        pedidoCampo.placeholder = fotoSemArteDesenhada()
+          ? "Escreva a frase para colocar nesta foto. Ex.: Escaneie e venda rápido"
+          : "Escreva a frase, se quiser. Ex.: Bateu a fome?";
       } else if (fotoNoChat && rascunhoAtual) {
         titulo.textContent = "Criar foto";
         enviarChat.textContent = "Enviar";
@@ -4424,7 +4435,7 @@
         criarPost(textoPedido);
         return;
       }
-      if (arteEmCima) criarArte(textoPedido);
+      if (arteEmCima || fotoSemArteDesenhada()) criarArte(textoPedido);
       else if (rascunhoAtual) ajustarRascunho(textoPedido);
       else if (modoArte) criarArte(textoPedido);
       else if (modoImagem) criarImagem(textoPedido);
@@ -4560,7 +4571,8 @@
       voltouAoChat = false;
       const escolhidas = fotoFluxo && fotoFluxo.tipo === "memoria" ? [fotoFluxo] : fotosEscolhidas.slice();
       const anexoEnviado = selarAnexoChat();
-      const anexo = anexoEnviado || (fotoFluxo && fotoFluxo.tipo === "anexo" ? fotoFluxo.url : (origemFoto === "anexo" && imagemProjeto ? imagemProjeto : ""));
+      const fotoPresa = fotoSemArteDesenhada() ? imagemProjeto : "";
+      const anexo = anexoEnviado || (fotoFluxo && fotoFluxo.tipo === "anexo" ? fotoFluxo.url : "") || fotoPresa || (origemFoto === "anexo" && imagemProjeto ? imagemProjeto : "");
       const fluxoGuardado = fluxoCriar;
       const fotoGuardada = fotoFluxo;
       antesDasOpcoes = {
@@ -6167,9 +6179,17 @@
     document.getElementById("refazer-arte").addEventListener("click", async () => {
       const plano = arteDoEditor();
       const nota = document.getElementById("nota-arte");
+      const notaMesa = document.getElementById("nota-mesa");
       if (!plano) return;
+      if (!plano.base_url) plano.base_url = imagemProjeto || plano.feed_url || "";
+      if (plano.titulo_arte && (plano.modelo === "livre" || (plano.modelo === "tela_limpa" && !["topo", "base"].includes(plano.posicao_texto || "")))) {
+        plano.modelo = "destaque";
+        plano.posicao_texto = "base";
+      }
       if (!plano.titulo_arte && !(plano.camadas && plano.camadas.length) && plano.modelo !== "livre") {
         nota.textContent = "Escreva o título da arte.";
+        notaMesa.hidden = false;
+        notaMesa.textContent = "Escreva a frase da arte.";
         return;
       }
       const botao = document.getElementById("refazer-arte");
@@ -6191,8 +6211,13 @@
           texto += ` O modelo ficou ${NOMES_MODELOS[final.modelo] || final.modelo}: ${falta}.`;
         }
         document.getElementById("nota-arte").textContent = texto;
+        notaMesa.hidden = false;
+        notaMesa.textContent = "A frase entrou nesta foto.";
       } catch (falha) {
-        nota.textContent = falha.message || "Não consegui refazer a arte.";
+        const aviso = falha.message || "Não consegui refazer a arte.";
+        nota.textContent = aviso;
+        notaMesa.hidden = false;
+        notaMesa.textContent = aviso;
       } finally {
         botao.disabled = false;
       }
