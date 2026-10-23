@@ -3968,7 +3968,9 @@
         memoriaPrevia.cena = rascunhoAtual.cena || memoriaPrevia.cena || "";
         memoriaPrevia.legenda = rascunhoAtual.legenda || "";
         memoriaPrevia.foto_id = artePrevia ? artePrevia.foto_base_id || null : null;
-        if (artePrevia && artePrevia.feed_url) {
+        const urlPronta = artePrevia && (artePrevia.feed_url || artePrevia.story_url || artePrevia.base_url);
+        if (urlPronta) {
+          if (!artePrevia.feed_url) artePrevia.feed_url = urlPronta;
           imagemProjeto = artePrevia.feed_url;
           videoProjeto = "";
           origemFoto = "arte";
@@ -4104,8 +4106,13 @@
         if (numero !== pedidoRascunho || !resposta.ok || (marcaAtual.id || 0) !== marcaId) return;
         if (dados.rascunho) {
           const plano = dados.rascunho.plano_arte || {};
-          const temArte = Boolean(plano.feed_url || plano.story_url || dados.rascunho.feed_url || dados.rascunho.story_url);
-          fecharRascunhoNoServidor(dados.rascunho, temArte);
+          const temFoto = Boolean(plano.feed_url || plano.story_url || plano.base_url || dados.rascunho.feed_url || dados.rascunho.base_url);
+          if (temFoto) {
+            trabalhoNoHome = true;
+            aplicarRascunho(dados.rascunho);
+            return;
+          }
+          fecharRascunhoNoServidor(dados.rascunho, false);
         }
       } catch { /* sem rascunho guardado: a prévia começa vazia */ }
     }

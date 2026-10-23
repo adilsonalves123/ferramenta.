@@ -187,6 +187,8 @@ async def criar(
             plano = await diretor.refazer(session, marca, plano, formato)
         except Exception as erro:
             log.warning("rascunho: não montei a arte da foto base (%s)", str(erro)[:160])
+            plano["feed_url"] = plano.get("base_url") or ""
+            plano["aviso"] = "A foto foi criada. A prévia mostra a foto, sem a montagem da arte."
     await fechar_abertos(session, marca_id)
     registro = Rascunho(
         marca_id=marca_id,
