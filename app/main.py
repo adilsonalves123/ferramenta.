@@ -189,8 +189,9 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=422, content={"detail": detalhe})
 
     @app.get("/", response_class=HTMLResponse, include_in_schema=False)
-    async def inicio() -> str:
-        return PAGINA.read_text(encoding="utf-8").replace("__PRODUTO__", escape(settings.produto_nome))
+    async def inicio() -> HTMLResponse:
+        pagina = PAGINA.read_text(encoding="utf-8").replace("__PRODUTO__", escape(settings.produto_nome))
+        return HTMLResponse(pagina, headers={"Cache-Control": "no-store"})
 
     @app.get("/saude")
     async def saude() -> dict[str, str]:

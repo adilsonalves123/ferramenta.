@@ -155,6 +155,17 @@
     .vazio-estudio h2 { margin: 0 0 6px; font-size: 28px; letter-spacing: -0.03em; font-weight: 700; }
     .vazio-estudio > p { margin: 0 0 22px; color: var(--mudo); line-height: 1.5; }
     .atalhos-estudio { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; text-align: left; }
+    .brief-inicio { display: grid; gap: 12px; margin: 0 0 14px; text-align: left; }
+    .brief-inicio textarea { width: 100%; min-height: 92px; margin: 0; padding: 14px 16px; border: 1px solid var(--linha); border-radius: 14px; background: var(--papel); color: var(--tinta); font: inherit; font-size: 15px; line-height: 1.45; resize: vertical; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04); }
+    .brief-inicio textarea:focus { outline: 2px solid #c7cbff; border-color: #c7cbff; }
+    .acoes-inicio { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; }
+    button.acao-inicio { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 100%; margin: 0; padding: 16px; border: 1px solid var(--linha); border-radius: 14px; background: var(--papel); color: var(--tinta); font: inherit; text-align: left; cursor: pointer; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04); }
+    button.acao-inicio strong { font-size: 15px; }
+    button.acao-inicio small { color: var(--mudo); font-size: 12.5px; line-height: 1.4; }
+    button.acao-inicio.principal { border-color: var(--azul); background: var(--azul); color: white; }
+    button.acao-inicio.principal small { color: rgba(255, 255, 255, 0.82); }
+    button.acao-inicio:hover { transform: translateY(-1px); }
+    button.outras-formas { display: inline-flex; margin: 2px 0 12px; padding: 0; border: 0; background: transparent; color: var(--azul); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
     button.cartao-atalho { display: flex; flex-direction: column; gap: 6px; width: 100%; margin: 0; padding: 10px 10px 14px; border: 1px solid var(--linha); border-radius: 14px; background: var(--papel); color: var(--tinta); font: inherit; cursor: pointer; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04); transition: border-color 0.15s, transform 0.15s; }
     button.cartao-atalho:hover { border-color: #c7cbff; transform: translateY(-2px); }
     .capa-atalho { display: grid; place-items: center; width: 100%; aspect-ratio: 4 / 3; border-radius: 10px; object-fit: cover; }
@@ -291,7 +302,7 @@
     .modo-composer button { width: 20px; height: 20px; margin: 0; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; font-size: 14px; cursor: pointer; }
     @media (max-width: 1100px) {
       .area-estudio.com-mesa { grid-template-columns: 1fr; grid-template-rows: auto auto; overflow: auto; }
-      .atalhos-estudio { grid-template-columns: 1fr; }
+      .atalhos-estudio, .acoes-inicio { grid-template-columns: 1fr; }
     }
     .balao.foto-chat { align-self: center; max-width: min(520px, 100%); width: 100%; margin: 4px auto 0; padding: 0; background: transparent; }
     .balao.foto-chat img { display: block; width: 100%; max-height: 54vh; object-fit: contain; border-radius: 16px; background: #0f172a; }
@@ -1237,7 +1248,7 @@
         <div class="coluna-topo" id="topo-conversa">
           <span id="titulo-conversa">Estúdio</span>
           <div class="topo-acoes">
-            <button class="novo-post" type="button" id="ir-inicio" hidden title="Voltar para Criar foto, Criar arte, Anúncio e Foto"><i class="fa-solid fa-house"></i> Início</button>
+            <button class="novo-post" type="button" id="ir-inicio" hidden title="Voltar para o começo"><i class="fa-solid fa-house"></i> Início</button>
             <button class="novo-post" type="button" id="prateleira-botao" title="Artes salvas, agendadas e publicadas"><i class="fa-solid fa-table-cells"></i> Prateleira</button>
             <button class="novo-post" type="button" id="fila-botao" title="Posts agendados, por dia e horário"><i class="fa-solid fa-clock"></i> Fila</button>
             <button class="novo-post" type="button" id="novo-post" hidden title="Começar outro post do zero"><i class="fa-solid fa-plus"></i> Novo post</button>
@@ -1247,10 +1258,24 @@
         <div class="area-estudio" id="area-estudio">
           <div class="vazio-estudio" id="vazio-estudio">
             <div id="inicio-estudio">
-            <h2 id="titulo-inicio">O que vamos postar hoje?</h2>
-            <p id="texto-inicio">Escreva aqui embaixo o que você quer, ou comece por um atalho.</p>
+            <h2 id="titulo-inicio">O que vamos criar hoje?</h2>
+            <p id="texto-inicio">Escreva em uma frase. A partir dela eu monto a publicação ou o post do dia.</p>
             <div class="atalhos-estudio" id="ideias-estudio" hidden></div>
-            <div class="atalhos-estudio" id="atalhos-estudio">
+            <form class="brief-inicio" id="brief-inicio">
+              <textarea id="ideia-inicio" rows="3" maxlength="1500" placeholder="Ex.: Quero divulgar uma promoção de pizza para sexta-feira."></textarea>
+              <div class="acoes-inicio">
+                <button class="acao-inicio principal" type="submit" id="criar-publicacao">
+                  <strong>Criar publicação</strong>
+                  <small>Arte e legenda. Se faltar foto ou tamanho, eu pergunto.</small>
+                </button>
+                <button class="acao-inicio" type="button" id="planejar-semana">
+                  <strong>Planejar semana</strong>
+                  <small>Preenche o dia escolhido na agenda com conteúdo automático.</small>
+                </button>
+              </div>
+            </form>
+            <button class="outras-formas" type="button" id="outras-formas">Outras formas</button>
+            <div class="atalhos-estudio" id="atalhos-estudio" hidden>
               <button class="cartao-atalho" type="button" data-atalho="imagem">
                 <img class="capa-atalho" src="/quadros/criar-foto.jpg?v=2" alt="" />
                 <strong>Criar foto</strong>
@@ -3838,7 +3863,7 @@
         : !(noHomeTrabalho && !painel && (temBaloes || fotoNoChat || voltouAoChat || anexoChat));
       document.getElementById("area-estudio").classList.remove("com-mesa");
       const precisaDigitar = voltouAoChat || (noPagina && !tarefaAberta && fotoSemArteDesenhada()) || (noPagina && !tarefaAberta && !mesa && (passoCriar === "pronto" || fotoNoChat || arteEmCima));
-      document.getElementById("composer").hidden = painel || tarefaAberta || (noPagina ? !precisaDigitar : false);
+      document.getElementById("composer").hidden = painel || tarefaAberta || (noPagina ? !precisaDigitar : !noHomeTrabalho);
       document.getElementById("novo-post").hidden = noPagina
         ? wizard || !(mesa || temBaloes || fotoNoChat)
         : !(noHomeTrabalho && (mesa || temBaloes || fotoNoChat));
@@ -3908,6 +3933,39 @@
         tarefaAberta = false;
       }
       atualizarTopoConversa();
+    }
+
+    function criarPublicacao() {
+      const campo = document.getElementById("ideia-inicio");
+      const texto = campo.value.trim();
+      const nota = document.getElementById("texto-inicio");
+      if (texto.length < 2) {
+        nota.textContent = "Escreva em uma frase o que vamos criar.";
+        campo.focus();
+        return;
+      }
+      nota.textContent = "Escreva em uma frase. A partir dela eu monto a publicação ou o post do dia.";
+      usarAtalho("arte");
+      pedidoCampo.value = texto;
+      if (passoCriar === "tamanho") {
+        const formato = ["feed", "story", "facebook"].includes(formatoAgenda) ? formatoAgenda : "feed";
+        formatoArte = formato;
+        marcarFormato(formato);
+        passoCriar = "origem";
+        atualizarTopoConversa();
+      }
+    }
+
+    function planejarSemana() {
+      const texto = document.getElementById("ideia-inicio").value.trim();
+      const nota = document.getElementById("nota-agenda");
+      const agenda = document.querySelector(".cartao-agenda");
+      if (agenda) agenda.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      if (!diaEscolhido) {
+        nota.textContent = "Escolha o dia no calendário. Aí eu preencho esse dia com o que você escreveu.";
+        return;
+      }
+      preencherDia(texto.length >= 2 ? { contexto: texto.slice(0, 1500) } : undefined);
     }
 
     function usarAtalho(qual) {
@@ -5049,9 +5107,11 @@
       const ferramentas = document.getElementById("ferramentas-inicio");
       const texto = document.getElementById("texto-inicio");
       if (grade) grade.hidden = true;
-      if (atalhos) atalhos.hidden = false;
+      if (atalhos) atalhos.hidden = true;
       if (ferramentas) ferramentas.hidden = true;
-      if (texto) texto.textContent = "Escreva aqui embaixo o que você quer, ou comece por um atalho.";
+      const outras = document.getElementById("outras-formas");
+      if (outras) outras.textContent = "Outras formas";
+      if (texto) texto.textContent = "Escreva em uma frase. A partir dela eu monto a publicação ou o post do dia.";
     }
 
     function atualizarBotaoInicio() {
@@ -5078,7 +5138,7 @@
     function desenharInicio(dados) {
       const titulo = document.getElementById("titulo-inicio");
       const nome = dados && dados.nome && dados.nome !== "Minha marca" ? dados.nome : "";
-      if (titulo) titulo.textContent = nome ? `O que vamos postar hoje, ${nome}?` : "O que vamos postar hoje?";
+      if (titulo) titulo.textContent = nome ? `O que vamos criar hoje, ${nome}?` : "O que vamos criar hoje?";
       mostrarCartoesPadrao();
       atualizarBotaoInicio();
     }
@@ -5247,6 +5307,16 @@
     });
     document.querySelectorAll("[data-atalho]").forEach((botao) => {
       botao.addEventListener("click", () => usarAtalho(botao.dataset.atalho));
+    });
+    document.getElementById("brief-inicio").addEventListener("submit", (evento) => {
+      evento.preventDefault();
+      criarPublicacao();
+    });
+    document.getElementById("planejar-semana").addEventListener("click", () => planejarSemana());
+    document.getElementById("outras-formas").addEventListener("click", () => {
+      const atalhos = document.getElementById("atalhos-estudio");
+      atalhos.hidden = !atalhos.hidden;
+      document.getElementById("outras-formas").textContent = atalhos.hidden ? "Outras formas" : "Fechar outras formas";
     });
     document.getElementById("voltar-tamanhos").addEventListener("click", () => {
       marcarFormato(formatoAntesFluxo);
