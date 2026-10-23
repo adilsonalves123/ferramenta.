@@ -199,6 +199,9 @@ class CamposArteAjuste(BaseModel):
         "marca", "urgencia", "quente", "fresca", "fria", "elegante", "doce", "natural", "vibrante", "neutra", "vermelha"
     ] | None
     cor_livre: str | None
+    cor_texto: str | None
+    cor_fundo: str | None
+    escala_texto: Literal["maior", "menor"] | None
     posicao_texto: Literal["auto", "topo", "base"] | None
 
 

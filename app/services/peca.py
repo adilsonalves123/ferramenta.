@@ -148,6 +148,36 @@ def _chamada(textos: molde.Textos) -> str:
     return (textos.chamada or "").strip()
 
 
+def _fator(textos) -> float:
+    try:
+        valor = float(getattr(textos, "escala_texto", 1) or 1)
+    except (TypeError, ValueError):
+        valor = 1.0
+    return max(0.7, min(1.65, valor))
+
+
+def _cor_pedida(textos, campo: str):
+    valor = str(getattr(textos, campo, "") or "").strip()
+    if not valor:
+        return None
+    return molde.cor_hex(valor, "#000000")
+
+
+def _ajustar(textos, texto, peso, largura, altura, maximo, minimo, linhas, entrelinha=1.06, caixa_alta=False):
+    fator = _fator(textos)
+    return molde.ajustar(
+        texto,
+        peso,
+        int(largura),
+        max(int(altura), int(round(altura * fator))),
+        max(int(minimo), int(round(maximo * fator))),
+        int(minimo),
+        linhas,
+        entrelinha,
+        caixa_alta,
+    )
+
+
 def _botao(tela: Image.Image, texto: str, x: int, y: int, largura: int, altura: int, fundo: tuple[int, int, int]) -> None:
     peca = molde.caixa_redonda((largura, altura), 22, fundo)
     bloco = molde.ajustar(texto, "forte", largura - 150, altura - 20, 40, 22, 1)
@@ -171,7 +201,7 @@ def _lista(textos: molde.Textos, campo: str, limite: int) -> list[str]:
 def _painel(foto, textos: molde.Textos, ident, formato, tela_app, sem_foto) -> Image.Image:
     largura, altura, topo, base, margem = _medidas(formato)
     enfase, _fundo = molde._cores(ident, textos)
-    claro = _papel(enfase)
+    claro = _cor_pedida(textos, "cor_fundo") or _papel(enfase)
     tela = Image.new("RGBA", (largura, altura), claro + (255,))
     chamada = _chamada(textos)
     barra = (96 if formato != "facebook" else 80) if chamada else 0
@@ -180,9 +210,10 @@ def _painel(foto, textos: molde.Textos, ident, formato, tela_app, sem_foto) -> I
         ImageDraw.Draw(tela).rectangle((0, y_barra, largura, y_barra + barra), fill=enfase + (255,))
     topo_util = topo + (24 if formato == "story" else 52)
     fim = y_barra - 36
-    cor_titulo = _tinta_marca(enfase, claro)
-    escuro = (28, 32, 38)
-    apoio = molde._misturar(escuro, claro, 0.28)
+    tinta_texto = _cor_pedida(textos, "cor_texto")
+    cor_titulo = tinta_texto or _tinta_marca(enfase, claro)
+    escuro = tinta_texto or (28, 32, 38)
+    apoio = tinta_texto or molde._misturar((28, 32, 38), claro, 0.28)
     coluna = int(largura * 0.46)
 
     zona_x = margem + coluna + 8
@@ -213,11 +244,11 @@ def _painel(foto, textos: molde.Textos, ident, formato, tela_app, sem_foto) -> I
 
     _logo(tela, ident, margem, topo_util, "esquerda", False, 70)
     y = topo_util + 102
-    titulo = molde.ajustar(textos.titulo, "forte", coluna - 12, 340 if formato != "facebook" else 210, 92 if formato != "facebook" else 60, 36, 4, 0.96)
+    titulo = _ajustar(textos, textos.titulo, "forte", coluna - 12, 340 if formato != "facebook" else 210, 92 if formato != "facebook" else 60, 36, 4, 0.96)
     molde.escrever(tela, titulo, margem, y, cor_titulo)
     y += titulo.altura + 16
     if textos.subtitulo.strip():
-        sub = molde.ajustar(textos.subtitulo, "medio", coluna - 12, 88, 30, 20, 2, 1.12)
+        sub = _ajustar(textos, textos.subtitulo, "medio", coluna - 12, 88, 30, 20, 2, 1.12)
         molde.escrever(tela, sub, margem, y, apoio)
         y += sub.altura + 26
     else:
@@ -226,12 +257,12 @@ def _painel(foto, textos: molde.Textos, ident, formato, tela_app, sem_foto) -> I
         if y + 62 > fim:
             break
         _icone(tela, margem + 26, y + 24, 24, enfase, indice)
-        bloco = molde.ajustar(item, "negrito", coluna - 78, 70, 28, 18, 2, 1.05)
+        bloco = _ajustar(textos, item, "negrito", coluna - 78, 70, 28, 18, 2, 1.05)
         molde.escrever(tela, bloco, margem + 62, y + 4, escuro)
         y += max(64, bloco.altura + 16)
 
     if chamada and barra:
-        bloco = molde.ajustar(chamada, "forte", largura - 220, barra - 16, 40, 24, 1)
+        bloco = _ajustar(textos, chamada, "forte", largura - 220, barra - 16, 40, 24, 1)
         meio = y_barra + (barra - bloco.altura) / 2
         molde.escrever(tela, bloco, largura / 2 - 16, meio, molde.tinta(enfase), "centro")
         _seta(tela, largura - 92, meio + bloco.altura / 2, molde.tinta(enfase), 22)
@@ -241,7 +272,8 @@ def _painel(foto, textos: molde.Textos, ident, formato, tela_app, sem_foto) -> I
 def _passos(foto, textos: molde.Textos, ident, formato, tela_app, sem_foto) -> Image.Image:
     largura, altura, topo, base, margem = _medidas(formato)
     enfase, _fundo = molde._cores(ident, textos)
-    creme = _papel(enfase)
+    creme = _cor_pedida(textos, "cor_fundo") or _papel(enfase)
+    tinta_texto = _cor_pedida(textos, "cor_texto")
     tela = Image.new("RGBA", (largura, altura), creme + (255,))
     topo_util = topo + (20 if formato == "story" else 48)
     fim = base - (28 if formato == "story" else 40)
@@ -266,7 +298,8 @@ def _passos(foto, textos: molde.Textos, ident, formato, tela_app, sem_foto) -> I
     y = _logo(tela, ident, margem, y, "esquerda", False, 64) + 32
 
     titulo_texto, barra_texto = _partir(textos.titulo, textos.subtitulo)
-    titulo = molde.ajustar(
+    titulo = _ajustar(
+        textos,
         titulo_texto,
         "forte",
         largura - 2 * margem,
@@ -277,10 +310,11 @@ def _passos(foto, textos: molde.Textos, ident, formato, tela_app, sem_foto) -> I
         0.98,
         caixa_alta=True,
     )
-    molde.escrever(tela, titulo, margem, y, enfase if molde._contraste(enfase, creme) >= 2.6 else _tinta_marca(enfase, creme))
+    cor_titulo = tinta_texto or (enfase if molde._contraste(enfase, creme) >= 2.6 else _tinta_marca(enfase, creme))
+    molde.escrever(tela, titulo, margem, y, cor_titulo)
     y += titulo.altura + 16
     if barra_texto:
-        bloco = molde.ajustar(barra_texto, "forte", largura - 2 * margem - 56, 150, 40, 24, 2, 1.0, caixa_alta=True)
+        bloco = _ajustar(textos, barra_texto, "forte", largura - 2 * margem - 56, 150, 40, 24, 2, 1.0, caixa_alta=True)
         faixa = molde.caixa_redonda((min(largura - 2 * margem, bloco.largura + 48), bloco.altura + 28), 8, preto)
         molde.escrever(faixa, bloco, 24, 14, (255, 255, 255))
         tela.alpha_composite(faixa, (margem, round(y)))
@@ -326,11 +360,11 @@ def _passos(foto, textos: molde.Textos, ident, formato, tela_app, sem_foto) -> I
                 )
         else:
             cartao = molde.caixa_redonda((card_w, card_h), 28, (255, 255, 255))
-            numero = molde.ajustar(str(indice + 1), "forte", card_w - 36, card_h // 2, 92 if formato != "facebook" else 64, 40, 1)
+            numero = _ajustar(textos, str(indice + 1), "forte", card_w - 36, card_h // 2, 92 if formato != "facebook" else 64, 40, 1)
             molde.escrever(cartao, numero, card_w / 2, 36, enfase if molde._contraste(enfase, (255, 255, 255)) >= 2.4 else preto, "centro")
             if rotulo:
-                nome = molde.ajustar(rotulo, "forte", card_w - 36, card_h // 3, 32, 18, 2, 1.02, caixa_alta=True)
-                molde.escrever(cartao, nome, card_w / 2, card_h - nome.altura - 36, escuro, "centro")
+                nome = _ajustar(textos, rotulo, "forte", card_w - 36, card_h // 3, 32, 18, 2, 1.02, caixa_alta=True)
+                molde.escrever(cartao, nome, card_w / 2, card_h - nome.altura - 36, tinta_texto or escuro, "centro")
             molde.colar_com_sombra(tela, cartao, x, y_card, raio=18, opacidade=0.16, desloc=(0, 8))
         if indice < 2:
             _seta(tela, x + card_w + 6, y_card + card_h / 2, enfase, 18)
@@ -356,8 +390,9 @@ def _partir(titulo: str, subtitulo: str) -> tuple[str, str]:
 def _vitrine(foto, textos: molde.Textos, ident, formato, tela_app, sem_foto) -> Image.Image:
     largura, altura, topo, base, margem = _medidas(formato)
     enfase, _fundo = molde._cores(ident, textos)
-    noite = _noite(ident)
+    noite = _cor_pedida(textos, "cor_fundo") or _noite(ident)
     tela = Image.new("RGBA", (largura, altura), noite + (255,))
+    tinta_texto = _cor_pedida(textos, "cor_texto") or (molde.tinta(noite) if _cor_pedida(textos, "cor_fundo") else (255, 255, 255))
     coluna = int(largura * (0.46 if formato == "facebook" else 0.42))
     topo_util = topo + (16 if formato == "story" else 48)
     fim = base - (24 if formato == "story" else 40)
@@ -386,7 +421,8 @@ def _vitrine(foto, textos: molde.Textos, ident, formato, tela_app, sem_foto) -> 
         tela.alpha_composite(foto_painel, (visual_x, 0))
 
     y = _logo(tela, ident, margem, topo_util, "esquerda", True, 68) + 36
-    titulo = molde.ajustar(
+    titulo = _ajustar(
+        textos,
         textos.titulo,
         "forte",
         coluna - margem - 28,
@@ -397,13 +433,13 @@ def _vitrine(foto, textos: molde.Textos, ident, formato, tela_app, sem_foto) -> 
         0.94,
         caixa_alta=True,
     )
-    molde.escrever(tela, titulo, margem, y, (255, 255, 255))
+    molde.escrever(tela, titulo, margem, y, tinta_texto)
     y += titulo.altura + 22
     ImageDraw.Draw(tela).rectangle((margem, y, margem + 112, y + 8), fill=enfase + (255,))
     y += 28
     if textos.subtitulo.strip():
-        sub = molde.ajustar(textos.subtitulo, "medio", coluna - margem - 36, 140, 30, 20, 3, 1.15)
-        molde.escrever(tela, sub, margem, y, (214, 218, 224))
+        sub = _ajustar(textos, textos.subtitulo, "medio", coluna - margem - 36, 140, 30, 20, 3, 1.15)
+        molde.escrever(tela, sub, margem, y, tinta_texto)
         y += sub.altura + 28
 
     chamada = _chamada(textos)
@@ -418,8 +454,8 @@ def _vitrine(foto, textos: molde.Textos, ident, formato, tela_app, sem_foto) -> 
             outline=(255, 255, 255, 255),
             width=3,
         )
-        bloco = molde.ajustar(chamada, "forte", botao_w - 120, botao_h - 16, 30, 18, 1)
-        molde.escrever(tela, bloco, margem + botao_w / 2 - 14, botao_y + (botao_h - bloco.altura) / 2, (255, 255, 255), "centro")
+        bloco = _ajustar(textos, chamada, "forte", botao_w - 120, botao_h - 16, 30, 18, 1)
+        molde.escrever(tela, bloco, margem + botao_w / 2 - 14, botao_y + (botao_h - bloco.altura) / 2, tinta_texto, "centro")
         _seta(tela, margem + botao_w - 58, botao_y + botao_h / 2, (255, 255, 255), 16)
 
     segmentos = _lista(textos, "itens", 4)
@@ -433,6 +469,6 @@ def _vitrine(foto, textos: molde.Textos, ident, formato, tela_app, sem_foto) -> 
             x = visual_x + indice * coluna_item
             desenho = ImageDraw.Draw(tela)
             desenho.ellipse((x + coluna_item / 2 - 5, faixa_y + 22, x + coluna_item / 2 + 5, faixa_y + 32), fill=enfase + (255,))
-            bloco = molde.ajustar(item, "negrito", coluna_item - 20, 52, 18, 13, 2, 1.05, caixa_alta=True)
+            bloco = _ajustar(textos, item, "negrito", coluna_item - 20, 52, 18, 13, 2, 1.05, caixa_alta=True)
             molde.escrever(tela, bloco, x + coluna_item / 2, faixa_y + 44, (255, 255, 255), "centro")
     return tela

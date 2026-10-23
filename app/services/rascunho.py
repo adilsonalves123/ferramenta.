@@ -52,7 +52,10 @@ fotos_ids: ids das FOTOS DA MEMÓRIA que a pessoa citou pelo nome ou pela descri
 arte: só os campos que ela pediu para mudar, com o texto novo exato; null nos outros. titulo_arte até 6 palavras, selo até 3, chamada até 4.
 - modelo (o estilo da arte): faixa, selo, destaque, antes_depois, tela_app (imagem em destaque dentro de uma moldura de celular), story_chamada, alerta (painel de aviso com listras amarelas e pretas), etiqueta (etiqueta de preço), carimbo, neon (letreiro de neon), poster (letras enormes num bloco de cor), minimal (barra limpa e elegante) ou livre (só a imagem, sem textos); null se ela não pediu.
 - paleta, se ela pedir um clima de cor: marca (as cores da marca), urgencia (amarelo e preto), quente, fresca, fria, elegante (dourado e preto), doce (rosa), natural, vibrante (magenta e roxo), neutra (branco e grafite), vermelha; null se ela não pediu.
-- cor_livre: código #RRGGBB se ela pedir uma cor específica ("faz em amarelo" = "#FFD60A", "azul" = "#2563EB", "verde" = "#16A34A", "laranja" = "#F97316", "roxo" = "#7C3AED", "rosa" = "#EC4899", "preto" = "#111111"); null se não.
+- cor_texto: #RRGGBB quando ela pedir a cor das letras ("texto branco" = "#FFFFFF", "título amarelo" = "#FFD60A", "letra preta" = "#111111"). null se não pediu.
+- cor_fundo: #RRGGBB quando ela pedir a cor do fundo da arte ("fundo azul" = "#1D4ED8", "fundo preto" = "#111111", "fundo creme" = "#FFF7ED"). Não é a cor da foto. null se não pediu.
+- escala_texto: "maior" se ela pedir a letra maior, "menor" se pedir menor. null se não pediu.
+- cor_livre: código #RRGGBB se ela pedir uma cor de destaque sem dizer se é texto ou fundo ("faz em amarelo" = "#FFD60A", "azul" = "#2563EB", "verde" = "#16A34A", "laranja" = "#F97316", "roxo" = "#7C3AED", "rosa" = "#EC4899", "preto" = "#111111"); null se não.
 - posicao_texto: "topo" ou "base" se ela pedir o texto em cima ou embaixo, "auto" para deixar a arte decidir; null se não pediu.
 - cor: principal ou destaque (qual cor da marca vai na ênfase); null se ela não pediu.
 legenda_nova: se tipos tem legenda, a legenda inteira reescrita como ela pediu, no contrato da marca: item concreto na primeira linha, a frase da chamada do canal e as hashtags fixas. Mantenha os fatos e o site da legenda atual. Senão "". Não invente preço, produto, horário nem promoção.
@@ -670,8 +673,30 @@ def _instrucao_numerada(instrucao: str, ids: list[int]) -> str:
     return re.sub(r"\[(\d+)\]", lambda achado: f"image {posicoes[int(achado.group(1))]}" if int(achado.group(1)) in posicoes else achado.group(0), texto)
 
 
+def _hex_pedido(valor) -> str:
+    texto = str(valor or "").strip().upper()
+    if len(texto) == 6:
+        texto = "#" + texto
+    return texto if diretor.HEX.match(texto) else ""
+
+
 def _mudar_arte(plano: dict, campos: dict) -> list[str]:
     mudou = []
+    for campo in ("cor_texto", "cor_fundo"):
+        cor = _hex_pedido(campos.pop(campo, None))
+        if cor and plano.get(campo) != cor:
+            plano[campo] = cor
+            mudou.append(campo)
+    escala = campos.pop("escala_texto", None)
+    if escala in ("maior", "menor"):
+        try:
+            atual = float(plano.get("escala_texto") or 1)
+        except (TypeError, ValueError):
+            atual = 1
+        nova = min(1.65, round(atual + 0.15, 2)) if escala == "maior" else max(0.7, round(atual - 0.15, 2))
+        if nova != atual:
+            plano["escala_texto"] = nova
+            mudou.append("escala_texto")
     cor_livre = str(campos.pop("cor_livre", None) or "").strip().upper()
     if diretor.HEX.match(cor_livre) and (plano.get("paleta") != "livre" or plano.get("cor_livre") != cor_livre):
         plano.update(paleta="livre", cor_livre=cor_livre)
@@ -710,6 +735,12 @@ def _frase_arte(plano: dict, mudou: list[str]) -> str:
             partes.append(f"troquei as cores para {NOMES_PALETAS.get(plano.get('paleta'), plano.get('paleta'))}")
         elif campo == "cor_livre":
             partes.append(f"usei a cor {plano.get('cor_livre')} na arte")
+        elif campo == "cor_texto":
+            partes.append(f"mudei a cor do texto para {plano.get('cor_texto')}")
+        elif campo == "cor_fundo":
+            partes.append(f"mudei a cor do fundo para {plano.get('cor_fundo')}")
+        elif campo == "escala_texto":
+            partes.append("aumentei o texto" if float(plano.get("escala_texto") or 1) > 1 else "diminuí o texto")
         elif campo == "posicao_texto":
             lugar = {"topo": "em cima", "base": "embaixo"}.get(plano.get("posicao_texto"), "onde a foto tem espaço")
             partes.append(f"coloquei o texto {lugar}")

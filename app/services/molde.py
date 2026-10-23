@@ -121,6 +121,9 @@ class Textos:
     itens: list | None = None
     etapas: list | None = None
     sem_foto: bool = False
+    cor_texto: str = ""
+    cor_fundo: str = ""
+    escala_texto: float = 1.0
 
 
 @dataclass

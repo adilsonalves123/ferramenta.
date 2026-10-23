@@ -903,6 +903,16 @@
     .paletas button span { display: block; border-radius: 5px; }
     .paletas button.ativa { border-color: var(--azul); }
     .paletas button.miuda { width: 36px; height: 28px; }
+    .rotulo-editor { grid-column: 1 / -1; margin: 8px 0 0; font-size: 12px; font-weight: 700; color: var(--tinta); }
+    .tamanho-texto { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; }
+    .tamanho-texto button { width: 44px; height: 34px; margin: 0; border-radius: 8px; border: 1px solid var(--linha); background: white; font: inherit; font-weight: 800; cursor: pointer; color: var(--tinta); }
+    .tamanho-texto span { min-width: 52px; text-align: center; font-weight: 700; color: var(--tinta); }
+    .seletor-cor { grid-column: 1 / -1; display: grid; gap: 6px; }
+    .campo-cor { position: relative; height: 112px; border-radius: 10px; cursor: crosshair; touch-action: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18); }
+    .campo-cor i { position: absolute; width: 14px; height: 14px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5); transform: translate(-50%, -50%); pointer-events: none; }
+    .faixa-tom { width: 100%; height: 18px; margin: 0; padding: 0; appearance: none; border: 0; border-radius: 999px; background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000); cursor: pointer; }
+    .faixa-tom::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; border-radius: 50%; background: white; border: 2px solid #111; }
+    .seletor-cor .link-mini { justify-self: start; height: auto; margin: 0; padding: 0; }
     select#arte-paleta { display: none; }
     .estudio-arte { position: fixed; inset: 0; z-index: 90; background: rgba(15, 23, 42, 0.78); display: grid; place-items: center; padding: 20px; }
     .estudio-arte[hidden] { display: none !important; }
@@ -1382,32 +1392,43 @@
                           <option value="livre">Só a imagem</option>
                         </select>
                       </label>
-                      <label class="largo">Cores
-                        <div class="paletas" id="paletas-arte"></div>
-                        <select id="arte-paleta" hidden>
-                          <option value="marca">Cores da marca</option>
-                          <option value="urgencia">Amarelo e preto</option>
-                          <option value="quente">Laranja e marrom</option>
-                          <option value="fresca">Verde-limão</option>
-                          <option value="fria">Azul</option>
-                          <option value="elegante">Dourado e preto</option>
-                          <option value="doce">Rosa</option>
-                          <option value="natural">Verde-sálvia</option>
-                          <option value="vibrante">Magenta e roxo</option>
-                          <option value="neutra">Branco e grafite</option>
-                          <option value="vermelha">Vermelho</option>
-                          <option value="livre">A cor que você pediu</option>
-                        </select>
-                      </label>
+                      <select id="arte-paleta" hidden>
+                        <option value="marca">Cores da marca</option>
+                        <option value="urgencia">Amarelo e preto</option>
+                        <option value="quente">Laranja e marrom</option>
+                        <option value="fresca">Verde-limão</option>
+                        <option value="fria">Azul</option>
+                        <option value="elegante">Dourado e preto</option>
+                        <option value="doce">Rosa</option>
+                        <option value="natural">Verde-sálvia</option>
+                        <option value="vibrante">Magenta e roxo</option>
+                        <option value="neutra">Branco e grafite</option>
+                        <option value="vermelha">Vermelho</option>
+                        <option value="livre">A cor que você pediu</option>
+                      </select>
+                      <p class="rotulo-editor">O que está escrito</p>
                       <label class="largo">Título da arte<input id="arte-titulo" maxlength="120" /></label>
                       <label class="largo">Subtítulo<input id="arte-subtitulo" maxlength="140" placeholder="Opcional" /></label>
                       <label>Selo<input id="arte-selo" maxlength="22" placeholder="Ex.: Hoje" /></label>
                       <label>Chamada<input id="arte-chamada" maxlength="40" placeholder="Ex.: Peça o cardápio" /></label>
+                      <p class="rotulo-editor">O texto</p>
+                      <div class="tamanho-texto">
+                        <button type="button" id="texto-menor" title="Diminuir o texto">A−</button>
+                        <span id="texto-escala">100%</span>
+                        <button type="button" id="texto-maior" title="Aumentar o texto">A+</button>
+                      </div>
+                      <p class="rotulo-editor">Cor do texto</p>
+                      <div class="seletor-cor" id="seletor-texto"></div>
+                      <p class="rotulo-editor">Cor do fundo</p>
+                      <div class="seletor-cor" id="seletor-fundo"></div>
+                      <input type="hidden" id="arte-cor-texto" />
+                      <input type="hidden" id="arte-cor-fundo" />
+                      <input type="hidden" id="arte-escala" value="1" />
                       <label class="largo" id="arte-antes-campo" hidden>Antes (o problema do cliente)<input id="arte-antes" maxlength="90" /></label>
                     </div>
                     <button class="secundario" type="button" id="abrir-na-imagem"><i class="fa-solid fa-up-right-and-down-left-from-center"></i> Abrir na imagem</button>
                     <button class="secundario" type="button" id="refazer-arte"><i class="fa-solid fa-rotate"></i> Refazer arte</button>
-                    <p class="nota" id="nota-arte">Refazer arte troca só o texto, o estilo e as cores, com a mesma foto: não gasta IA.</p>
+                    <p class="nota" id="nota-arte">A cor muda ao arrastar. O tamanho entra no A− e no A+. O texto escrito entra em Refazer arte. Também dá para pedir isso no chat. Não gasta IA.</p>
                   </div>
                 </details>
               </div>
@@ -3034,6 +3055,12 @@
       document.getElementById("arte-antes-campo").hidden = artePrevia.modelo !== "antes_depois";
       document.getElementById("frase-arte").hidden = editor.hidden;
       if (!editor.hidden) document.getElementById("frase-arte-texto").value = artePrevia.titulo_arte || "";
+      document.getElementById("arte-cor-texto").value = artePrevia.cor_texto || "";
+      document.getElementById("arte-cor-fundo").value = artePrevia.cor_fundo || "";
+      document.getElementById("arte-escala").value = String(artePrevia.escala_texto || 1);
+      mostrarEscalaTexto();
+      if (seletoresCor.texto) seletoresCor.texto.definir(artePrevia.cor_texto || "");
+      if (seletoresCor.fundo) seletoresCor.fundo.definir(artePrevia.cor_fundo || "");
       document.getElementById("nota-arte").textContent = imagemProjeto
         ? "Escolha o tom na paleta ou abra a imagem para arrastar o texto. Refazer arte não gasta IA."
         : "A foto ainda não foi feita: clique em Criar foto com IA, escolha uma da memória ou agende (a IA faz até 3 horas antes).";
@@ -3078,6 +3105,131 @@
         botao.addEventListener("click", () => aoEscolher(id));
         alvo.append(botao);
       });
+    }
+
+    const seletoresCor = {};
+
+    function hsvParaHex(h, s, v) {
+      const c = v * s;
+      const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+      const m = v - c;
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      if (h < 60) { r = c; g = x; }
+      else if (h < 120) { r = x; g = c; }
+      else if (h < 180) { g = c; b = x; }
+      else if (h < 240) { g = x; b = c; }
+      else if (h < 300) { r = x; b = c; }
+      else { r = c; b = x; }
+      const hex = (n) => Math.round((n + m) * 255).toString(16).padStart(2, "0");
+      return ("#" + hex(r) + hex(g) + hex(b)).toUpperCase();
+    }
+
+    function hexParaHsv(hex) {
+      const n = String(hex || "").replace("#", "");
+      if (n.length !== 6) return { h: 4, s: 0.82, v: 0.9 };
+      const r = parseInt(n.slice(0, 2), 16) / 255;
+      const g = parseInt(n.slice(2, 4), 16) / 255;
+      const b = parseInt(n.slice(4, 6), 16) / 255;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const d = max - min;
+      let h = 0;
+      if (d) {
+        if (max === r) h = ((g - b) / d) % 6;
+        else if (max === g) h = (b - r) / d + 2;
+        else h = (r - g) / d + 4;
+        h *= 60;
+        if (h < 0) h += 360;
+      }
+      return { h, s: max ? d / max : 0, v: max };
+    }
+
+    function mostrarEscalaTexto() {
+      const valor = Number(document.getElementById("arte-escala").value) || 1;
+      const alvo = document.getElementById("texto-escala");
+      if (alvo) alvo.textContent = Math.round(valor * 100) + "%";
+    }
+
+    function mudarEscalaTexto(delta) {
+      const campo = document.getElementById("arte-escala");
+      let valor = (Number(campo.value) || 1) + delta;
+      valor = Math.min(1.65, Math.max(0.7, Math.round(valor * 100) / 100));
+      campo.value = String(valor);
+      mostrarEscalaTexto();
+      if (artePrevia) document.getElementById("refazer-arte").click();
+    }
+
+    function criarSeletorCor(raiz, inputId) {
+      if (!raiz) return null;
+      raiz.innerHTML = "";
+      const campo = document.createElement("div");
+      campo.className = "campo-cor";
+      const marca = document.createElement("i");
+      campo.append(marca);
+      const faixa = document.createElement("input");
+      faixa.type = "range";
+      faixa.min = "0";
+      faixa.max = "360";
+      faixa.step = "1";
+      faixa.className = "faixa-tom";
+      faixa.setAttribute("aria-label", "Tom da cor");
+      const limpar = document.createElement("button");
+      limpar.type = "button";
+      limpar.className = "link-mini";
+      limpar.textContent = "Cor automática";
+      raiz.append(campo, faixa, limpar);
+      let h = 4;
+      let s = 0.82;
+      let v = 0.9;
+      function pintar() {
+        campo.style.background = "linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(" + h + ", 100%, 50%))";
+        marca.style.left = (s * 100) + "%";
+        marca.style.top = ((1 - v) * 100) + "%";
+        faixa.value = String(Math.round(h));
+      }
+      function guardar(aplicar) {
+        document.getElementById(inputId).value = hsvParaHex(h, s, v);
+        pintar();
+        if (aplicar && artePrevia) document.getElementById("refazer-arte").click();
+      }
+      function noPonto(evento) {
+        const caixa = campo.getBoundingClientRect();
+        s = Math.min(1, Math.max(0, (evento.clientX - caixa.left) / caixa.width));
+        v = Math.min(1, Math.max(0, 1 - (evento.clientY - caixa.top) / caixa.height));
+      }
+      campo.addEventListener("pointerdown", (evento) => {
+        campo.setPointerCapture(evento.pointerId);
+        noPonto(evento);
+        guardar(false);
+      });
+      campo.addEventListener("pointermove", (evento) => {
+        if (!campo.hasPointerCapture(evento.pointerId)) return;
+        noPonto(evento);
+        guardar(false);
+      });
+      campo.addEventListener("pointerup", () => guardar(true));
+      faixa.addEventListener("input", () => {
+        h = Number(faixa.value);
+        guardar(false);
+      });
+      faixa.addEventListener("change", () => guardar(true));
+      limpar.addEventListener("click", () => {
+        document.getElementById(inputId).value = "";
+        if (artePrevia) document.getElementById("refazer-arte").click();
+      });
+      pintar();
+      return {
+        definir(hex) {
+          const base = hex || (marcaAtual && marcaAtual.cor_destaque) || "#E63946";
+          const hsv = hexParaHsv(base);
+          h = hsv.h;
+          s = hsv.s;
+          v = hsv.v;
+          pintar();
+        },
+      };
     }
 
     function desenharPaletasArte() {
@@ -3281,6 +3433,9 @@
       const plano = { ...artePrevia, modelo: modeloEscolhido || artePrevia.modelo, paleta };
       if (paleta !== "livre") plano.cor_livre = "";
       CAMPOS_ARTE.forEach(([id, campo]) => { plano[campo] = document.getElementById(id).value.trim(); });
+      plano.cor_texto = document.getElementById("arte-cor-texto").value.trim().toUpperCase();
+      plano.cor_fundo = document.getElementById("arte-cor-fundo").value.trim().toUpperCase();
+      plano.escala_texto = Number(document.getElementById("arte-escala").value) || 1;
       return plano;
     }
 
@@ -6005,6 +6160,10 @@
       fecharSeletor();
       if (opcoes && opcoes.aoIA) opcoes.aoIA();
     });
+    seletoresCor.texto = criarSeletorCor(document.getElementById("seletor-texto"), "arte-cor-texto");
+    seletoresCor.fundo = criarSeletorCor(document.getElementById("seletor-fundo"), "arte-cor-fundo");
+    document.getElementById("texto-menor").addEventListener("click", () => mudarEscalaTexto(-0.15));
+    document.getElementById("texto-maior").addEventListener("click", () => mudarEscalaTexto(0.15));
     document.getElementById("refazer-arte").addEventListener("click", async () => {
       const plano = arteDoEditor();
       const nota = document.getElementById("nota-arte");

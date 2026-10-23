@@ -58,6 +58,9 @@ CAMPOS_GUARDADOS = (
     "itens",
     "etapas",
     "sem_foto",
+    "cor_texto",
+    "cor_fundo",
+    "escala_texto",
     "recorte_caixa",
 )
 
@@ -463,6 +466,17 @@ def validar_plano(
     plano["itens"] = _sem_preco_linhas(_linhas(dados.get("itens"), 5, 8, 48), fonte)
     plano["etapas"] = _sem_preco_linhas(_linhas(dados.get("etapas"), 3, 4, 28), fonte)
     plano["sem_foto"] = bool(dados.get("sem_foto"))
+    plano["cor_texto"] = str(dados.get("cor_texto") or "").strip().upper()
+    plano["cor_fundo"] = str(dados.get("cor_fundo") or "").strip().upper()
+    if plano["cor_texto"] and not HEX.match(plano["cor_texto"]):
+        plano["cor_texto"] = ""
+    if plano["cor_fundo"] and not HEX.match(plano["cor_fundo"]):
+        plano["cor_fundo"] = ""
+    try:
+        escala = float(dados.get("escala_texto") or 1)
+    except (TypeError, ValueError):
+        escala = 1
+    plano["escala_texto"] = round(min(1.65, max(0.7, escala)), 2)
     return plano, legenda
 
 
@@ -755,6 +769,9 @@ def textos_do_plano(plano: dict) -> molde.Textos:
         itens=list(plano.get("itens") or []),
         etapas=list(plano.get("etapas") or []),
         sem_foto=bool(plano.get("sem_foto")),
+        cor_texto=plano.get("cor_texto") or "",
+        cor_fundo=plano.get("cor_fundo") or "",
+        escala_texto=float(plano.get("escala_texto") or 1),
     )
 
 
